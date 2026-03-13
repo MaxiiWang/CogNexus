@@ -26,7 +26,10 @@ init_db()
 app = FastAPI(
     title="Hub - 分布式认知市场",
     description="连接 Human、Character、Simulate",
-    version="0.1.0"
+    version="0.1.0",
+    docs_url=None,      # 禁用 Swagger UI
+    redoc_url=None,     # 禁用 ReDoc
+    openapi_url=None    # 禁用 OpenAPI schema
 )
 
 # CORS
