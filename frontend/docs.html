@@ -17,7 +17,7 @@
         /* ===== Docs Layout ===== */
         .docs-container {
             display: grid;
-            grid-template-columns: 240px 1fr;
+            grid-template-columns: 200px 1fr;
             gap: var(--space-xl);
             padding: var(--space-xl) 0;
             min-height: calc(100vh - 200px);
@@ -26,7 +26,7 @@
         /* Sidebar */
         .docs-sidebar {
             position: sticky;
-            top: calc(var(--space-xl) + 60px);
+            top: 100px;
             height: fit-content;
         }
 
@@ -35,6 +35,7 @@
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
             padding: var(--space-md);
+            backdrop-filter: blur(12px);
         }
 
         .docs-nav-section {
@@ -46,30 +47,37 @@
         }
 
         .docs-nav-title {
-            font-size: 0.75em;
+            font-size: 0.7em;
             font-weight: 600;
             color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            padding: var(--space-xs) var(--space-sm);
+            padding: var(--space-xs) 0;
+            margin-bottom: var(--space-xs);
         }
 
-        .docs-nav a {
+        .docs-nav-links {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .docs-nav-links a {
             display: block;
-            padding: var(--space-xs) var(--space-sm);
+            padding: 8px 12px;
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.9em;
+            font-size: 0.85em;
             border-radius: var(--radius-sm);
             transition: all 0.2s;
         }
 
-        .docs-nav a:hover {
+        .docs-nav-links a:hover {
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
 
-        .docs-nav a.active {
+        .docs-nav-links a.active {
             background: var(--accent-muted);
             color: var(--accent-text);
         }
@@ -80,6 +88,7 @@
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
             padding: var(--space-xl);
+            backdrop-filter: blur(12px);
         }
 
         .docs-content h1 {
@@ -177,49 +186,46 @@
             font-size: 0.9em;
         }
 
-        /* Steps */
-        .steps {
-            counter-reset: step;
-            padding-left: 0;
-            list-style: none;
+        .docs-content .info-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-lg);
+            margin-bottom: var(--space-md);
         }
 
-        .steps li {
-            position: relative;
-            padding-left: 48px;
-            padding-bottom: var(--space-lg);
-            border-left: 2px solid var(--border-subtle);
-            margin-left: 15px;
-        }
-
-        .steps li:last-child {
-            border-left: none;
-            padding-bottom: 0;
-        }
-
-        .steps li::before {
-            counter-increment: step;
-            content: counter(step);
-            position: absolute;
-            left: -16px;
-            top: 0;
-            width: 30px;
-            height: 30px;
-            background: var(--accent-muted);
-            border: 2px solid var(--accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 0.85em;
-            color: var(--accent-text);
-        }
-
-        .steps li strong {
-            display: block;
+        .docs-content .info-box h4 {
+            margin: 0 0 var(--space-sm);
             color: var(--text-primary);
-            margin-bottom: var(--space-xs);
+            font-size: 1em;
+        }
+
+        .docs-content .info-box p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+
+        /* Table */
+        .docs-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: var(--space-md);
+        }
+
+        .docs-content th,
+        .docs-content td {
+            text-align: left;
+            padding: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .docs-content th {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .docs-content td {
+            color: var(--text-secondary);
         }
 
         /* Responsive */
@@ -230,6 +236,16 @@
 
             .docs-sidebar {
                 position: static;
+            }
+
+            .docs-nav {
+                display: flex;
+                flex-wrap: wrap;
+                gap: var(--space-md);
+            }
+
+            .docs-nav-section {
+                margin-bottom: 0;
             }
         }
     </style>
@@ -277,152 +293,165 @@
                 <aside class="docs-sidebar">
                     <nav class="docs-nav">
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">开始</div>
-                            <a href="#intro" class="active">介绍</a>
-                            <a href="#quick-start">快速开始</a>
+                            <div class="docs-nav-title">概念</div>
+                            <div class="docs-nav-links">
+                                <a href="#intro" class="active">什么是 Hub</a>
+                                <a href="#agent">Agent 类型</a>
+                                <a href="#atp">ATP 积分</a>
+                                <a href="#token">Token 机制</a>
+                            </div>
                         </div>
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">部署 Agent</div>
-                            <a href="#deploy-simworld">部署 SimWorld</a>
-                            <a href="#publish-agent">发布到 Hub</a>
-                            <a href="#manage-tokens">管理 Token</a>
+                            <div class="docs-nav-title">使用</div>
+                            <div class="docs-nav-links">
+                                <a href="#browse">浏览市场</a>
+                                <a href="#purchase">购买 Token</a>
+                                <a href="#use">使用 Agent</a>
+                            </div>
                         </div>
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">使用 Agent</div>
-                            <a href="#browse-agents">浏览市场</a>
-                            <a href="#purchase-token">购买 Token</a>
-                            <a href="#use-token">使用 Token</a>
-                        </div>
-                        <div class="docs-nav-section">
-                            <div class="docs-nav-title">参考</div>
-                            <a href="#atp">ATP 说明</a>
-                            <a href="#token-types">Token 类型</a>
+                            <div class="docs-nav-title">发布</div>
+                            <div class="docs-nav-links">
+                                <a href="#publish">发布 Agent</a>
+                                <a href="#manage">管理 Token</a>
+                            </div>
                         </div>
                     </nav>
                 </aside>
 
                 <article class="docs-content">
-                    <h1 id="intro">Hub 文档</h1>
-                    <p>Hub 是一个分布式认知市场，让 AI Agent 的能力流通起来。你可以发布自己的 Agent，也可以发现和使用他人的 Agent。</p>
+                    <h1 id="intro">什么是 Hub</h1>
+                    <p>Hub 是一个<strong>分布式认知市场</strong>，让 AI Agent 的能力可以流通和交换。你可以在这里发现他人的 Agent，也可以发布自己的 Agent 供他人使用。</p>
 
                     <div class="tip">
                         <span class="tip-icon">💡</span>
                         <p>Hub 目前处于实验阶段，功能和 API 可能随时变更。</p>
                     </div>
 
-                    <h2 id="quick-start">快速开始</h2>
-                    <p>根据你的目标，选择对应的路径：</p>
-                    <ul>
-                        <li><strong>发布 Agent</strong>：部署 SimWorld → 在 Hub 发布 → 添加 Token → 开始交易</li>
-                        <li><strong>使用 Agent</strong>：浏览市场 → 购买 Token → 访问 Agent</li>
-                    </ul>
+                    <h2 id="agent">Agent 类型</h2>
+                    <p>Hub 支持三种类型的 Agent：</p>
 
-                    <h2 id="deploy-simworld">部署 SimWorld</h2>
-                    <p>SimWorld 是 Hub 的基础设施，提供知识管理和 API 能力。</p>
+                    <div class="info-box">
+                        <h4>👤 Human</h4>
+                        <p>真实用户的知识库。通过 <a href="https://github.com/MaxiiWang/SimWorld" target="_blank">SimWorld</a> 构建，包含用户的观点、经历、专业知识。你可以向 Human Agent 提问，获取基于其知识库的回答。</p>
+                    </div>
 
-                    <ol class="steps">
-                        <li>
-                            <strong>克隆项目</strong>
-                            <pre><code>git clone https://github.com/MaxiiWang/SimWorld.git
-cd SimWorld</code></pre>
-                        </li>
-                        <li>
-                            <strong>运行安装脚本</strong>
-                            <pre><code>chmod +x setup.sh
-./setup.sh</code></pre>
-                            <p>这会自动安装依赖、启动数据库容器、初始化配置。</p>
-                        </li>
-                        <li>
-                            <strong>启动可视化 API</strong>
-                            <pre><code>./visual/start.sh</code></pre>
-                            <p>API 默认运行在 <code>http://localhost:8000</code></p>
-                        </li>
-                        <li>
-                            <strong>验证部署</strong>
-                            <pre><code>curl http://localhost:8000/health</code></pre>
-                            <p>返回 <code>{"status": "ok"}</code> 表示部署成功。</p>
-                        </li>
-                    </ol>
+                    <div class="info-box">
+                        <h4>🎭 Character（待建）</h4>
+                        <p>AI 角色扮演。可以是历史人物、虚构角色或特定领域专家。与 Character 对话，体验不同视角的思维方式。</p>
+                    </div>
 
-                    <h2 id="publish-agent">发布到 Hub</h2>
-                    <ol class="steps">
-                        <li>
-                            <strong>注册 Hub 账号</strong>
-                            <p>访问 <a href="/">Hub 首页</a>，点击注册。</p>
-                        </li>
-                        <li>
-                            <strong>进入仪表盘</strong>
-                            <p>登录后进入 <a href="/dashboard">仪表盘</a>，点击「发布 Agent」。</p>
-                        </li>
-                        <li>
-                            <strong>输入 API 地址</strong>
-                            <p>填入你的 SimWorld API 地址（如 <code>http://your-server:8000</code>），点击「检测」。</p>
-                            <p>Hub 会自动获取 Agent 的名称和描述。</p>
-                        </li>
-                        <li>
-                            <strong>完善信息并提交</strong>
-                            <p>确认信息无误后提交，你的 Agent 就会出现在市场中。</p>
-                        </li>
-                    </ol>
+                    <div class="info-box">
+                        <h4>🔮 Simulation（待建）</h4>
+                        <p>模拟环境和场景。用于测试决策、预演对话、探索假设情境。</p>
+                    </div>
 
-                    <h2 id="manage-tokens">管理 Token</h2>
-                    <p>Token 是访问 Agent 的凭证。你需要先在 SimWorld 生成 Token，然后添加到 Hub。</p>
+                    <h2 id="atp">ATP 积分</h2>
+                    <p><strong>ATP（Agent Trade Points）</strong>是 Hub 的内部积分系统，用于 Agent 能力的交换。</p>
 
-                    <h3>生成 Token</h3>
-                    <pre><code># 在 SimWorld 目录
-./brain visual --duration 15d --scope qa_public --count 10</code></pre>
-                    <p>这会生成 10 个有效期 15 天的问答 Token。</p>
-
-                    <h3>添加到 Hub</h3>
-                    <p>在仪表盘中找到你的 Agent，点击「管理 Token」，粘贴生成的 Token。Hub 会自动验证 Token 的有效性。</p>
-
-                    <h2 id="browse-agents">浏览市场</h2>
-                    <p>访问 <a href="/marketplace">市场页面</a>，可以看到所有已发布的 Agent。点击 Agent 卡片可以查看详情。</p>
-
-                    <h2 id="purchase-token">购买 Token</h2>
-                    <p>在市场中找到感兴趣的 Agent，点击「购买」按钮。确认价格后，ATP 会从你的余额中扣除，你将获得一个访问 Token。</p>
-
-                    <h2 id="use-token">使用 Token</h2>
-                    <p>购买后，在仪表盘的「我购买的」中可以看到 Token。点击「复制」获取完整 Token，然后：</p>
-                    <pre><code># 访问 Agent 可视化界面
-http://agent-url:8000?token=YOUR_TOKEN</code></pre>
-
-                    <h2 id="atp">ATP 说明</h2>
-                    <p><strong>ATP（Agent Trade Points）</strong> 是 Hub 的内部积分系统：</p>
-                    <ul>
-                        <li>新用户注册获得 100 ATP</li>
-                        <li>用于购买 Agent Token</li>
-                        <li>卖出 Token 时获得 ATP</li>
-                        <li><strong>仅为平台内部积分，无现实货币价值</strong></li>
-                    </ul>
-
-                    <h2 id="token-types">Token 类型</h2>
-                    <table style="width: 100%; border-collapse: collapse; margin-bottom: var(--space-md);">
+                    <table>
                         <thead>
-                            <tr style="border-bottom: 1px solid var(--border-subtle);">
-                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">类型</th>
-                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">权限</th>
-                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">说明</th>
+                            <tr>
+                                <th>获取方式</th>
+                                <th>说明</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr style="border-bottom: 1px solid var(--border-subtle);">
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>full</code></td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">完整访问</td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">浏览 + 问答 + 编辑</td>
-                            </tr>
-                            <tr style="border-bottom: 1px solid var(--border-subtle);">
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>qa_public</code></td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">公开问答</td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">有次数限制的问答</td>
+                            <tr>
+                                <td>注册奖励</td>
+                                <td>新用户获得 100 ATP</td>
                             </tr>
                             <tr>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>browse_public</code></td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">仅浏览</td>
-                                <td style="padding: var(--space-sm); color: var(--text-secondary);">只能查看，不能交互</td>
+                                <td>出售 Token</td>
+                                <td>他人购买你的 Agent Token 时获得</td>
                             </tr>
                         </tbody>
                     </table>
+
+                    <div class="tip">
+                        <span class="tip-icon">⚠️</span>
+                        <p><strong>重要提示：</strong>ATP 仅为平台内部积分，无任何现实货币价值，不可兑换、提现或转让。</p>
+                    </div>
+
+                    <h2 id="token">Token 机制</h2>
+                    <p>Token 是访问 Agent 的凭证。不同类型的 Token 有不同的权限：</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>类型</th>
+                                <th>权限</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>full</code></td>
+                                <td>完整访问</td>
+                                <td>浏览知识库 + 问答交互 + 查看详情</td>
+                            </tr>
+                            <tr>
+                                <td><code>qa_public</code></td>
+                                <td>公开问答</td>
+                                <td>有次数限制的问答，适合试用</td>
+                            </tr>
+                            <tr>
+                                <td><code>browse_public</code></td>
+                                <td>仅浏览</td>
+                                <td>只能查看公开内容，不能交互</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p>Token 通常有有效期，过期后需要重新购买。</p>
+
+                    <h2 id="browse">浏览市场</h2>
+                    <p>在 <a href="/marketplace">市场页面</a> 可以看到所有已发布的 Agent。每个 Agent 卡片显示：</p>
+                    <ul>
+                        <li><strong>名称和描述</strong> - Agent 的基本信息</li>
+                        <li><strong>类型标签</strong> - Human / Character / Simulation</li>
+                        <li><strong>价格</strong> - 购买 Token 所需的 ATP</li>
+                        <li><strong>在线状态</strong> - Agent 是否可访问</li>
+                    </ul>
+
+                    <h2 id="purchase">购买 Token</h2>
+                    <p>找到感兴趣的 Agent 后：</p>
+                    <ol>
+                        <li>点击 Agent 卡片上的「购买」按钮</li>
+                        <li>确认价格和 Token 类型</li>
+                        <li>ATP 从余额中扣除</li>
+                        <li>获得 Token，可在仪表盘查看</li>
+                    </ol>
+
+                    <h2 id="use">使用 Agent</h2>
+                    <p>购买 Token 后，在 <a href="/dashboard">仪表盘</a> 的「我购买的」区域可以看到你的 Token。</p>
+                    <ol>
+                        <li>点击「复制」获取完整 Token</li>
+                        <li>点击「访问」跳转到 Agent 界面</li>
+                        <li>在 Agent 界面中使用 Token 进行交互</li>
+                    </ol>
+
+                    <h2 id="publish">发布 Agent</h2>
+                    <p>要发布自己的 Agent，你需要先部署 <a href="https://github.com/MaxiiWang/SimWorld" target="_blank">SimWorld</a> 作为 Agent 后端。</p>
+                    <p>部署完成后：</p>
+                    <ol>
+                        <li>在 <a href="/dashboard">仪表盘</a> 点击「发布 Agent」</li>
+                        <li>输入你的 SimWorld API 地址</li>
+                        <li>点击「检测」自动获取 Agent 信息</li>
+                        <li>补充描述和定价</li>
+                        <li>提交发布</li>
+                    </ol>
+
+                    <h2 id="manage">管理 Token</h2>
+                    <p>发布 Agent 后，你需要生成 Token 供用户购买：</p>
+                    <ol>
+                        <li>在 SimWorld 中生成 Token</li>
+                        <li>在 Hub 仪表盘找到你的 Agent</li>
+                        <li>点击「管理 Token」</li>
+                        <li>添加生成的 Token</li>
+                        <li>设置单价</li>
+                    </ol>
+                    <p>用户购买后，Token 会标记为已售，你会收到相应的 ATP。</p>
                 </article>
             </div>
         </div>
@@ -460,7 +489,7 @@ http://agent-url:8000?token=YOUR_TOKEN</code></pre>
         }
 
         // Smooth scroll for anchor links
-        document.querySelectorAll('.docs-nav a').forEach(link => {
+        document.querySelectorAll('.docs-nav-links a').forEach(link => {
             link.addEventListener('click', (e) => {
                 const href = link.getAttribute('href');
                 if (href.startsWith('#')) {
@@ -469,7 +498,7 @@ http://agent-url:8000?token=YOUR_TOKEN</code></pre>
                     if (target) {
                         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         // Update active state
-                        document.querySelectorAll('.docs-nav a').forEach(l => l.classList.remove('active'));
+                        document.querySelectorAll('.docs-nav-links a').forEach(l => l.classList.remove('active'));
                         link.classList.add('active');
                     }
                 }
