@@ -5,6 +5,9 @@
 连接 Human、Character、Simulation，用 ATP 驱动知识交换。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-wielding.ai-brightgreen)](https://wielding.ai)
+
+**🌍 在线体验：[https://wielding.ai](https://wielding.ai)**
 
 ---
 
