@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SG8EDDF203"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-SG8EDDF203');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文档 - Hub</title>
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <style>
+        /* ===== Docs Layout ===== */
+        .docs-container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            gap: var(--space-xl);
+            padding: var(--space-xl) 0;
+            min-height: calc(100vh - 200px);
+        }
+
+        /* Sidebar */
+        .docs-sidebar {
+            position: sticky;
+            top: calc(var(--space-xl) + 60px);
+            height: fit-content;
+        }
+
+        .docs-nav {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-md);
+        }
+
+        .docs-nav-section {
+            margin-bottom: var(--space-md);
+        }
+
+        .docs-nav-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .docs-nav-title {
+            font-size: 0.75em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: var(--space-xs) var(--space-sm);
+        }
+
+        .docs-nav a {
+            display: block;
+            padding: var(--space-xs) var(--space-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9em;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s;
+        }
+
+        .docs-nav a:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .docs-nav a.active {
+            background: var(--accent-muted);
+            color: var(--accent-text);
+        }
+
+        /* Content */
+        .docs-content {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+        }
+
+        .docs-content h1 {
+            font-family: var(--font-display);
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 var(--space-md);
+            padding-bottom: var(--space-md);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .docs-content h2 {
+            font-family: var(--font-display);
+            font-size: 1.4em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: var(--space-xl) 0 var(--space-md);
+        }
+
+        .docs-content h2:first-of-type {
+            margin-top: var(--space-lg);
+        }
+
+        .docs-content h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: var(--space-lg) 0 var(--space-sm);
+        }
+
+        .docs-content p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: var(--space-md);
+        }
+
+        .docs-content ul, .docs-content ol {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: var(--space-md);
+            padding-left: var(--space-lg);
+        }
+
+        .docs-content li {
+            margin-bottom: var(--space-xs);
+        }
+
+        .docs-content code {
+            font-family: var(--font-mono);
+            font-size: 0.9em;
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            color: var(--accent-text);
+        }
+
+        .docs-content pre {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+            overflow-x: auto;
+            margin-bottom: var(--space-md);
+        }
+
+        .docs-content pre code {
+            background: none;
+            padding: 0;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+
+        .docs-content a {
+            color: var(--accent-text);
+            text-decoration: underline;
+        }
+
+        .docs-content .tip {
+            display: flex;
+            gap: var(--space-sm);
+            padding: var(--space-md);
+            background: rgba(212, 160, 84, 0.1);
+            border: 1px solid rgba(212, 160, 84, 0.3);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-md);
+        }
+
+        .docs-content .tip-icon {
+            flex-shrink: 0;
+        }
+
+        .docs-content .tip p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+
+        /* Steps */
+        .steps {
+            counter-reset: step;
+            padding-left: 0;
+            list-style: none;
+        }
+
+        .steps li {
+            position: relative;
+            padding-left: 48px;
+            padding-bottom: var(--space-lg);
+            border-left: 2px solid var(--border-subtle);
+            margin-left: 15px;
+        }
+
+        .steps li:last-child {
+            border-left: none;
+            padding-bottom: 0;
+        }
+
+        .steps li::before {
+            counter-increment: step;
+            content: counter(step);
+            position: absolute;
+            left: -16px;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background: var(--accent-muted);
+            border: 2px solid var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85em;
+            color: var(--accent-text);
+        }
+
+        .steps li strong {
+            display: block;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-sidebar {
+                position: static;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <a href="/" class="logo">Hub<span class="dot">.</span></a>
+                <div class="nav-links">
+                    <a href="/marketplace">市场</a>
+                    <a href="/docs" class="active">文档</a>
+                    <div class="auth-buttons" id="authButtons">
+                        <a href="/" class="btn btn-primary btn-small">登录 / 注册</a>
+                    </div>
+                    <div class="user-menu" id="userMenu">
+                        <div class="user-dropdown">
+                            <div class="user-dropdown-trigger">
+                                <span class="user-avatar" id="userAvatar">M</span>
+                                <span class="user-name" id="username">User</span>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="user-dropdown-menu">
+                                <div class="user-dropdown-header">
+                                    <span class="dropdown-username" id="dropdownUsername">User</span>
+                                    <span class="dropdown-atp">⚡ <span id="atpBalance">0</span> ATP</span>
+                                </div>
+                                <div class="user-dropdown-divider"></div>
+                                <a href="/dashboard" class="user-dropdown-item">📊 仪表盘</a>
+                                <a href="/marketplace" class="user-dropdown-item">🏪 市场</a>
+                                <a href="/docs" class="user-dropdown-item">📖 文档</a>
+                                <div class="user-dropdown-divider"></div>
+                                <a href="#" class="user-dropdown-item logout" onclick="logout()">🚪 退出登录</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="docs-container">
+                <aside class="docs-sidebar">
+                    <nav class="docs-nav">
+                        <div class="docs-nav-section">
+                            <div class="docs-nav-title">开始</div>
+                            <a href="#intro" class="active">介绍</a>
+                            <a href="#quick-start">快速开始</a>
+                        </div>
+                        <div class="docs-nav-section">
+                            <div class="docs-nav-title">部署 Agent</div>
+                            <a href="#deploy-simworld">部署 SimWorld</a>
+                            <a href="#publish-agent">发布到 Hub</a>
+                            <a href="#manage-tokens">管理 Token</a>
+                        </div>
+                        <div class="docs-nav-section">
+                            <div class="docs-nav-title">使用 Agent</div>
+                            <a href="#browse-agents">浏览市场</a>
+                            <a href="#purchase-token">购买 Token</a>
+                            <a href="#use-token">使用 Token</a>
+                        </div>
+                        <div class="docs-nav-section">
+                            <div class="docs-nav-title">参考</div>
+                            <a href="#atp">ATP 说明</a>
+                            <a href="#token-types">Token 类型</a>
+                        </div>
+                    </nav>
+                </aside>
+
+                <article class="docs-content">
+                    <h1 id="intro">Hub 文档</h1>
+                    <p>Hub 是一个分布式认知市场，让 AI Agent 的能力流通起来。你可以发布自己的 Agent，也可以发现和使用他人的 Agent。</p>
+
+                    <div class="tip">
+                        <span class="tip-icon">💡</span>
+                        <p>Hub 目前处于实验阶段，功能和 API 可能随时变更。</p>
+                    </div>
+
+                    <h2 id="quick-start">快速开始</h2>
+                    <p>根据你的目标，选择对应的路径：</p>
+                    <ul>
+                        <li><strong>发布 Agent</strong>：部署 SimWorld → 在 Hub 发布 → 添加 Token → 开始交易</li>
+                        <li><strong>使用 Agent</strong>：浏览市场 → 购买 Token → 访问 Agent</li>
+                    </ul>
+
+                    <h2 id="deploy-simworld">部署 SimWorld</h2>
+                    <p>SimWorld 是 Hub 的基础设施，提供知识管理和 API 能力。</p>
+
+                    <ol class="steps">
+                        <li>
+                            <strong>克隆项目</strong>
+                            <pre><code>git clone https://github.com/MaxiiWang/SimWorld.git
+cd SimWorld</code></pre>
+                        </li>
+                        <li>
+                            <strong>运行安装脚本</strong>
+                            <pre><code>chmod +x setup.sh
+./setup.sh</code></pre>
+                            <p>这会自动安装依赖、启动数据库容器、初始化配置。</p>
+                        </li>
+                        <li>
+                            <strong>启动可视化 API</strong>
+                            <pre><code>./visual/start.sh</code></pre>
+                            <p>API 默认运行在 <code>http://localhost:8000</code></p>
+                        </li>
+                        <li>
+                            <strong>验证部署</strong>
+                            <pre><code>curl http://localhost:8000/health</code></pre>
+                            <p>返回 <code>{"status": "ok"}</code> 表示部署成功。</p>
+                        </li>
+                    </ol>
+
+                    <h2 id="publish-agent">发布到 Hub</h2>
+                    <ol class="steps">
+                        <li>
+                            <strong>注册 Hub 账号</strong>
+                            <p>访问 <a href="/">Hub 首页</a>，点击注册。</p>
+                        </li>
+                        <li>
+                            <strong>进入仪表盘</strong>
+                            <p>登录后进入 <a href="/dashboard">仪表盘</a>，点击「发布 Agent」。</p>
+                        </li>
+                        <li>
+                            <strong>输入 API 地址</strong>
+                            <p>填入你的 SimWorld API 地址（如 <code>http://your-server:8000</code>），点击「检测」。</p>
+                            <p>Hub 会自动获取 Agent 的名称和描述。</p>
+                        </li>
+                        <li>
+                            <strong>完善信息并提交</strong>
+                            <p>确认信息无误后提交，你的 Agent 就会出现在市场中。</p>
+                        </li>
+                    </ol>
+
+                    <h2 id="manage-tokens">管理 Token</h2>
+                    <p>Token 是访问 Agent 的凭证。你需要先在 SimWorld 生成 Token，然后添加到 Hub。</p>
+
+                    <h3>生成 Token</h3>
+                    <pre><code># 在 SimWorld 目录
+./brain visual --duration 15d --scope qa_public --count 10</code></pre>
+                    <p>这会生成 10 个有效期 15 天的问答 Token。</p>
+
+                    <h3>添加到 Hub</h3>
+                    <p>在仪表盘中找到你的 Agent，点击「管理 Token」，粘贴生成的 Token。Hub 会自动验证 Token 的有效性。</p>
+
+                    <h2 id="browse-agents">浏览市场</h2>
+                    <p>访问 <a href="/marketplace">市场页面</a>，可以看到所有已发布的 Agent。点击 Agent 卡片可以查看详情。</p>
+
+                    <h2 id="purchase-token">购买 Token</h2>
+                    <p>在市场中找到感兴趣的 Agent，点击「购买」按钮。确认价格后，ATP 会从你的余额中扣除，你将获得一个访问 Token。</p>
+
+                    <h2 id="use-token">使用 Token</h2>
+                    <p>购买后，在仪表盘的「我购买的」中可以看到 Token。点击「复制」获取完整 Token，然后：</p>
+                    <pre><code># 访问 Agent 可视化界面
+http://agent-url:8000?token=YOUR_TOKEN</code></pre>
+
+                    <h2 id="atp">ATP 说明</h2>
+                    <p><strong>ATP（Agent Trade Points）</strong> 是 Hub 的内部积分系统：</p>
+                    <ul>
+                        <li>新用户注册获得 100 ATP</li>
+                        <li>用于购买 Agent Token</li>
+                        <li>卖出 Token 时获得 ATP</li>
+                        <li><strong>仅为平台内部积分，无现实货币价值</strong></li>
+                    </ul>
+
+                    <h2 id="token-types">Token 类型</h2>
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: var(--space-md);">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">类型</th>
+                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">权限</th>
+                                <th style="text-align: left; padding: var(--space-sm); color: var(--text-primary);">说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>full</code></td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">完整访问</td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">浏览 + 问答 + 编辑</td>
+                            </tr>
+                            <tr style="border-bottom: 1px solid var(--border-subtle);">
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>qa_public</code></td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">公开问答</td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">有次数限制的问答</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);"><code>browse_public</code></td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">仅浏览</td>
+                                <td style="padding: var(--space-sm); color: var(--text-secondary);">只能查看，不能交互</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </article>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Hub &middot; Powered by ATP</p>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = '';
+
+        function checkAuth() {
+            const token = localStorage.getItem('hub_token');
+            const user = JSON.parse(localStorage.getItem('hub_user') || 'null');
+
+            if (token && user) {
+                document.getElementById('authButtons').classList.add('hidden');
+                document.getElementById('userMenu').classList.add('active');
+                document.getElementById('username').textContent = user.username;
+                document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
+                document.getElementById('dropdownUsername').textContent = user.username;
+                document.getElementById('atpBalance').textContent = user.atp_balance;
+                return true;
+            }
+            return false;
+        }
+
+        function logout() {
+            localStorage.removeItem('hub_token');
+            localStorage.removeItem('hub_user');
+            location.href = '/';
+        }
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('.docs-nav a').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const href = link.getAttribute('href');
+                if (href.startsWith('#')) {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        // Update active state
+                        document.querySelectorAll('.docs-nav a').forEach(l => l.classList.remove('active'));
+                        link.classList.add('active');
+                    }
+                }
+            });
+        });
+
+        // Init
+        checkAuth();
+    </script>
+</body>
+</html>

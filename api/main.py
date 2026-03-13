@@ -918,6 +918,12 @@ async def dashboard():
     return FileResponse(FRONTEND_PATH / "dashboard.html")
 
 
+@app.get("/docs")
+async def docs_page():
+    """文档页面"""
+    return FileResponse(FRONTEND_PATH / "docs.html")
+
+
 # 静态资源
 app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
 
