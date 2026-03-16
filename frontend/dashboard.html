@@ -270,25 +270,62 @@
             margin-bottom: var(--space-md);
         }
 
-        .probe-result-inner {
+        .profile-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-sm);
+        }
+
+        .profile-card {
             display: flex;
             align-items: center;
-            gap: var(--space-md);
+            gap: var(--space-sm);
+            padding: 10px 14px;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.15s;
+            min-width: 140px;
         }
 
-        .probe-result-inner .probe-icon {
-            font-size: 1.5em;
+        .profile-card:hover {
+            border-color: var(--accent);
+            background: var(--bg-primary);
         }
 
-        .probe-result-inner .probe-info strong {
+        .profile-card.selected {
+            border-color: var(--accent);
+            background: var(--accent-muted);
+        }
+
+        .profile-card .profile-icon {
+            font-size: 1.4em;
+        }
+
+        .profile-card .profile-info {
+            flex: 1;
+        }
+
+        .profile-card .profile-info .name {
+            font-weight: 600;
+            font-size: 0.9em;
             color: var(--text-primary);
-            font-size: 0.92em;
         }
 
-        .probe-result-inner .probe-info p {
-            font-size: 0.82em;
+        .profile-card .profile-info .meta {
+            font-size: 0.75em;
             color: var(--text-secondary);
-            margin-top: 2px;
+        }
+
+        .profile-card .check-mark {
+            color: var(--accent);
+            font-size: 1.1em;
+            display: none;
+        }
+
+        .profile-card.selected .check-mark {
+            display: block;
         }
 
         @media (max-width: 768px) {
@@ -459,14 +496,25 @@
                     <small>你的 Cogmate 的 API 端点，点击检测自动获取信息</small>
                 </div>
                 <div class="probe-result" id="probeResult">
-                    <div class="probe-result-inner">
-                        <span class="probe-icon">✅</span>
-                        <div class="probe-info">
-                            <strong id="probeName"></strong>
-                            <p id="probeBio"></p>
+                    <div class="profile-selector" id="profileSelector">
+                        <!-- 角色卡片将动态生成 -->
+                    </div>
+                </div>
+                
+                <!-- 推荐方式提示 -->
+                <div class="publish-tip" id="publishTip" style="display:none; background: rgba(124,153,184,0.1); border: 1px solid rgba(124,153,184,0.3); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <span style="font-size: 1.5em;">💡</span>
+                        <div>
+                            <strong style="color: var(--accent-text);">推荐：从 Cogmate 直接发布</strong>
+                            <p style="font-size: 0.85em; color: var(--text-secondary); margin: 8px 0 0 0;">
+                                在你的 Cogmate 首页，点击角色的「📤 发布」按钮，可以一键完成发布并自动创建 Token 池，更简单安全。
+                            </p>
                         </div>
                     </div>
                 </div>
+                
+                <input type="hidden" name="namespace" value="default">
                 <div class="form-group">
                     <label>名称</label>
                     <input type="text" name="name" required placeholder="例如：Max's Cogmate">
@@ -475,7 +523,7 @@
                     <label>描述</label>
                     <textarea name="description" placeholder="描述你的 Agent 专长领域"></textarea>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="display:none;">
                     <label>类型</label>
                     <select name="agent_type">
                         <option value="human">👤 Human - 真实认知</option>
@@ -649,7 +697,7 @@
                     <div class="token-card">
                         <div class="token-card-header">
                             <h4>${t.agent_name}</h4>
-                            <button class="btn btn-secondary btn-small" onclick="window.open('${t.endpoint_url || '#'}', '_blank')">访问 ↗</button>
+                            <button class="btn btn-secondary btn-small" onclick="window.open('${t.access_url || t.endpoint_url || '#'}', '_blank')">访问 ↗</button>
                         </div>
                         <div class="token-card-meta">花费 <span style="color: var(--accent-text);">${t.atp_spent} ATP</span> &middot; ${t.created_at}</div>
                         <div class="token-card-value">
@@ -823,6 +871,7 @@
                 form.name.value = agent.name || '';
                 form.description.value = agent.description || '';
                 form.agent_type.value = agent.agent_type || 'human';
+                form.namespace.value = agent.namespace || 'default';
                 form.tags.value = JSON.parse(agent.tags || '[]').join(', ');
                 form.price_chat.value = agent.price_chat || 10;
                 form.price_read.value = agent.price_read || 5;
@@ -868,6 +917,8 @@
             editingAgentId = null;
         }
 
+        let selectedProfile = null;
+
         async function probeAgent() {
             const url = document.querySelector('input[name="endpoint_url"]').value;
             if (!url) {
@@ -884,23 +935,60 @@
 
                 const data = await res.json();
 
-                if (data.success) {
-                    // 填充表单
-                    if (data.name) document.querySelector('input[name="name"]').value = data.name;
-                    if (data.bio) document.querySelector('textarea[name="description"]').value = data.bio;
-
-                    // 显示检测结果
+                if (data.success && data.profiles && data.profiles.length > 0) {
+                    // 显示角色选择卡片
+                    const selector = document.getElementById('profileSelector');
+                    selector.innerHTML = data.profiles.map(p => `
+                        <div class="profile-card" data-namespace="${p.namespace}" data-name="${p.name}" data-type="${p.type}" data-title="${p.title || ''}" onclick="selectProfile(this)">
+                            <span class="profile-icon">${p.type === 'character' ? '🎭' : '👤'}</span>
+                            <div class="profile-info">
+                                <div class="name">${p.name || p.namespace}</div>
+                                <div class="meta">${p.title || p.type} · ${p.fact_count || 0} 条知识</div>
+                            </div>
+                            <span class="check-mark">✓</span>
+                        </div>
+                    `).join('');
+                    
                     document.getElementById('probeResult').style.display = 'block';
-                    document.getElementById('probeName').textContent = data.name || '未命名 Agent';
-                    document.getElementById('probeBio').textContent = data.bio || '检测成功，Agent 在线';
-
-                    showAlert('success', '检测成功！已自动填充信息');
+                    
+                    // 默认选中第一个
+                    const firstCard = selector.querySelector('.profile-card');
+                    if (firstCard) selectProfile(firstCard);
+                    
+                    // 显示推荐提示
+                    document.getElementById('publishTip').style.display = 'block';
+                    
+                    showAlert('success', `检测成功！发现 ${data.profiles.length} 个角色`);
+                } else if (data.success) {
+                    showAlert('warning', data.message || '未发现可用角色');
                 } else {
                     showAlert('error', data.error || '检测失败');
                 }
             } catch (e) {
                 showAlert('error', '网络错误');
             }
+        }
+
+        function selectProfile(card) {
+            // 移除其他选中状态
+            document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('selected'));
+            // 选中当前
+            card.classList.add('selected');
+            
+            // 更新表单
+            const ns = card.dataset.namespace;
+            const name = card.dataset.name;
+            const type = card.dataset.type;
+            const title = card.dataset.title;
+            
+            document.querySelector('input[name="namespace"]').value = ns;
+            document.querySelector('input[name="name"]').value = name;
+            document.querySelector('select[name="agent_type"]').value = type;
+            if (title) {
+                document.querySelector('textarea[name="description"]').value = title;
+            }
+            
+            selectedProfile = { namespace: ns, name, type, title };
         }
 
         async function handleCreateAgent(e) {
@@ -916,6 +1004,7 @@
                 description: form.description.value,
                 agent_type: form.agent_type.value,
                 endpoint_url: form.endpoint_url.value,
+                namespace: form.namespace.value || 'default',
                 tags: tags,
                 tokens: tokens,
                 price_chat: parseInt(form.price_chat.value),

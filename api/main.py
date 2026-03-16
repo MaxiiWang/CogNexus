@@ -61,6 +61,7 @@ class AgentCreate(BaseModel):
     description: Optional[str] = None
     agent_type: str = "human"
     endpoint_url: str
+    namespace: str = "default"  # Cogmate namespace
     avatar_url: Optional[str] = None
     tags: Optional[List[str]] = []
     price_chat: int = 10
@@ -73,6 +74,13 @@ class TokenPurchase(BaseModel):
 
 class AgentProbe(BaseModel):
     url: str
+
+class AgentImport(BaseModel):
+    """从 Cogmate 导入 Agent"""
+    source_url: str  # Cogmate API 地址
+    namespace: str   # 角色 namespace
+    profile: dict    # 角色信息 {name, title, type, avatar, bio, fact_count}
+    tokens: List[dict] = []  # Token 列表 [{value, scope, qa_limit, unit_price}]
 
 
 # ==================== 依赖 ====================
@@ -190,14 +198,30 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 @app.post("/api/agents/probe")
 async def probe_agent(data: AgentProbe):
-    """探测 Agent URL，获取资料信息"""
+    """探测 Agent URL，获取所有角色列表"""
     import httpx
     
     url = data.url.rstrip('/')
     
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            # 尝试获取 Hub profile
+            # 尝试获取所有角色列表
+            profiles_url = f"{url}/api/hub/profiles"
+            try:
+                res = await client.get(profiles_url)
+                if res.status_code == 200:
+                    data = res.json()
+                    profiles = data.get("profiles", [])
+                    if profiles:
+                        return {
+                            "success": True,
+                            "profiles": profiles,
+                            "api_version": "2.0"
+                        }
+            except:
+                pass
+            
+            # 降级：尝试获取单个 Hub profile
             profile_url = f"{url}/api/hub/profile"
             try:
                 res = await client.get(profile_url)
@@ -205,17 +229,20 @@ async def probe_agent(data: AgentProbe):
                     profile = res.json()
                     return {
                         "success": True,
-                        "name": profile.get("name", ""),
-                        "title": profile.get("title", ""),
-                        "bio": profile.get("bio", ""),
-                        "avatar": profile.get("avatar", ""),
-                        "stats": profile.get("stats", {}),
-                        "api_version": profile.get("api_version", "unknown")
+                        "profiles": [{
+                            "namespace": "default",
+                            "type": "human",
+                            "name": profile.get("name", ""),
+                            "title": profile.get("title", ""),
+                            "avatar": profile.get("avatar", ""),
+                            "fact_count": profile.get("stats", {}).get("facts", 0)
+                        }],
+                        "api_version": "1.0"
                     }
             except:
                 pass
             
-            # 尝试获取公开 profile
+            # 降级：尝试获取公开 profile
             public_profile_url = f"{url}/api/public/profile"
             try:
                 res = await client.get(public_profile_url)
@@ -223,11 +250,14 @@ async def probe_agent(data: AgentProbe):
                     profile = res.json()
                     return {
                         "success": True,
-                        "name": profile.get("name", ""),
-                        "title": profile.get("title", ""),
-                        "bio": profile.get("bio", ""),
-                        "avatar": profile.get("avatar", ""),
-                        "stats": {},
+                        "profiles": [{
+                            "namespace": "default",
+                            "type": "human",
+                            "name": profile.get("name", ""),
+                            "title": profile.get("title", ""),
+                            "avatar": profile.get("avatar", ""),
+                            "fact_count": 0
+                        }],
                         "api_version": "legacy"
                     }
             except:
@@ -240,11 +270,7 @@ async def probe_agent(data: AgentProbe):
                 if res.status_code == 200:
                     return {
                         "success": True,
-                        "name": "",
-                        "title": "",
-                        "bio": "",
-                        "avatar": "",
-                        "stats": {},
+                        "profiles": [],
                         "api_version": "minimal",
                         "message": "Agent 在线，但未配置 profile"
                     }
@@ -629,6 +655,169 @@ async def set_token_pricing(agent_id: str, pricing: List[TokenPricing], user: di
     return {"success": True, "updated": updated}
 
 
+@app.post("/api/agents/import")
+async def import_agent(data: AgentImport, user: dict = Depends(get_current_user)):
+    """从 Cogmate 导入 Agent（由 Cogmate 调用）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # 检查是否已存在（按 source_url + namespace 匹配）
+    cursor.execute("""
+        SELECT agent_id FROM agents 
+        WHERE source_url = ? AND namespace = ?
+    """, (data.source_url, data.namespace))
+    existing = cursor.fetchone()
+    
+    now = datetime.now().isoformat()
+    
+    if existing:
+        # 更新现有 Agent
+        agent_id = existing["agent_id"]
+        cursor.execute("""
+            UPDATE agents SET 
+                name = ?, description = ?, agent_type = ?, avatar_url = ?,
+                last_synced_at = ?, updated_at = ?
+            WHERE agent_id = ?
+        """, (
+            data.profile.get("name", ""),
+            data.profile.get("bio", data.profile.get("title", "")),
+            data.profile.get("type", "human"),
+            data.profile.get("avatar", ""),
+            now, now, agent_id
+        ))
+        created = False
+    else:
+        # 创建新 Agent
+        agent_id = f"agt_{uuid.uuid4().hex[:12]}"
+        cursor.execute("""
+            INSERT INTO agents (
+                agent_id, owner_id, name, description, agent_type,
+                endpoint_url, namespace, avatar_url, tags,
+                source, source_url, last_synced_at, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            agent_id, user["user_id"],
+            data.profile.get("name", ""),
+            data.profile.get("bio", data.profile.get("title", "")),
+            data.profile.get("type", "human"),
+            data.source_url,
+            data.namespace,
+            data.profile.get("avatar", ""),
+            "[]",
+            "cogmate",
+            data.source_url,
+            now,
+            "active"
+        ))
+        created = True
+    
+    # 导入 Tokens
+    tokens_imported = 0
+    for t in data.tokens:
+        token_value = t.get("value", "").strip()
+        if not token_value:
+            continue
+        
+        # 检查 token 是否已存在
+        cursor.execute("SELECT token_id FROM agent_tokens WHERE token_value = ?", (token_value,))
+        if cursor.fetchone():
+            continue  # 跳过已存在的 token
+        
+        token_id = f"tkn_{uuid.uuid4().hex[:12]}"
+        cursor.execute("""
+            INSERT INTO agent_tokens (
+                token_id, agent_id, token_value, permissions,
+                scope, qa_limit, unit_price, namespace, validated
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            token_id, agent_id, token_value,
+            '["chat","read"]',
+            t.get("scope", "qa_public"),
+            t.get("qa_limit", 20),
+            t.get("unit_price", 5),
+            data.namespace,
+            1  # 从 Cogmate 导入的默认已验证
+        ))
+        tokens_imported += 1
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "success": True,
+        "agent_id": agent_id,
+        "created": created,
+        "tokens_imported": tokens_imported,
+        "agent_url": f"/marketplace.html#agent={agent_id}"
+    }
+
+
+@app.get("/api/agents/{agent_id}/sync")
+async def sync_agent(agent_id: str):
+    """同步 Agent 信息（从 Cogmate 拉取最新）"""
+    import httpx
+    
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT source_url, namespace, name, agent_type 
+        FROM agents WHERE agent_id = ?
+    """, (agent_id,))
+    agent = cursor.fetchone()
+    
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    
+    if not agent["source_url"]:
+        conn.close()
+        return {"synced": False, "reason": "非 Cogmate 导入的 Agent"}
+    
+    # 调用 Cogmate API 获取最新信息
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            url = f"{agent['source_url'].rstrip('/')}/api/hub/profile?ns={agent['namespace']}"
+            res = await client.get(url)
+            if res.status_code != 200:
+                conn.close()
+                return {"synced": False, "reason": "无法连接 Cogmate"}
+            
+            profile = res.json()
+    except Exception as e:
+        conn.close()
+        return {"synced": False, "reason": str(e)}
+    
+    # 比较变化
+    changes = {}
+    new_name = profile.get("name", "")
+    new_bio = profile.get("bio", "")
+    new_facts = profile.get("stats", {}).get("facts", 0)
+    
+    if new_name and new_name != agent["name"]:
+        changes["name"] = {"old": agent["name"], "new": new_name}
+    
+    # 更新数据库
+    now = datetime.now().isoformat()
+    cursor.execute("""
+        UPDATE agents SET 
+            name = COALESCE(NULLIF(?, ''), name),
+            description = COALESCE(NULLIF(?, ''), description),
+            last_synced_at = ?
+        WHERE agent_id = ?
+    """, (new_name, new_bio, now, agent_id))
+    
+    conn.commit()
+    conn.close()
+    
+    return {
+        "synced": True,
+        "changes": changes,
+        "fact_count": new_facts,
+        "synced_at": now
+    }
+
+
 @app.post("/api/agents")
 async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)):
     """创建 Agent"""
@@ -640,10 +829,10 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
     
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type, 
-                           endpoint_url, avatar_url, tags)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                           endpoint_url, avatar_url, tags, namespace)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (agent_id, user["user_id"], data.name, data.description, 
-          data.agent_type, data.endpoint_url, data.avatar_url, tags_str))
+          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, data.namespace))
     
     # 存储用户提供的 Tokens
     token_count = 0
@@ -653,10 +842,10 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
                 token_id = f"tkn_{uuid.uuid4().hex[:12]}"
                 cursor.execute("""
                     INSERT INTO agent_tokens (token_id, agent_id, token_value, permissions,
-                                             price_chat, price_read, price_react)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                                             price_chat, price_read, price_react, namespace)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """, (token_id, agent_id, token_value.strip(), '["chat","read","react"]',
-                      data.price_chat, data.price_read, data.price_react))
+                      data.price_chat, data.price_read, data.price_react, data.namespace))
                 token_count += 1
     
     # 如果没有提供 Token，生成一个默认的
@@ -824,14 +1013,26 @@ async def my_tokens(user: dict = Depends(get_current_user)):
     cursor = conn.cursor()
     
     cursor.execute("""
-        SELECT p.*, a.name as agent_name, a.endpoint_url
+        SELECT p.*, a.name as agent_name, a.endpoint_url, a.namespace
         FROM purchased_tokens p
         JOIN agents a ON p.agent_id = a.agent_id
         WHERE p.user_id = ?
         ORDER BY p.created_at DESC
     """, (user["user_id"],))
     
-    tokens = [dict(row) for row in cursor.fetchall()]
+    tokens = []
+    for row in cursor.fetchall():
+        token = dict(row)
+        # 构建完整的访问 URL（包含 token 和 namespace）
+        base_url = token.get("endpoint_url", "").rstrip("/")
+        ns = token.get("namespace", "default")
+        token_value = token.get("token_value", "")
+        if ns != "default":
+            token["access_url"] = f"{base_url}/?token={token_value}&ns={ns}"
+        else:
+            token["access_url"] = f"{base_url}/?token={token_value}"
+        tokens.append(token)
+    
     conn.close()
     
     return {"tokens": tokens, "total": len(tokens)}
