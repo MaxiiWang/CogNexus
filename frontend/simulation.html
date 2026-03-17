@@ -582,8 +582,8 @@
     <main>
         <section class="page-header centered">
             <div class="container">
-                <h1 class="animate-in">Simulation 中心</h1>
-                <p class="animate-in animate-in-delay-1">浏览所有 Simulation 推演的进度和结果</p>
+                <h1 class="animate-in" data-i18n="sim.center">Simulation Center</h1>
+                <p class="animate-in animate-in-delay-1" data-i18n="sim.center_desc">Browse all Simulation progress and results</p>
             </div>
         </section>
 
@@ -591,13 +591,13 @@
             <!-- Top Bar -->
             <div class="sim-topbar animate-in animate-in-delay-2">
                 <div class="sim-filters">
-                    <button class="filter-btn active" data-status="all">全部</button>
-                    <button class="filter-btn" data-status="draft">Draft</button>
-                    <button class="filter-btn" data-status="recruiting">招募中</button>
-                    <button class="filter-btn" data-status="active">进行中</button>
-                    <button class="filter-btn" data-status="closed">已关闭</button>
-                    <button class="filter-btn" data-status="resolved">已判定</button>
-                    <button class="filter-btn" data-status="settled">已结算</button>
+                    <button class="filter-btn active" data-status="all" data-i18n="sim.filter_all">All</button>
+                    <button class="filter-btn" data-status="draft" data-i18n="sim.filter_draft">Draft</button>
+                    <button class="filter-btn" data-status="recruiting" data-i18n="sim.filter_recruiting">Recruiting</button>
+                    <button class="filter-btn" data-status="active" data-i18n="sim.filter_active">Active</button>
+                    <button class="filter-btn" data-status="closed" data-i18n="sim.filter_closed">Closed</button>
+                    <button class="filter-btn" data-status="resolved" data-i18n="sim.filter_resolved">Resolved</button>
+                    <button class="filter-btn" data-status="settled" data-i18n="sim.filter_settled">Settled</button>
                 </div>
             </div>
 
@@ -608,8 +608,8 @@
 
             <div class="empty-state" id="emptyState" style="display: none;">
                 <div class="empty-state-icon">🔮</div>
-                <h3>暂无 Simulation</h3>
-                <p>暂时还没有推演数据</p>
+                <h3 data-i18n="sim.no_sims">No Simulations</h3>
+                <p data-i18n="sim.no_data">No simulation data yet</p>
             </div>
         </section>
 
@@ -693,7 +693,7 @@
                 const tags = parseTags(sim.tags);
                 const options = parseOptions(sim.outcome_options);
                 const outcomeText = sim.actual_outcome
-                    ? `结果: ${sim.actual_outcome}`
+                    ? `${I18N.t('sim.result')}: ${sim.actual_outcome}`
                     : (options.length > 0 ? options.join(' / ') : '');
 
                 return `
@@ -704,12 +704,12 @@
                         <div class="sim-card-meta">
                             <span>📂 ${esc(sim.category)}</span>
                             <span>👥 ${sim.current_agents || 0}/${sim.max_agents}</span>
-                            <span>🔄 ${sim.total_rounds} 轮</span>
+                            <span>🔄 ${sim.total_rounds} ${I18N.t('sim.rounds_label')}</span>
                             ${tags.length ? `<span>🏷 ${tags.slice(0,2).map(esc).join(', ')}</span>` : ''}
                         </div>
                     </div>
                     <div class="sim-card-footer">
-                        <span class="sim-status ${sim.status}">${sim.status}</span>
+                        <span class="sim-status ${sim.status}">${I18N.t('status.' + sim.status)}</span>
                         <span class="sim-card-outcome">${esc(outcomeText)}</span>
                     </div>
                 </div>`;
@@ -726,7 +726,7 @@
                 renderDetail(sim);
                 document.getElementById('detailOverlay').classList.add('active');
             } catch (e) {
-                showAlert('error', '加载详情失败');
+                showAlert('error', I18N.t('sim.load_detail_fail'));
             }
         }
 
@@ -745,12 +745,12 @@
                 <div class="question">${esc(sim.question)}</div>
                 ${sim.description ? `<div style="font-size:0.85em;color:var(--text-muted);margin-bottom:var(--space-md);line-height:1.5;">${esc(sim.description)}</div>` : ''}
                 <div class="sim-detail-info">
-                    <span class="sim-status ${sim.status}">${sim.status}</span>
+                    <span class="sim-status ${sim.status}">${I18N.t('status.' + sim.status)}</span>
                     <span>📂 ${esc(sim.category)}</span>
                     <span>👥 ${sim.current_agents || 0}/${sim.max_agents} Agent</span>
-                    <span>🔄 ${sim.total_rounds} 轮</span>
+                    <span>🔄 ${sim.total_rounds} ${I18N.t('sim.rounds_label')}</span>
                     <span>💰 ${sim.stake_per_agent} ATP/Agent</span>
-                    ${sim.actual_outcome ? `<span>✅ 结果: ${esc(sim.actual_outcome)}</span>` : ''}
+                    ${sim.actual_outcome ? `<span>✅ ${I18N.t('sim.result')}: ${esc(sim.actual_outcome)}</span>` : ''}
                 </div>
                 ${tags.length ? `<div style="margin-top:var(--space-sm);display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="badge badge-scope">${esc(t)}</span>`).join('')}</div>` : ''}
             `;
@@ -764,7 +764,7 @@
 
             // Participants
             bodyHtml += `<div class="sim-section">
-                <h3>参与者 (${(sim.participants || []).length})</h3>`;
+                <h3>${I18N.t('sim.participants')} (${(sim.participants || []).length})</h3>`;
             if (sim.participants && sim.participants.length > 0) {
                 bodyHtml += `<div class="participant-list">`;
                 for (const p of sim.participants) {
@@ -774,23 +774,23 @@
                         <div class="participant-avatar">${typeIcon}</div>
                         <div class="participant-info">
                             <div class="participant-name">${esc(p.agent_name || p.agent_id)}</div>
-                            <div class="participant-role">${esc(p.role || '未分配')}</div>
+                            <div class="participant-role">${esc(p.role || I18N.t('sim.unassigned'))}</div>
                         </div>
                         <div class="participant-score">
-                            ${p.relevance_score ? `相关 ${(p.relevance_score * 100).toFixed(0)}%` : ''}
-                            ${p.influence_weight ? ` · 影响 ${(p.influence_weight * 100).toFixed(0)}%` : ''}
+                            ${p.relevance_score ? I18N.t('sim.relevance') + ' ' + (p.relevance_score * 100).toFixed(0) + '%' : ''}
+                            ${p.influence_weight ? ' · ' + I18N.t('sim.influence') + ' ' + (p.influence_weight * 100).toFixed(0) + '%' : ''}
                         </div>
                     </div>`;
                 }
                 bodyHtml += `</div>`;
             } else {
-                bodyHtml += `<p style="font-size:0.85em;color:var(--text-muted);">暂无参与者，点击"招募 Agent"开始</p>`;
+                bodyHtml += `<p style="font-size:0.85em;color:var(--text-muted);">${I18N.t('sim.no_participants')}</p>`;
             }
             bodyHtml += `</div>`;
 
             // Rounds
             bodyHtml += `<div class="sim-section">
-                <h3>轮次时间线</h3>
+                <h3>${I18N.t('sim.rounds_timeline')}</h3>
                 <div class="rounds-timeline">`;
             if (sim.rounds && sim.rounds.length > 0) {
                 for (const rnd of sim.rounds) {
@@ -800,7 +800,7 @@
                     bodyHtml += `
                     <div class="round-item ${rndClass}">
                         <div class="round-header" onclick="toggleRound('${sim.simulation_id}', ${rnd.round_number}, this)">
-                            <span class="round-title">第${rnd.round_number}轮${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
+                            <span class="round-title">${I18N.t('sim.round_n').replace('%d', rnd.round_number)}${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
                             <span class="round-status">${rnd.status}</span>
                         </div>
                         ${agg ? renderAggregate(agg, options) : ''}
@@ -808,14 +808,14 @@
                     </div>`;
                 }
             } else {
-                bodyHtml += `<p style="font-size:0.85em;color:var(--text-muted);">尚未创建轮次</p>`;
+                bodyHtml += `<p style="font-size:0.85em;color:var(--text-muted);">${I18N.t('sim.no_rounds')}</p>`;
             }
             bodyHtml += `</div></div>`;
 
             // Resolution criteria
             if (sim.resolution_criteria) {
                 bodyHtml += `<div class="sim-section">
-                    <h3>判定标准</h3>
+                    <h3>${I18N.t('sim.resolution_criteria')}</h3>
                     <p style="font-size:0.85em;color:var(--text-secondary);line-height:1.6;">${esc(sim.resolution_criteria)}</p>
                 </div>`;
             }
@@ -837,7 +837,7 @@
             if (total === 0) return '';
 
             let html = `<div class="aggregate-chart">
-                <div class="aggregate-title">聚合结果</div>
+                <div class="aggregate-title">${I18N.t('sim.aggregate_result')}</div>
                 <div class="bar-chart">`;
 
             const colors = ['#7c99b8', '#d4a054', '#4ecdc4', '#9d8bb8', '#6da89b', '#e57373'];
@@ -856,7 +856,7 @@
             html += `</div></div>`;
 
             if (agg.avg_confidence) {
-                html += `<div style="font-size:0.78em;color:var(--text-muted);margin-top:var(--space-xs);">平均置信度: ${(agg.avg_confidence * 100).toFixed(0)}%</div>`;
+                html += `<div style="font-size:0.78em;color:var(--text-muted);margin-top:var(--space-xs);">${I18N.t('sim.avg_confidence')}: ${(agg.avg_confidence * 100).toFixed(0)}%</div>`;
             }
 
             return html;
@@ -877,13 +877,13 @@
                 renderReactions(container, data.reactions || []);
                 container.classList.add('expanded');
             } catch (e) {
-                showAlert('error', '加载反应失败');
+                showAlert('error', I18N.t('sim.load_reactions_fail'));
             }
         }
 
         function renderReactions(container, reactions) {
             if (reactions.length === 0) {
-                container.innerHTML = '<p style="font-size:0.85em;color:var(--text-muted);padding:var(--space-sm) 0;">暂无反应数据</p>';
+                container.innerHTML = '<p style="font-size:0.85em;color:var(--text-muted);padding:var(--space-sm) 0;">' + I18N.t('sim.no_reactions') + '</p>';
                 return;
             }
 
@@ -900,7 +900,7 @@
                     if (r.key_points) {
                         const kp = tryParseJSON(r.key_points);
                         if (Array.isArray(kp) && kp.length) {
-                            bodyHtml += `<div style="margin-top:var(--space-xs);font-size:0.82em;color:var(--text-muted);">关键点: ${kp.map(esc).join(', ')}</div>`;
+                            bodyHtml += `<div style="margin-top:var(--space-xs);font-size:0.82em;color:var(--text-muted);">${I18N.t('sim.key_points')}: ${kp.map(esc).join(', ')}</div>`;
                         }
                     }
                 } else {
@@ -915,9 +915,9 @@
                     </div>
                     ${bodyHtml}
                     ${r.stance ? `<span class="reaction-stance" style="background:${bgColor};color:var(--text-primary)">${esc(r.stance)}</span>` : ''}
-                    ${r.confidence ? `<span class="reaction-confidence">置信度 ${(r.confidence * 100).toFixed(0)}%</span>` : ''}
-                    ${r.sentiment ? `<span class="reaction-confidence">情感: ${esc(r.sentiment)}</span>` : ''}
-                    ${r.owner_disputed ? '<span style="margin-left:var(--space-sm);font-size:0.75em;color:var(--status-danger);">⚠ 已争议</span>' : ''}
+                    ${r.confidence ? `<span class="reaction-confidence">${I18N.t('sim.confidence')} ${(r.confidence * 100).toFixed(0)}%</span>` : ''}
+                    ${r.sentiment ? `<span class="reaction-confidence">${I18N.t('sim.sentiment')}: ${esc(r.sentiment)}</span>` : ''}
+                    ${r.owner_disputed ? '<span style="margin-left:var(--space-sm);font-size:0.75em;color:var(--status-danger);">' + I18N.t('sim.disputed') + '</span>' : ''}
                 </div>`;
             }).join('');
         }

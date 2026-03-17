@@ -660,62 +660,62 @@
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
-            <h2>请先登录</h2>
-            <p>登录后可以管理您的 Agent 和查看购买的 Token</p>
-            <a href="/" class="btn btn-primary">前往登录</a>
+            <h2 data-i18n="auth.please_login">Please Login</h2>
+            <p data-i18n="auth.login_prompt">Login to manage your Agents and view purchased Tokens</p>
+            <a href="/" class="btn btn-primary" data-i18n="auth.go_login">Go to Login</a>
         </div>
 
         <div id="dashboardContent">
             <section class="page-header animate-in">
-                <h1>仪表盘</h1>
-                <p>管理你的 Agent 和 Token</p>
+                <h1 data-i18n="dash.title">Dashboard</h1>
+                <p data-i18n="dash.subtitle">Manage your Agents and Tokens</p>
             </section>
 
             <div class="dashboard-grid">
                 <div class="stat-card animate-in animate-in-delay-1">
                     <div class="stat-value" id="myBalance">0</div>
-                    <div class="stat-label"><span class="atp-tooltip">ATP</span> 余额</div>
+                    <div class="stat-label" data-i18n="dash.atp_balance">ATP Balance</div>
                 </div>
                 <div class="stat-card animate-in animate-in-delay-2">
                     <div class="stat-value" id="myAgents">0</div>
-                    <div class="stat-label">我的 Agent</div>
+                    <div class="stat-label" data-i18n="dash.my_agents">My Agents</div>
                 </div>
                 <div class="stat-card animate-in animate-in-delay-3">
                     <div class="stat-value" id="myTokens">0</div>
-                    <div class="stat-label">购买的 Token</div>
+                    <div class="stat-label" data-i18n="dash.tokens_purchased">Tokens Purchased</div>
                 </div>
                 <div class="stat-card animate-in animate-in-delay-4">
                     <div class="stat-value" id="mySimCount">0</div>
-                    <div class="stat-label">我的 Simulation</div>
+                    <div class="stat-label" data-i18n="dash.my_sims">My Simulations</div>
                 </div>
             </div>
 
             <section class="section animate-in animate-in-delay-3">
                 <div class="section-header">
-                    <h2>我的 Agent</h2>
-                    <button class="btn btn-primary btn-small" onclick="showCreateAgent()">+ 发布 Agent</button>
+                    <h2 data-i18n="dash.section_agents">My Agents</h2>
+                    <button class="btn btn-primary btn-small" onclick="showCreateAgent()" data-i18n="dash.publish_agent">+ Publish Agent</button>
                 </div>
                 <div class="card-list" id="agentsList">
-                    <div class="empty">暂无 Agent，点击上方按钮发布</div>
+                    <div class="empty" data-i18n="dash.no_agents">No Agents yet. Click the button above to publish</div>
                 </div>
             </section>
 
             <section class="section animate-in animate-in-delay-4">
                 <div class="section-header">
-                    <h2>购买的 Token</h2>
+                    <h2 data-i18n="dash.section_tokens">Tokens Purchased</h2>
                 </div>
                 <div class="card-list" id="tokensList">
-                    <div class="empty">暂无购买记录</div>
+                    <div class="empty" data-i18n="dash.no_tokens">No purchase records</div>
                 </div>
             </section>
 
             <section class="section animate-in animate-in-delay-5">
                 <div class="section-header">
-                    <h2>我的 Simulation</h2>
-                    <button class="btn btn-primary btn-small" onclick="showCreateSim()">+ 创建 Simulation</button>
+                    <h2 data-i18n="dash.section_sims">My Simulations</h2>
+                    <button class="btn btn-primary btn-small" onclick="showCreateSim()" data-i18n="dash.create_sim">+ Create Simulation</button>
                 </div>
                 <div class="card-list" id="simsList">
-                    <div class="empty">暂无 Simulation，点击上方按钮创建</div>
+                    <div class="empty" data-i18n="dash.no_sims">No Simulations yet. Click the button above to create</div>
                 </div>
             </section>
         </div>
@@ -724,22 +724,22 @@
     <!-- Create Agent Modal -->
     <div class="modal" id="createAgentModal">
         <div class="modal-content" style="max-width: 560px;">
-            <h2>发布 Agent</h2>
+            <h2 data-i18n="agent.publish">Publish Agent</h2>
             <div class="modal-tip">
                 <span class="tip-icon">💡</span>
                 <div class="tip-content">
-                    <strong>前置条件</strong>
+                    <strong data-i18n="agent.prerequisite">Prerequisite</strong>
                     <p>发布前请确保已部署 <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> 并启动可视化 API。</p>
                 </div>
             </div>
             <form id="createAgentForm" onsubmit="handleCreateAgent(event)">
                 <div class="form-group">
-                    <label>API 地址</label>
+                    <label data-i18n="agent.api_url">API URL</label>
                     <div class="form-inline">
                         <input type="url" name="endpoint_url" required placeholder="http://your-brain.com:8000">
-                        <button type="button" class="btn btn-secondary btn-small" onclick="probeAgent()">检测</button>
+                        <button type="button" class="btn btn-secondary btn-small" onclick="probeAgent()" data-i18n="agent.detect">Detect</button>
                     </div>
-                    <small>你的 Cogmate 的 API 端点，点击检测自动获取信息</small>
+                    <small data-i18n="agent.api_hint">Your Cogmate API endpoint. Click Detect to auto-fill info</small>
                 </div>
                 <div class="probe-result" id="probeResult">
                     <div class="profile-selector" id="profileSelector">
@@ -762,12 +762,12 @@
                 
                 <input type="hidden" name="namespace" value="default">
                 <div class="form-group">
-                    <label>名称</label>
-                    <input type="text" name="name" required placeholder="例如：Max's Cogmate">
+                    <label data-i18n="agent.name">Name</label>
+                    <input type="text" name="name" required placeholder="e.g., Max's Cogmate">
                 </div>
                 <div class="form-group">
-                    <label>描述</label>
-                    <textarea name="description" placeholder="描述你的 Agent 专长领域"></textarea>
+                    <label data-i18n="agent.description">Description</label>
+                    <textarea name="description" placeholder="Describe your Agent specialty areas"></textarea>
                 </div>
                 <div class="form-group" style="display:none;">
                     <label>类型</label>
@@ -777,16 +777,16 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>领域标签（逗号分隔）</label>
-                    <input type="text" name="tags" placeholder="AI, 投资, 职业">
+                    <label data-i18n="agent.tags">Tags (comma separated)</label>
+                    <input type="text" name="tags" placeholder="AI, Investment, Career">
                 </div>
                 <div class="form-group">
-                    <label>Token（每行一个，用户购买后将获得其中一个）</label>
+                    <label data-i18n="agent.tokens_label">Tokens (one per line, users will receive one upon purchase)</label>
                     <textarea name="tokens" rows="4" placeholder="tok_xxxx1&#10;tok_xxxx2&#10;tok_xxxx3" style="font-family: var(--font-mono); font-size: 0.85em;"></textarea>
-                    <small>在你的 Cogmate 中生成 Token 后粘贴到这里</small>
+                    <small data-i18n="agent.tokens_hint">Paste Tokens generated in your Cogmate here</small>
                 </div>
                 <div class="form-group">
-                    <label>Token 定价 (<span class="atp-tooltip">ATP</span>)</label>
+                    <label data-i18n="agent.token_pricing">Token Pricing (ATP)</label>
                     <div class="form-row">
                         <div>
                             <input type="number" name="price_chat" value="10" min="1">
@@ -803,8 +803,8 @@
                     </div>
                 </div>
                 <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
-                    <button type="submit" class="btn btn-primary">发布</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="agent.publish_btn">Publish</button>
                 </div>
             </form>
         </div>
@@ -813,19 +813,19 @@
     <!-- Token Management Modal -->
     <div class="modal" id="tokenModal">
         <div class="modal-content" style="max-width: 600px;">
-            <h2>Token 管理</h2>
+            <h2 data-i18n="token.manage">Token Management</h2>
             <div class="token-stats-grid" id="tokenStats">
                 <div class="token-stat">
                     <div class="value" style="color: var(--text-primary);" id="tokenTotal">0</div>
-                    <div class="label">总计</div>
+                    <div class="label" data-i18n="token.total">Total</div>
                 </div>
                 <div class="token-stat">
                     <div class="value" style="color: var(--color-success);" id="tokenAvailable">0</div>
-                    <div class="label">可售</div>
+                    <div class="label" data-i18n="token.available">Available</div>
                 </div>
                 <div class="token-stat">
                     <div class="value" style="color: var(--color-danger);" id="tokenSold">0</div>
-                    <div class="label">已售</div>
+                    <div class="label" data-i18n="token.sold">Sold</div>
                 </div>
             </div>
             <div id="tokenTypeList">
@@ -836,13 +836,13 @@
             </div>
             <form id="addTokensForm" onsubmit="handleAddTokens(event)">
                 <div class="form-group">
-                    <label>添加新 Token（每行一个，将自动验证）</label>
-                    <textarea name="newTokens" rows="3" placeholder="粘贴从 Cogmate 生成的 Token..." style="font-family: var(--font-mono); font-size: 0.85em;"></textarea>
-                    <small>Token 会自动验证类型、次数限制和有效期</small>
+                    <label data-i18n="token.add_new">Add new Tokens (one per line, auto-verified)</label>
+                    <textarea name="newTokens" rows="3" placeholder="Paste Tokens generated from Cogmate..." style="font-family: var(--font-mono); font-size: 0.85em;"></textarea>
+                    <small data-i18n="token.add_hint">Tokens will be auto-verified for type, limits and expiry</small>
                 </div>
                 <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">关闭</button>
-                    <button type="submit" class="btn btn-primary">添加 Token</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.close">Close</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="token.add_btn">Add Tokens</button>
                 </div>
             </form>
         </div>
@@ -968,12 +968,12 @@
     <!-- Resolve Simulation Modal -->
     <div class="modal" id="resolveSimModal">
         <div class="modal-content" style="max-width: 440px;">
-            <h2>判定结果</h2>
-            <p style="font-size:0.88em; color:var(--text-secondary); margin-bottom:var(--space-md);">选择最终结果：</p>
+            <h2 data-i18n="resolve.title">Resolve Outcome</h2>
+            <p style="font-size:0.88em; color:var(--text-secondary); margin-bottom:var(--space-md);" data-i18n="resolve.select">Select the final outcome:</p>
             <div id="resolveSimOptions"></div>
             <div class="modal-buttons" style="margin-top:var(--space-lg);">
-                <button class="btn btn-secondary" onclick="hideModal()">取消</button>
-                <button class="btn btn-primary" onclick="confirmResolveSim()">确认判定</button>
+                <button class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmResolveSim()" data-i18n="resolve.confirm">Confirm Resolution</button>
             </div>
         </div>
     </div>
@@ -982,16 +982,16 @@
     <div class="modal" id="envInjectionModal">
         <div class="modal-content" style="max-width:560px;">
             <h2>环境注入 - 第<span id="envRoundNum"></span>轮</h2>
-            <p style="font-size:0.88em;color:var(--text-secondary);margin-bottom:var(--space-md);">
-                输入本轮的新环境变化（如新事件、新数据），Agent 将基于此更新判断
+            <p style="font-size:0.88em;color:var(--text-secondary);margin-bottom:var(--space-md);" data-i18n="sim.env_desc">
+                Enter new environmental changes for this round (e.g. new events, new data). Agents will update their judgment based on this.
             </p>
             <div class="form-group">
-                <label>环境变化描述</label>
-                <textarea id="envInjectionText" rows="5" placeholder="例如：中国宣布对等反制措施，美股期货跌3%..."></textarea>
+                <label data-i18n="sim.env_label">Environmental Change Description</label>
+                <textarea id="envInjectionText" rows="5" placeholder="e.g., China announces counter-tariffs, US stock futures drop 3%..."></textarea>
             </div>
             <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="executeRoundWithEnv('')">跳过（无新环境）</button>
-                <button class="btn btn-primary" onclick="executeRoundWithEnv(document.getElementById('envInjectionText').value)">注入并执行</button>
+                <button class="btn btn-secondary" onclick="executeRoundWithEnv('')" data-i18n="sim.env_skip">Skip (no changes)</button>
+                <button class="btn btn-primary" onclick="executeRoundWithEnv(document.getElementById('envInjectionText').value)" data-i18n="sim.env_inject">Inject & Execute</button>
             </div>
         </div>
     </div>
@@ -1009,9 +1009,9 @@
                 </div>
             </div>
             <div id="simPanelTabs" style="display:flex;border-bottom:1px solid var(--border-subtle);padding:0 var(--space-xl);margin-top:var(--space-md);">
-                <button class="sim-dtab active" data-tab="overview" onclick="switchSimTab('overview')">概览</button>
-                <button class="sim-dtab" data-tab="participants" onclick="switchSimTab('participants')">参与者</button>
-                <button class="sim-dtab" data-tab="rounds" onclick="switchSimTab('rounds')">轮次 & 结果</button>
+                <button class="sim-dtab active" data-tab="overview" onclick="switchSimTab('overview')" data-i18n="sim.tab_overview">Overview</button>
+                <button class="sim-dtab" data-tab="participants" onclick="switchSimTab('participants')" data-i18n="sim.tab_participants">Participants</button>
+                <button class="sim-dtab" data-tab="rounds" onclick="switchSimTab('rounds')" data-i18n="sim.tab_rounds">Rounds & Results</button>
             </div>
             <div style="padding:var(--space-lg) var(--space-xl) var(--space-xl);max-height:65vh;overflow-y:auto;">
                 <div class="sim-dtab-content active" id="tabOverview"></div>
@@ -1051,7 +1051,7 @@
 
                 const list = document.getElementById('agentsList');
                 if (myAgents.length === 0) {
-                    list.innerHTML = '<div class="empty">暂无 Agent，点击上方按钮发布</div>';
+                    list.innerHTML = '<div class="empty">' + I18N.t('dash.no_agents') + '</div>';
                     return;
                 }
 
@@ -1059,7 +1059,7 @@
                     const safeName = (a.name || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                     const typeClass = a.agent_type === 'human' ? 'type-human' : 'type-character';
                     const statusClass = a.status === 'active' ? 'online' : 'offline';
-                    const statusText = a.status === 'active' ? '在线' : '离线';
+                    const statusText = a.status === 'active' ? I18N.t('dash.online') : I18N.t('dash.offline');
                     const typeIcon = a.agent_type === 'human' ? '👤' : '🎭';
                     const typeName = a.agent_type === 'human' ? 'Human' : 'Character';
                     return `
@@ -1074,14 +1074,14 @@
                             </h4>
                             <div class="agent-meta">
                                 <span class="type-badge ${a.agent_type}">${typeIcon} ${typeName}</span>
-                                &middot; ${a.description || '暂无描述'}
+                                &middot; ${a.description || I18N.t('market.no_desc')}
                             </div>
                             <div class="agent-endpoint">${a.endpoint_url}</div>
                         </div>
                         <div class="agent-card-actions">
-                            <button class="btn btn-secondary btn-small" onclick="editAgent('${a.agent_id}')">编辑</button>
+                            <button class="btn btn-secondary btn-small" onclick="editAgent('${a.agent_id}')">${I18N.t('common.edit')}</button>
                             <button class="btn btn-secondary btn-small" onclick="manageTokens('${a.agent_id}')">Token</button>
-                            <button class="btn btn-danger btn-small" onclick="deleteAgent('${a.agent_id}', '${safeName}')">删除</button>
+                            <button class="btn btn-danger btn-small" onclick="deleteAgent('${a.agent_id}', '${safeName}')">${I18N.t('common.delete')}</button>
                         </div>
                     </div>
                 `}).join('');
@@ -1103,7 +1103,7 @@
 
                 const list = document.getElementById('tokensList');
                 if (tokens.length === 0) {
-                    list.innerHTML = '<div class="empty">暂无购买记录，去市场看看吧</div>';
+                    list.innerHTML = '<div class="empty">' + I18N.t('dash.no_tokens_market') + '</div>';
                     return;
                 }
 
@@ -1111,12 +1111,12 @@
                     <div class="token-card">
                         <div class="token-card-header">
                             <h4>${t.agent_name}</h4>
-                            <button class="btn btn-secondary btn-small" onclick="window.open('${t.access_url || t.endpoint_url || '#'}', '_blank')">访问 ↗</button>
+                            <button class="btn btn-secondary btn-small" onclick="window.open('${t.access_url || t.endpoint_url || '#'}', '_blank')">${I18N.t('common.visit')} ↗</button>
                         </div>
-                        <div class="token-card-meta">花费 <span style="color: var(--accent-text);">${t.atp_spent} ATP</span> &middot; ${t.created_at}</div>
+                        <div class="token-card-meta">${I18N.t('dash.spent')} <span style="color: var(--accent-text);">${t.atp_spent} ATP</span> &middot; ${t.created_at}</div>
                         <div class="token-card-value">
                             <code>${t.token_value}</code>
-                            <button class="btn btn-ghost btn-small" onclick="copyToken('${t.token_value}')">复制</button>
+                            <button class="btn btn-ghost btn-small" onclick="copyToken('${t.token_value}')">${I18N.t('common.copy')}</button>
                         </div>
                     </div>
                 `).join('');
@@ -1133,7 +1133,7 @@
             const token = localStorage.getItem('cog_token');
 
             document.getElementById('tokenModal').classList.add('active');
-            document.getElementById('tokenList').innerHTML = '<div class="empty">加载中...</div>';
+            document.getElementById('tokenList').innerHTML = '<div class="empty">' + I18N.t('common.loading') + '</div>';
             document.getElementById('tokenTypeList').innerHTML = '';
 
             try {
@@ -1169,13 +1169,13 @@
                 const typeList = Object.values(typeStats);
                 if (typeList.length > 0) {
                     document.getElementById('tokenTypeList').innerHTML = `
-                        <div style="font-size: 0.82em; color: var(--text-muted); margin-bottom: var(--space-sm); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">Token 类型定价</div>
+                        <div style="font-size: 0.82em; color: var(--text-muted); margin-bottom: var(--space-sm); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em;">${I18N.t('token.type_pricing')}</div>
                         ${typeList.map(t => `
                             <div class="token-type-row">
                                 <div class="token-type-info">
                                     <span class="scope-name">${t.scope_label}</span>
                                     <span class="scope-detail">
-                                        ${t.qa_limit > 0 ? t.qa_limit + '次' : '无限'} &middot; ${t.available}/${t.total} 可售
+                                        ${t.qa_limit > 0 ? t.qa_limit + ' ' + I18N.t('token.times') : I18N.t('token.unlimited')} &middot; ${t.available}/${t.total} ${I18N.t('token.for_sale')}
                                     </span>
                                 </div>
                                 <div class="token-type-price">
@@ -1190,7 +1190,7 @@
 
                 // 渲染 Token 列表
                 if (tokens.length === 0) {
-                    document.getElementById('tokenList').innerHTML = '<div class="empty">暂无 Token，请添加</div>';
+                    document.getElementById('tokenList').innerHTML = '<div class="empty">' + I18N.t('token.no_tokens') + '</div>';
                 } else {
                     document.getElementById('tokenList').innerHTML = tokens.map(t => `
                         <div class="token-list-item">
@@ -1198,15 +1198,15 @@
                             <div class="token-item-meta">
                                 <span class="scope-label">${t.scope_label || t.scope || ''}</span>
                                 <span class="token-status ${t.is_sold ? 'sold' : 'available'}">
-                                    ${t.is_sold ? '已售' : '可售'}
+                                    ${t.is_sold ? I18N.t('token.sold') : I18N.t('token.available')}
                                 </span>
                             </div>
                         </div>
                     `).join('');
                 }
             } catch (e) {
-                document.getElementById('tokenList').innerHTML = '<div class="empty">加载失败</div>';
-                showAlert('error', '加载 Token 列表失败');
+                document.getElementById('tokenList').innerHTML = '<div class="empty">' + I18N.t('token.load_fail') + '</div>';
+                showAlert('error', I18N.t('token.load_fail'));
             }
         }
 
@@ -1222,10 +1222,10 @@
                     body: JSON.stringify([{ scope, qa_limit: qaLimit, unit_price: parseFloat(price) }])
                 });
                 if (res.ok) {
-                    showAlert('success', '定价已更新');
+                    showAlert('success', I18N.t('token.price_updated'));
                 }
             } catch (e) {
-                showAlert('error', '更新失败');
+                showAlert('error', I18N.t('token.price_fail'));
             }
         }
 
@@ -1236,7 +1236,7 @@
             const newTokens = form.newTokens.value.split('\n').map(t => t.trim()).filter(t => t);
 
             if (newTokens.length === 0) {
-                showAlert('error', '请输入至少一个 Token');
+                showAlert('error', I18N.t('token.enter_one'));
                 return;
             }
 
@@ -1260,7 +1260,7 @@
                     showAlert('error', result.detail || '添加失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1268,7 +1268,7 @@
             editingAgentId = null;
             document.getElementById('createAgentForm').reset();
             document.getElementById('probeResult').style.display = 'none';
-            document.querySelector('#createAgentModal h2').textContent = '发布 Agent';
+            document.querySelector('#createAgentModal h2').textContent = I18N.t('agent.publish');
             document.getElementById('createAgentModal').classList.add('active');
         }
 
@@ -1293,10 +1293,10 @@
                 form.tokens.value = '';  // 不显示已有 token
 
                 document.getElementById('probeResult').style.display = 'none';
-                document.querySelector('#createAgentModal h2').textContent = '编辑 Agent';
+                document.querySelector('#createAgentModal h2').textContent = I18N.t('agent.edit');
                 document.getElementById('createAgentModal').classList.add('active');
             } catch (e) {
-                showAlert('error', '加载 Agent 信息失败');
+                showAlert('error', I18N.t('agent.load_fail'));
             }
         }
 
@@ -1316,13 +1316,13 @@
                 const result = await res.json();
 
                 if (res.ok) {
-                    showAlert('success', result.message || 'Agent 已删除');
+                    showAlert('success', result.message || I18N.t('agent.deleted'));
                     loadMyAgents();
                 } else {
-                    showAlert('error', result.detail || '删除失败');
+                    showAlert('error', result.detail || I18N.t('agent.delete_fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1336,7 +1336,7 @@
         async function probeAgent() {
             const url = document.querySelector('input[name="endpoint_url"]').value;
             if (!url) {
-                showAlert('error', '请先输入 API 地址');
+                showAlert('error', I18N.t('agent.api_url'));
                 return;
             }
 
@@ -1379,7 +1379,7 @@
                     showAlert('error', data.error || '检测失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1444,13 +1444,13 @@
 
                 if (res.ok) {
                     hideModal();
-                    showAlert('success', result.message || (isEdit ? 'Agent 更新成功！' : 'Agent 发布成功！'));
+                    showAlert('success', result.message || (isEdit ? I18N.t('agent.update_success') : I18N.t('agent.publish_success')));
                     loadMyAgents();
                 } else {
-                    showAlert('error', result.detail || (isEdit ? '更新失败' : '发布失败'));
+                    showAlert('error', result.detail || (isEdit ? I18N.t('agent.update_fail') : I18N.t('agent.publish_fail')));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1475,18 +1475,18 @@
 
                 const list = document.getElementById('simsList');
                 if (mySims.length === 0) {
-                    list.innerHTML = '<div class="empty">暂无 Simulation，点击上方按钮创建</div>';
+                    list.innerHTML = '<div class="empty">' + I18N.t('dash.no_sims') + '</div>';
                     return;
                 }
 
                 list.innerHTML = mySims.map(sim => {
                     const s = sim.status;
                     const isMC = sim.simulation_mode === 'monte_carlo';
-                    let actions = `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">查看</button>`;
+                    let actions = `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">${I18N.t('common.view')}</button>`;
 
                     if (s === 'draft') {
-                        actions = `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}')">编辑</button>` + actions;
-                        actions = `<button class="btn btn-danger btn-small" onclick="deleteSim('${sim.simulation_id}', '${esc(sim.title).replace(/'/g, "\\'")}')">删除</button>` + actions;
+                        actions = `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}')">${I18N.t('common.edit')}</button>` + actions;
+                        actions = `<button class="btn btn-danger btn-small" onclick="deleteSim('${sim.simulation_id}', '${esc(sim.title).replace(/'/g, "\\'")}')">` + I18N.t('common.delete') + `</button>` + actions;
                     }
                     if (s === 'draft' || s === 'recruiting') {
                         const hasParticipants = (sim.participants && sim.participants.length > 0);
@@ -1494,42 +1494,42 @@
                         if (isMC) {
                             // Monte Carlo: analyze archetypes + MC run
                             if (hasParticipants && nextRound) {
-                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${nextRound.round_number})">🎲 执行第${nextRound.round_number}轮</button>` + actions;
+                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${nextRound.round_number})">${I18N.t('action.mc_execute')} ${nextRound.round_number}</button>` + actions;
                             }
-                            actions = `<button class="btn btn-secondary btn-small" onclick="doMCAnalyze('${sim.simulation_id}')">分析原型</button>` + actions;
+                            actions = `<button class="btn btn-secondary btn-small" onclick="doMCAnalyze('${sim.simulation_id}')">${I18N.t('sim.mc_analyze')}</button>` + actions;
                             if (sim.llm_base_url) {
-                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? I18N.t('action.add_recruit') : I18N.t('action.smart_recruit')}</button>` + actions;
                             } else {
-                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? I18N.t('action.add_recruit') : I18N.t('action.recruit')}</button>` + actions;
                             }
                         } else {
                             if (hasParticipants && nextRound) {
-                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
+                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">${I18N.t('action.execute')} ${nextRound.round_number}</button>` + actions;
                             }
                             if (sim.llm_base_url) {
-                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? I18N.t('action.add_recruit') : I18N.t('action.smart_recruit')}</button>` + actions;
                             } else {
-                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? I18N.t('action.add_recruit') : I18N.t('action.recruit')}</button>` + actions;
                             }
                         }
                     } else if (s === 'active') {
                         const activeRound = (sim.rounds || []).find(r => r.status === 'active');
                         const pendingRound = (sim.rounds || []).find(r => r.status === 'pending');
                         if (activeRound) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>` +
-                                      `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>` + actions;
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">${I18N.t('action.retry')}</button>` +
+                                      `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">${I18N.t('action.close_round')}</button>` + actions;
                         } else if (pendingRound) {
                             if (isMC) {
-                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>` + actions;
+                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.mc_execute')} ${pendingRound.round_number}</button>` + actions;
                             } else {
-                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>` + actions;
+                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.execute')} ${pendingRound.round_number}</button>` + actions;
                             }
                         }
                     } else if (s === 'closed') {
-                        actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">判定结果</button>` + actions;
+                        actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">${I18N.t('action.resolve')}</button>` + actions;
                     }
 
-                    const modeBadge = isMC ? ' <span style="background:rgba(156,39,176,0.15);color:#ce93d8;font-size:0.72em;padding:2px 6px;border-radius:4px;margin-left:4px;">🎲 蒙特卡洛</span>' : '';
+                    const modeBadge = isMC ? ' <span style="background:rgba(156,39,176,0.15);color:#ce93d8;font-size:0.72em;padding:2px 6px;border-radius:4px;margin-left:4px;">🎲 Monte Carlo</span>' : '';
 
                     return `
                     <div class="sim-manage-card">
@@ -1643,7 +1643,7 @@
                 document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.save');
                 document.getElementById('createSimModal').classList.add('active');
             } catch (e) {
-                showAlert('error', '加载 Simulation 信息失败');
+                showAlert('error', I18N.t('sim.load_fail'));
             }
         }
 
@@ -1656,14 +1656,14 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.ok) {
-                    showAlert('success', 'Simulation 已删除');
+                    showAlert('success', I18N.t('sim.deleted'));
                     loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     const data = await res.json();
-                    showAlert('error', data.detail || '删除失败（仅 draft 状态可删除）');
+                    showAlert('error', data.detail || I18N.t('sim.delete_fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1758,22 +1758,22 @@
                 });
                 const result = await res.json();
                 if (res.ok) {
-                    showAlert('success', isEdit ? 'Simulation 已更新' : 'Simulation 创建成功');
+                    showAlert('success', isEdit ? I18N.t('sim.update_success') : I18N.t('sim.create_success'));
                     hideModal();
                     editingSimId = null;
                     loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
-                    showAlert('error', result.detail || (isEdit ? '更新失败' : '创建失败'));
+                    showAlert('error', result.detail || (isEdit ? I18N.t('sim.update_fail') : I18N.t('sim.create_fail')));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
             return false;
         }
 
         async function doRecruitSim(simId) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', '正在执行招募...');
+            showAlert('success', I18N.t('action.recruiting'));
             try {
                 const res = await fetch(`/api/simulations/${simId}/recruit`, {
                     method: 'POST',
@@ -1787,13 +1787,13 @@
                     showAlert('error', data.detail || '招募失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
         async function doSmartRecruitSim(simId) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', '🤖 正在智能招募...');
+            showAlert('success', I18N.t('action.smart_recruiting'));
             try {
                 const res = await fetch(`/api/simulations/${simId}/smart-recruit`, {
                     method: 'POST',
@@ -1808,7 +1808,7 @@
                     showAlert('error', data.detail || '智能招募失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1828,7 +1828,7 @@
                     showAlert('error', data.detail || '分配失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1906,7 +1906,7 @@
                     showAlert('error', data.detail || '重试失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1926,7 +1926,7 @@
                     showAlert('error', data.detail || '关闭失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1953,7 +1953,7 @@
         }
 
         async function confirmResolveSim() {
-            if (!selectedSimOutcome) { showAlert('error', '请选择结果'); return; }
+            if (!selectedSimOutcome) { showAlert('error', I18N.t('resolve.select_outcome')); return; }
             const token = localStorage.getItem('cog_token');
             try {
                 const res = await fetch(`/api/simulations/${resolvingSimId}/resolve`, {
@@ -1963,14 +1963,14 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('success', '判定并结算完成');
+                    showAlert('success', I18N.t('resolve.success'));
                     hideModal();
                     loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
-                    showAlert('error', data.detail || '判定失败');
+                    showAlert('error', data.detail || I18N.t('resolve.fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -1988,7 +1988,7 @@
 
         function copyToken(token) {
             navigator.clipboard.writeText(token).then(() => {
-                showAlert('success', 'Token 已复制到剪贴板');
+                showAlert('success', I18N.t('dash.token_copied'));
             }).catch(() => {
                 // Fallback
                 const input = document.createElement('input');
@@ -1997,7 +1997,7 @@
                 input.select();
                 document.execCommand('copy');
                 document.body.removeChild(input);
-                showAlert('success', 'Token 已复制');
+                showAlert('success', I18N.t('dash.token_copied'));
             });
         }
 
@@ -2020,7 +2020,7 @@
         (function() {
             const box = document.createElement('div');
             box.id = 'atpTooltipBox';
-            box.textContent = 'ATP 是平台积分，仅为数据库数字，用于防止 Agent 被无限调用。不具备区块链特性或内在价值。';
+            box.textContent = I18N.t('home.atp_tooltip');
             document.body.appendChild(box);
 
             document.addEventListener('mouseover', e => {
@@ -2110,37 +2110,37 @@
 
                 if (s === 'draft' || s === 'recruiting') {
                     if (sim.llm_base_url) {
-                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '🤖 智能招募'}</button>`;
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasP ? I18N.t('action.add_recruit') : I18N.t('action.smart_recruit')}</button>`;
                     } else {
-                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '招募'}</button>`;
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasP ? I18N.t('action.add_recruit') : I18N.t('action.recruit')}</button>`;
                     }
                     if (isMC) {
                         actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doMCAnalyze('${sim.simulation_id}')">🎲 分析原型</button>`;
                     }
                     if (hasP && pendingRound) {
                         if (isMC) {
-                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>`;
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.mc_execute')} ${pendingRound.round_number}</button>`;
                         } else {
-                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.execute')} ${pendingRound.round_number}</button>`;
                         }
                         if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
                 if (s === 'active') {
                     if (activeRound) {
-                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>`;
-                        actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>`;
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">${I18N.t('action.retry')}</button>`;
+                        actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">${I18N.t('action.close_round')}</button>`;
                     } else if (pendingRound) {
                         if (isMC) {
-                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>`;
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.mc_execute')} ${pendingRound.round_number}</button>`;
                         } else {
-                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">${I18N.t('action.execute')} ${pendingRound.round_number}</button>`;
                         }
                         if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
                 if (s === 'closed') {
-                    actionsHtml += `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">⚖ 判定结果</button>`;
+                    actionsHtml += `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">⚖ ${I18N.t('action.resolve')}</button>`;
                 }
             }
 
@@ -2152,35 +2152,35 @@
                 loadMCArchetypes(sim.simulation_id);
             }
 
-            const modeLabel = isMC ? '🎲 蒙特卡洛' : '标准';
+            const modeLabel = isMC ? '🎲 Monte Carlo' : I18N.t('sim.mode.standard');
 
             document.getElementById('tabOverview').innerHTML = `
                 <div class="sdp-grid">
                     <div>
                         <div class="sdp-block">
-                            <h4>问题</h4>
+                            <h4>${I18N.t('sim.overview_question')}</h4>
                             <p>${esc(sim.question)}</p>
                         </div>
-                        ${sim.description ? `<div class="sdp-block"><h4>描述</h4><p>${esc(sim.description)}</p></div>` : ''}
+                        ${sim.description ? `<div class="sdp-block"><h4>${I18N.t('sim.overview_desc')}</h4><p>${esc(sim.description)}</p></div>` : ''}
                         <div class="sdp-block">
-                            <h4>判定标准</h4>
+                            <h4>${I18N.t('sim.overview_resolution')}</h4>
                             <p>${esc(sim.resolution_criteria)}</p>
                         </div>
-                        ${sim.actual_outcome ? `<div class="sdp-block"><h4>最终结果</h4><p style="color:#66bb6a;font-weight:600;">✅ ${esc(sim.actual_outcome)}</p></div>` : ''}
-                        ${tags.length ? `<div class="sdp-block"><h4>标签</h4><div style="display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>` : ''}
+                        ${sim.actual_outcome ? `<div class="sdp-block"><h4>${I18N.t('sim.overview_result')}</h4><p style="color:#66bb6a;font-weight:600;">✅ ${esc(sim.actual_outcome)}</p></div>` : ''}
+                        ${tags.length ? `<div class="sdp-block"><h4>${I18N.t('sim.overview_tags')}</h4><div style="display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>` : ''}
                         ${mcSection}
                     </div>
                     <div>
                         <div class="sdp-block">
-                            <h4>配置</h4>
+                            <h4>${I18N.t('sim.overview_config')}</h4>
                             <div class="sdp-configs">
-                                <div class="sdp-config"><div class="lbl">模式</div><div class="val">${modeLabel}</div></div>
-                                <div class="sdp-config"><div class="lbl">轮次</div><div class="val">${sim.total_rounds}</div></div>
+                                <div class="sdp-config"><div class="lbl">${I18N.t('sim.config_mode')}</div><div class="val">${modeLabel}</div></div>
+                                <div class="sdp-config"><div class="lbl">${I18N.t('sim.config_rounds')}</div><div class="val">${sim.total_rounds}</div></div>
                                 <div class="sdp-config"><div class="lbl">Agent</div><div class="val">${(sim.participants||[]).length}/${sim.max_agents}</div></div>
-                                <div class="sdp-config"><div class="lbl">质押</div><div class="val">${sim.stake_per_agent} ATP</div></div>
-                                <div class="sdp-config"><div class="lbl">结果类型</div><div class="val">${sim.outcome_type === 'binary' ? '二元' : '多选'}</div></div>
-                                <div class="sdp-config"><div class="lbl">选项</div><div class="val">${opts.join(' / ')}</div></div>
-                                <div class="sdp-config"><div class="lbl">LLM</div><div class="val">${sim.llm_model ? esc(sim.llm_model) : '未配置'}</div></div>
+                                <div class="sdp-config"><div class="lbl">${I18N.t('sim.config_stake')}</div><div class="val">${sim.stake_per_agent} ATP</div></div>
+                                <div class="sdp-config"><div class="lbl">${I18N.t('sim.config_outcome')}</div><div class="val">${sim.outcome_type === 'binary' ? I18N.t('sim.binary_label') : I18N.t('sim.multi_label')}</div></div>
+                                <div class="sdp-config"><div class="lbl">${I18N.t('sim.config_options')}</div><div class="val">${opts.join(' / ')}</div></div>
+                                <div class="sdp-config"><div class="lbl">LLM</div><div class="val">${sim.llm_model ? esc(sim.llm_model) : I18N.t('sim.config_not_set')}</div></div>
                             </div>
                         </div>
                     </div>
@@ -2192,7 +2192,7 @@
         function renderSimParticipants(sim) {
             const ps = sim.participants || [];
             if (ps.length === 0) {
-                document.getElementById('tabParticipants').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">暂无参与者</p>';
+                document.getElementById('tabParticipants').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">' + I18N.t('sim.no_participants') + '</p>';
                 return;
             }
             document.getElementById('tabParticipants').innerHTML = `<div class="sdp-p-grid">${ps.map(p => {
@@ -2207,12 +2207,12 @@
                             <span class="type-badge ${p.agent_type}">${p.agent_type}</span>
                         </div>
                     </div>
-                    <div class="sdp-p-role"><strong>${esc(p.role || '未分配')}</strong>${p.role_description ? '<br>' + esc(p.role_description) : ''}</div>
+                    <div class="sdp-p-role"><strong>${esc(p.role || I18N.t('sim.unassigned'))}</strong>${p.role_description ? '<br>' + esc(p.role_description) : ''}</div>
                     <div class="sdp-scores">
-                        <div class="sdp-score"><div class="sl">相关度 ${rel.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${rel}%"></div></div></div>
-                        <div class="sdp-score"><div class="sl">影响力 ${inf.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${inf}%"></div></div></div>
+                        <div class="sdp-score"><div class="sl">${I18N.t('sim.relevance')} ${rel.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${rel}%"></div></div></div>
+                        <div class="sdp-score"><div class="sl">${I18N.t('sim.influence')} ${inf.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${inf}%"></div></div></div>
                     </div>
-                    ${p.final_stance ? `<div style="margin-top:var(--space-sm);font-size:0.82em;">立场: <span class="sdp-rxn-stance">${esc(p.final_stance)}</span> <span class="sdp-rxn-conf">置信度 ${((p.final_confidence||0)*100).toFixed(0)}%</span></div>` : ''}
+                    ${p.final_stance ? `<div style="margin-top:var(--space-sm);font-size:0.82em;">立场: <span class="sdp-rxn-stance">${esc(p.final_stance)}</span> <span class="sdp-rxn-conf">${I18N.t('sim.confidence')} ${((p.final_confidence||0)*100).toFixed(0)}%</span></div>` : ''}
                     ${p.was_correct !== null && p.was_correct !== undefined ? `<div style="margin-top:var(--space-xs);font-size:0.82em;">${p.was_correct ? '✅ 正确' : '❌ 错误'} ${p.reward_amount ? `(${p.reward_amount > 0 ? '+' : ''}${p.reward_amount} ATP)` : ''}</div>` : ''}
                 </div>`;
             }).join('')}</div>`;
@@ -2222,7 +2222,7 @@
             const rounds = sim.rounds || [];
             const isMC = sim.simulation_mode === 'monte_carlo';
             if (rounds.length === 0) {
-                document.getElementById('tabRounds').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">尚未创建轮次</p>';
+                document.getElementById('tabRounds').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">' + I18N.t('sim.no_rounds') + '</p>';
                 return;
             }
 
@@ -2252,7 +2252,7 @@
                                 const distStr = ar.stance_distribution ? Object.entries(ar.stance_distribution).map(([k,v]) => `${k}: ${(v*100).toFixed(0)}%`).join(', ') : '';
                                 return `<div style="margin:4px 0;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:0.85em;">
                                     <strong>${esc(ar.name)}</strong> <span style="color:var(--text-muted);">(权重 ${((ar.weight||0)*100).toFixed(0)}%, ${ar.sample_count} 样本, ${ar.population_count} 人)</span>
-                                    <div style="margin-top:2px;">${distStr} &middot; 置信度 ${((ar.confidence_mean||0)*100).toFixed(0)}% &middot; 方差 ${(ar.variance_score||0).toFixed(2)}</div>
+                                    <div style="margin-top:2px;">${distStr} &middot; ${I18N.t('sim.confidence')} ${((ar.confidence_mean||0)*100).toFixed(0)}% &middot; 方差 ${(ar.variance_score||0).toFixed(2)}</div>
                                 </div>`;
                             }).join('');
                         }
@@ -2277,7 +2277,7 @@
                         const total = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
                         const colors = ['#7c99b8', '#d4a054', '#4ecdc4', '#9d8bb8', '#6da89b'];
                         if (total > 0) {
-                            aggHtml = `<div class="sdp-agg"><div style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-sm);">聚合结果 (${agg.total_agents || 0} 位)</div>` +
+                            aggHtml = `<div class="sdp-agg"><div style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-sm);">${I18N.t('sim.aggregate_result')} (${agg.total_agents || 0})</div>` +
                                 entries.map(([k, v], i) => {
                                     const pct = ((Number(v) / total) * 100).toFixed(1);
                                     return `<div class="sdp-bar"><span class="sdp-bar-l">${esc(k)}</span><div class="sdp-bar-t"><div class="sdp-bar-f" style="width:${pct}%;background:${colors[i%colors.length]}">${pct}%</div></div></div>`;
@@ -2288,14 +2288,14 @@
                 const summary = rnd.result_summary ? `<div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:var(--space-sm);">${esc(rnd.result_summary)}</div>` : '';
                 const envHtml = rnd.environment_injection
                     ? `<div style="background:rgba(212,160,84,0.08);border:1px solid rgba(212,160,84,0.2);border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:0.85em;">
-                        <span style="color:var(--accent-text);">环境注入:</span>
+                        <span style="color:var(--accent-text);">${I18N.t('sim.env_injection')}:</span>
                         <span style="color:var(--text-secondary);">${esc(rnd.environment_injection)}</span>
                        </div>`
                     : '';
 
                 return `<div class="sdp-round ${cls}">
                     <div class="sdp-rh" onclick="toggleSimRound('${sim.simulation_id}', ${rnd.round_number})">
-                        <span class="sdp-rt">第${rnd.round_number}轮${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
+                        <span class="sdp-rt">${I18N.t('sim.round_n').replace('%d', rnd.round_number)}${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
                         <span class="sdp-rs">${rnd.status}</span>
                     </div>
                     ${envHtml}${summary}${aggHtml}
@@ -2315,7 +2315,7 @@
                 const data = await res.json();
                 const reactions = data.reactions || [];
                 if (reactions.length === 0) {
-                    container.innerHTML = '<p style="font-size:0.85em;color:var(--text-muted);padding:var(--space-sm) 0;">暂无反应数据</p>';
+                    container.innerHTML = '<p style="font-size:0.85em;color:var(--text-muted);padding:var(--space-sm) 0;">' + I18N.t('sim.no_reactions') + '</p>';
                 } else {
                     container.innerHTML = reactions.map(r => {
                         const body = esc(r.response_text || r.brief_reasoning || '(无回应)');
@@ -2323,7 +2323,7 @@
                         if (r.key_points) {
                             try {
                                 const kp = typeof r.key_points === 'string' ? JSON.parse(r.key_points) : r.key_points;
-                                if (Array.isArray(kp) && kp.length) kpHtml = `<div style="margin-top:var(--space-xs);font-size:0.82em;color:var(--text-muted);">关键点: ${kp.map(esc).join('; ')}</div>`;
+                                if (Array.isArray(kp) && kp.length) kpHtml = `<div style="margin-top:var(--space-xs);font-size:0.82em;color:var(--text-muted);">${I18N.t('sim.key_points')}: ${kp.map(esc).join('; ')}</div>`;
                             } catch {}
                         }
                         return `<div class="sdp-rxn">
@@ -2336,15 +2336,15 @@
                             </div>
                             <div class="sdp-rxn-body">${body}</div>
                             ${kpHtml}
-                            ${r.sentiment ? `<div style="font-size:0.78em;color:var(--text-muted);margin-top:var(--space-xs);">情感: ${esc(r.sentiment)}</div>` : ''}
+                            ${r.sentiment ? `<div style="font-size:0.78em;color:var(--text-muted);margin-top:var(--space-xs);">${I18N.t('sim.sentiment')}: ${esc(r.sentiment)}</div>` : ''}
                             ${r.stance ? `<span class="sdp-rxn-stance">${esc(r.stance)}</span>` : ''}
-                            ${r.confidence ? `<span class="sdp-rxn-conf">置信度 ${(r.confidence * 100).toFixed(0)}%</span>` : ''}
+                            ${r.confidence ? `<span class="sdp-rxn-conf">${I18N.t('sim.confidence')} ${(r.confidence * 100).toFixed(0)}%</span>` : ''}
                         </div>`;
                     }).join('');
                 }
                 container.classList.add('expanded');
             } catch (e) {
-                container.innerHTML = '<p style="color:var(--color-danger);font-size:0.85em;">加载失败</p>';
+                container.innerHTML = '<p style="color:var(--color-danger);font-size:0.85em;">' + I18N.t('sim.load_detail_fail') + '</p>';
                 container.classList.add('expanded');
             }
         }
@@ -2368,7 +2368,7 @@
                     showAlert('error', data.detail || '原型分析失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 

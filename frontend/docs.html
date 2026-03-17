@@ -249,28 +249,28 @@
                 <aside class="docs-sidebar">
                     <div class="docs-nav">
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">概念</div>
-                            <a href="#intro" class="active">什么是 CogNexus</a>
-                            <a href="#agent">Agent 类型</a>
-                            <a href="#atp">ATP 积分</a>
-                            <a href="#token">Token 机制</a>
+                            <div class="docs-nav-title" data-i18n="docs.nav_concepts">Concepts</div>
+                            <a href="#intro" class="active" data-i18n="docs.what_is">What is CogNexus</a>
+                            <a href="#agent" data-i18n="docs.agent_types">Agent Types</a>
+                            <a href="#atp" data-i18n="docs.atp_credits">ATP Credits</a>
+                            <a href="#token" data-i18n="docs.token_mechanism">Token Mechanism</a>
                         </div>
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">使用</div>
-                            <a href="#browse">浏览市场</a>
-                            <a href="#purchase">购买 Token</a>
-                            <a href="#use">使用 Agent</a>
+                            <div class="docs-nav-title" data-i18n="docs.nav_usage">Usage</div>
+                            <a href="#browse" data-i18n="docs.browse_market">Browse Market</a>
+                            <a href="#purchase" data-i18n="docs.purchase_token">Purchase Token</a>
+                            <a href="#use" data-i18n="docs.use_agent">Use Agent</a>
                         </div>
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title">发布</div>
-                            <a href="#publish">发布 Agent</a>
-                            <a href="#manage">管理 Token</a>
+                            <div class="docs-nav-title" data-i18n="docs.nav_publish">Publish</div>
+                            <a href="#publish" data-i18n="docs.publish_agent">Publish Agent</a>
+                            <a href="#manage" data-i18n="docs.manage_tokens">Manage Tokens</a>
                         </div>
                     </div>
                 </aside>
 
                 <article class="docs-content">
-                    <h1 id="intro">什么是 CogNexus</h1>
+                    <h1 id="intro" data-i18n="docs.what_is">What is CogNexus</h1>
                     <p>CogNexus 是一个<strong>分布式认知枢纽</strong>，让 AI Agent 的能力可以流通和交换。你可以在这里发现他人的 Agent，也可以发布自己的 Agent 供他人使用。</p>
 
                     <div class="tip">
@@ -278,7 +278,7 @@
                         <p>CogNexus 目前处于实验阶段，功能和 API 可能随时变更。</p>
                     </div>
 
-                    <h2 id="agent">Agent 类型</h2>
+                    <h2 id="agent" data-i18n="docs.agent_types">Agent Types</h2>
                     <p>CogNexus 支持三种类型的 Agent：</p>
 
                     <div class="info-box">
@@ -296,7 +296,7 @@
                         <p>模拟环境和场景。用于测试决策、预演对话、探索假设情境。</p>
                     </div>
 
-                    <h2 id="atp">ATP 积分</h2>
+                    <h2 id="atp" data-i18n="docs.atp_credits">ATP Credits</h2>
                     <p><strong>ATP（Agent Trade Points）</strong>是 CogNexus 的内部积分系统，用于 Agent 能力的交换。</p>
 
                     <table>
@@ -323,7 +323,7 @@
                         <p><strong>重要提示：</strong>ATP 仅为平台内部积分，无任何现实货币价值，不可兑换、提现或转让。</p>
                     </div>
 
-                    <h2 id="token">Token 机制</h2>
+                    <h2 id="token" data-i18n="docs.token_mechanism">Token Mechanism</h2>
                     <p>Token 是访问 Agent 的凭证。不同类型的 Token 有不同的权限：</p>
 
                     <table>
@@ -355,7 +355,7 @@
 
                     <p>Token 通常有有效期，过期后需要重新购买。</p>
 
-                    <h2 id="browse">浏览市场</h2>
+                    <h2 id="browse" data-i18n="docs.browse_market">Browse Market</h2>
                     <p>在 <a href="/marketplace">市场页面</a> 可以看到所有已发布的 Agent。每个 Agent 卡片显示：</p>
                     <ul>
                         <li><strong>名称和描述</strong> - Agent 的基本信息</li>
@@ -364,7 +364,7 @@
                         <li><strong>在线状态</strong> - Agent 是否可访问</li>
                     </ul>
 
-                    <h2 id="purchase">购买 Token</h2>
+                    <h2 id="purchase" data-i18n="docs.purchase_token">Purchase Token</h2>
                     <p>找到感兴趣的 Agent 后：</p>
                     <ol>
                         <li>点击 Agent 卡片上的「购买」按钮</li>
@@ -373,7 +373,7 @@
                         <li>获得 Token，可在仪表盘查看</li>
                     </ol>
 
-                    <h2 id="use">使用 Agent</h2>
+                    <h2 id="use" data-i18n="docs.use_agent">Use Agent</h2>
                     <p>购买 Token 后，在 <a href="/dashboard">仪表盘</a> 的「我购买的」区域可以看到你的 Token。</p>
                     <ol>
                         <li>点击「复制」获取完整 Token</li>
@@ -381,7 +381,7 @@
                         <li>在 Agent 界面中使用 Token 进行交互</li>
                     </ol>
 
-                    <h2 id="publish">发布 Agent</h2>
+                    <h2 id="publish" data-i18n="docs.publish_agent">Publish Agent</h2>
                     <p>要发布自己的 Agent，你需要先部署 <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> 作为 Agent 后端。</p>
                     <p>部署完成后：</p>
                     <ol>
@@ -392,7 +392,7 @@
                         <li>提交发布</li>
                     </ol>
 
-                    <h2 id="manage">管理 Token</h2>
+                    <h2 id="manage" data-i18n="docs.manage_tokens">Manage Tokens</h2>
                     <p>发布 Agent 后，你需要生成 Token 供用户购买：</p>
                     <ol>
                         <li>在 Cogmate 中生成 Token</li>

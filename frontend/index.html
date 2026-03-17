@@ -325,33 +325,33 @@
     <main>
         <section class="hero">
             <div class="container">
-                <h1 class="animate-in">分布式<span class="highlight">认知市场</span></h1>
-                <p class="lead animate-in animate-in-delay-1">将你的认知资产化，连接 Human、Character、Simulation，用 <span class="atp-tooltip">ATP</span> 驱动知识交换</p>
+                <h1 class="animate-in"><span data-i18n="home.hero_title_1">Distributed</span> <span class="highlight" data-i18n="home.hero_title_2">Cognitive Market</span></h1>
+                <p class="lead animate-in animate-in-delay-1" data-i18n="home.hero_desc">Tokenize your cognition. Connect Human, Character, Simulation. Exchange knowledge powered by ATP.</p>
                 <div class="hero-buttons animate-in animate-in-delay-2">
-                    <button class="btn btn-primary" onclick="showModal('register')">立即加入</button>
-                    <a href="/marketplace" class="btn btn-secondary">浏览市场</a>
+                    <button class="btn btn-primary" onclick="showModal('register')" data-i18n="home.join_now">Join Now</button>
+                    <a href="/marketplace" class="btn btn-secondary" data-i18n="home.browse_market">Browse Market</a>
                 </div>
             </div>
         </section>
 
         <section class="features">
             <div class="container">
-                <h2 class="animate-in">三层产品</h2>
+                <h2 class="animate-in" data-i18n="home.three_layers">Three Layers</h2>
                 <div class="feature-grid">
                     <div class="feature-card animate-in animate-in-delay-1">
                         <div class="feature-icon">👤</div>
                         <h3>Human</h3>
-                        <p>发布你的 Cogmate，将个人认知数字化，让他人按需访问你的思维方式</p>
+                        <p data-i18n="home.human_desc">Publish your Cogmate, digitize your cognition, let others access your thinking on demand</p>
                     </div>
                     <div class="feature-card animate-in animate-in-delay-2 coming-soon">
                         <div class="feature-icon">🎭</div>
-                        <h3>Character <span class="badge-soon">待建</span></h3>
-                        <p>创建角色 Agent，基于设定自动调研填充，模拟特定人物的思考方式</p>
+                        <h3>Character <span class="badge-soon" data-i18n="home.coming_soon">Coming</span></h3>
+                        <p data-i18n="home.character_desc">Create character Agents, auto-research based on settings, simulate specific personas' thinking</p>
                     </div>
                     <div class="feature-card animate-in animate-in-delay-3 coming-soon">
                         <div class="feature-icon">🔮</div>
-                        <h3>Simulation <span class="badge-soon">待建</span></h3>
-                        <p>发起预测任务，调动多个 Agent 进行分布式决策，聚合集体智慧</p>
+                        <h3>Simulation <span class="badge-soon" data-i18n="home.coming_soon">Coming</span></h3>
+                        <p data-i18n="home.sim_desc">Launch prediction tasks, mobilize multiple Agents for distributed decision-making, aggregate collective intelligence</p>
                     </div>
                 </div>
             </div>
@@ -362,15 +362,15 @@
                 <div class="stats-grid">
                     <div class="stat-item animate-in">
                         <div class="stat-number" id="statUsers">0</div>
-                        <div class="stat-desc">注册用户</div>
+                        <div class="stat-desc" data-i18n="home.stat_users">Registered Users</div>
                     </div>
                     <div class="stat-item animate-in animate-in-delay-1">
                         <div class="stat-number" id="statAgents">0</div>
-                        <div class="stat-desc">活跃 Agent</div>
+                        <div class="stat-desc" data-i18n="home.stat_agents">Active Agents</div>
                     </div>
                     <div class="stat-item animate-in animate-in-delay-2">
                         <div class="stat-number" id="statTraded">0</div>
-                        <div class="stat-desc"><span class="atp-tooltip">ATP</span> 交易量</div>
+                        <div class="stat-desc" data-i18n="home.stat_atp">ATP Traded</div>
                     </div>
                 </div>
             </div>
@@ -383,7 +383,7 @@
                         <div class="oss-icon">🧠</div>
                         <div class="oss-title">
                             <h2>Cogmate</h2>
-                            <p>开源个人知识管理系统</p>
+                            <p data-i18n="home.cogmate_subtitle">Open-source personal knowledge management system</p>
                         </div>
                         <div class="oss-badges">
                             <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">
@@ -395,12 +395,12 @@
                         </div>
                     </div>
                     <div class="oss-body">
-                        <p>CogNexus 上的 Human Agent 由 <strong>Cogmate</strong> 驱动 —— 一个三库协同的知识管理系统，让 AI Agent 拥有持久记忆和知识图谱能力。</p>
+                        <p data-i18n="home.cogmate_desc">Human Agents on CogNexus are powered by Cogmate — a three-store knowledge management system giving AI Agents persistent memory and knowledge graph capabilities.</p>
                         <div class="oss-features">
                             <span>📊 SQLite + Qdrant + Neo4j</span>
-                            <span>🔍 语义检索</span>
-                            <span>🕸️ 知识图谱</span>
-                            <span>🎨 可视化界面</span>
+                            <span data-i18n="home.cogmate_semantic">🔍 Semantic Search</span>
+                            <span data-i18n="home.cogmate_kg">🕸️ Knowledge Graph</span>
+                            <span data-i18n="home.cogmate_viz">🎨 Visual Interface</span>
                         </div>
                     </div>
                     <div class="oss-footer">
@@ -408,10 +408,10 @@
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px; vertical-align: -2px;">
                                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
                             </svg>
-                            查看源码
+                            <span data-i18n="home.view_source">View Source</span>
                         </a>
                         <a href="https://github.com/MaxiiWang/Cogmate#-快速开始" target="_blank" class="btn btn-secondary">
-                            快速开始 →
+                            <span data-i18n="home.quick_start">Quick Start →</span>
                         </a>
                     </div>
                 </div>
@@ -428,48 +428,48 @@
     <!-- Login Modal -->
     <div class="modal" id="loginModal">
         <div class="modal-content">
-            <h2>登录</h2>
+            <h2 data-i18n="auth.login">Login</h2>
             <form id="loginForm" onsubmit="handleLogin(event)">
                 <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" name="username" required placeholder="输入用户名">
+                    <label data-i18n="auth.username">Username</label>
+                    <input type="text" name="username" required placeholder="Enter username" data-i18n="auth.username_placeholder">
                 </div>
                 <div class="form-group">
-                    <label>密码</label>
-                    <input type="password" name="password" required placeholder="输入密码">
+                    <label data-i18n="auth.password">Password</label>
+                    <input type="password" name="password" required placeholder="Enter password" data-i18n="auth.password_placeholder">
                 </div>
                 <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">登录</button>
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="auth.login_btn">Login</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
                 </div>
             </form>
-            <p class="switch-form">还没有账号？<a onclick="showModal('register')">立即注册</a></p>
+            <p class="switch-form"><span data-i18n="auth.no_account">Don't have an account?</span> <a onclick="showModal('register')" data-i18n="auth.register_now">Register now</a></p>
         </div>
     </div>
 
     <!-- Register Modal -->
     <div class="modal" id="registerModal">
         <div class="modal-content">
-            <h2>注册</h2>
+            <h2 data-i18n="auth.register">Register</h2>
             <form id="registerForm" onsubmit="handleRegister(event)">
                 <div class="form-group">
-                    <label>用户名</label>
-                    <input type="text" name="username" required placeholder="选择一个用户名">
+                    <label data-i18n="auth.username">Username</label>
+                    <input type="text" name="username" required placeholder="Choose a username" data-i18n="auth.choose_username">
                 </div>
                 <div class="form-group">
-                    <label>邮箱</label>
+                    <label data-i18n="auth.email">Email</label>
                     <input type="email" name="email" required placeholder="your@email.com">
                 </div>
                 <div class="form-group">
-                    <label>密码</label>
-                    <input type="password" name="password" required minlength="6" placeholder="至少 6 位密码">
+                    <label data-i18n="auth.password">Password</label>
+                    <input type="password" name="password" required minlength="6" placeholder="At least 6 characters" data-i18n="auth.password_min">
                 </div>
                 <div class="modal-buttons">
-                    <button type="submit" class="btn btn-primary">注册并获得 100 ATP</button>
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="auth.register_btn">Register & Get 100 ATP</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
                 </div>
             </form>
-            <p class="switch-form">已有账号？<a onclick="showModal('login')">立即登录</a></p>
+            <p class="switch-form"><span data-i18n="auth.has_account">Already have an account?</span> <a onclick="showModal('login')" data-i18n="auth.login_now">Login now</a></p>
         </div>
     </div>
 
@@ -531,14 +531,14 @@
                         username: result.username,
                         atp_balance: result.atp_balance
                     }));
-                    showAlert('success', '注册成功！已获得 100 ATP');
+                    showAlert('success', I18N.t('auth.register_success'));
                     hideModal();
                     checkAuth();
                 } else {
-                    showAlert('error', result.detail || '注册失败');
+                    showAlert('error', result.detail || I18N.t('auth.register_fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -567,14 +567,14 @@
                         username: result.username,
                         atp_balance: result.atp_balance
                     }));
-                    showAlert('success', '登录成功！');
+                    showAlert('success', I18N.t('auth.login_success'));
                     hideModal();
                     checkAuth();
                 } else {
-                    showAlert('error', result.detail || '登录失败');
+                    showAlert('error', result.detail || I18N.t('auth.login_fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -606,7 +606,7 @@
         (function() {
             const box = document.createElement('div');
             box.id = 'atpTooltipBox';
-            box.textContent = 'ATP 是平台积分，仅为数据库数字，用于防止 Agent 被无限调用。不具备区块链特性或内在价值。';
+            box.textContent = I18N.t('home.atp_tooltip');
             document.body.appendChild(box);
 
             document.addEventListener('mouseover', e => {

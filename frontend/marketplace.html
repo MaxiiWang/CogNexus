@@ -282,16 +282,16 @@
     <main>
         <section class="page-header centered">
             <div class="container">
-                <h1 class="animate-in">Agent 市场</h1>
-                <p class="animate-in animate-in-delay-1">浏览和购买 Agent Token，获取认知服务</p>
+                <h1 class="animate-in" data-i18n="market.title">Agent Market</h1>
+                <p class="animate-in animate-in-delay-1" data-i18n="market.desc">Browse and purchase Agent Tokens for cognitive services</p>
             </div>
         </section>
 
         <section class="container">
             <div class="filters animate-in animate-in-delay-2">
-                <button class="filter-btn active" data-type="all">全部</button>
-                <button class="filter-btn" data-type="human">👤 Human</button>
-                <button class="filter-btn" data-type="character">🎭 Character</button>
+                <button class="filter-btn active" data-type="all" data-i18n="market.filter_all">All</button>
+                <button class="filter-btn" data-type="human" data-i18n="market.filter_human">👤 Human</button>
+                <button class="filter-btn" data-type="character" data-i18n="market.filter_character">🎭 Character</button>
             </div>
 
             <div class="agents-grid" id="agentsGrid">
@@ -300,8 +300,8 @@
 
             <div class="empty-state" id="emptyState" style="display: none;">
                 <div class="empty-state-icon">🌐</div>
-                <h3>暂无 Agent</h3>
-                <p>成为第一个发布 Agent 的用户</p>
+                <h3 data-i18n="market.no_agents">No Agents Yet</h3>
+                <p data-i18n="market.be_first">Be the first to publish an Agent</p>
             </div>
         </section>
     </main>
@@ -309,24 +309,24 @@
     <!-- Purchase Modal -->
     <div class="modal" id="purchaseModal">
         <div class="modal-content" style="max-width: 500px;">
-            <h2>购买 Token</h2>
+            <h2 data-i18n="market.purchase_title">Purchase Token</h2>
             <p class="purchase-agent-name" id="purchaseAgentName"></p>
 
             <div>
-                <div class="token-section-label">选择 Token 类型</div>
+                <div class="token-section-label" data-i18n="market.select_type">Select Token Type</div>
                 <div class="token-type-selection" id="tokenTypeSelection">
                     <!-- 动态加载 -->
                 </div>
             </div>
 
             <div class="purchase-total">
-                <span class="total-label">支付金额</span>
+                <span class="total-label" data-i18n="market.pay_amount">Payment Amount</span>
                 <span class="total-value" id="priceTotal">0 <span class="atp-tooltip" style="font-size: 0.6em;">ATP</span></span>
             </div>
 
             <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="hideModal()">取消</button>
-                <button class="btn btn-teal" onclick="confirmPurchase()">确认购买</button>
+                <button class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
+                <button class="btn btn-teal" onclick="confirmPurchase()" data-i18n="market.confirm_purchase">Confirm Purchase</button>
             </div>
         </div>
     </div>
@@ -370,7 +370,7 @@
                     let tokenHtml = '';
                     if (tokenTypes.length > 0) {
                         tokenHtml = tokenTypes.map(t => {
-                            const priceText = t.unit_price > 0 ? `${t.unit_price} ATP` : '待定价';
+                            const priceText = t.unit_price > 0 ? `${t.unit_price} ATP` : I18N.t('market.tbd_price');
                             const expiry = t.expires_at ? new Date(t.expires_at).toLocaleDateString() : '';
                             const availColor = t.available > 0 ? 'var(--color-success)' : 'var(--color-danger)';
                             return `
@@ -378,13 +378,13 @@
                                     <div>
                                         <span class="type-name">${t.scope_label}</span>
                                         <span class="type-detail">
-                                            ${t.qa_limit > 0 ? t.qa_limit + '次对话' : '无限'}
-                                            ${expiry ? ' &middot; 至' + expiry : ''}
+                                            ${t.qa_limit > 0 ? t.qa_limit + ' ' + I18N.t('market.conversations') : I18N.t('market.unlimited')}
+                                            ${expiry ? ' &middot; ' + I18N.t('market.until') + expiry : ''}
                                         </span>
                                     </div>
                                     <div class="type-right">
                                         <span class="availability" style="color: ${availColor};">
-                                            剩余 ${t.available}
+                                            ${I18N.t('market.remaining')} ${t.available}
                                         </span>
                                         <span class="price">${priceText}</span>
                                     </div>
@@ -392,7 +392,7 @@
                             `;
                         }).join('');
                     } else {
-                        tokenHtml = '<div style="color: var(--text-muted); padding: var(--space-sm) 0; font-size: 0.85em;">暂无可用 Token</div>';
+                        tokenHtml = `<div style="color: var(--text-muted); padding: var(--space-sm) 0; font-size: 0.85em;">${I18N.t('market.no_tokens')}</div>`;
                     }
 
                     const agentUrl = agent.endpoint_url || '#';
@@ -413,12 +413,12 @@
                                 </div>
                             </div>
                             <div class="agent-body">
-                                <p class="description">${agent.description || '暂无描述'}</p>
+                                <p class="description">${agent.description || I18N.t('market.no_desc')}</p>
                                 <div class="agent-tags">
                                     ${tags.map(t => `<span class="tag">${t}</span>`).join('')}
                                 </div>
                                 <div class="token-section">
-                                    <div class="token-section-label">可用 Token</div>
+                                    <div class="token-section-label">${I18N.t('market.available_tokens')}</div>
                                     ${tokenHtml}
                                 </div>
                             </div>
@@ -426,7 +426,7 @@
                                 <button class="btn ${totalAvailable > 0 ? 'btn-teal' : 'btn-secondary'} btn-small"
                                         onclick="showPurchase('${agent.agent_id}', '${agent.name}')"
                                         ${totalAvailable === 0 ? 'disabled' : ''}>
-                                    ${totalAvailable > 0 ? '购买 Token' : '暂无库存'}
+                                    ${totalAvailable > 0 ? I18N.t('market.purchase_token') : I18N.t('market.out_of_stock')}
                                 </button>
                             </div>
                         </div>
@@ -442,7 +442,7 @@
 
         async function showPurchase(agentId, name) {
             if (!checkAuth()) {
-                showAlert('error', '请先登录');
+                showAlert('error', I18N.t('market.please_login'));
                 return;
             }
 
@@ -462,14 +462,14 @@
 
                 const container = document.getElementById('tokenTypeSelection');
                 if (currentTokenTypes.length === 0) {
-                    container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.88em;">暂无可用 Token</div>';
+                    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.88em;">${I18N.t('market.no_tokens')}</div>`;
                     return;
                 }
 
                 container.innerHTML = currentTokenTypes
                     .filter(t => t.available > 0)
                     .map((t, i) => {
-                        const expiry = t.expires_at ? new Date(t.expires_at).toLocaleDateString() : '永久';
+                        const expiry = t.expires_at ? new Date(t.expires_at).toLocaleDateString() : I18N.t('market.permanent');
                         const price = t.unit_price > 0 ? t.unit_price : 0;
                         return `
                             <label>
@@ -478,10 +478,10 @@
                                 <div class="option-info">
                                     <div class="option-name">${t.scope_label}</div>
                                     <div class="option-detail">
-                                        ${t.qa_limit > 0 ? t.qa_limit + '次对话' : '无限对话'} &middot; 有效期: ${expiry} &middot; 剩余: ${t.available}
+                                        ${t.qa_limit > 0 ? t.qa_limit + ' ' + I18N.t('market.conversations') : I18N.t('market.unlimited_conv')} &middot; ${I18N.t('market.validity')}: ${expiry} &middot; ${I18N.t('market.remaining')}: ${t.available}
                                     </div>
                                 </div>
-                                <div class="option-price">${price > 0 ? price + ' ATP' : '免费'}</div>
+                                <div class="option-price">${price > 0 ? price + ' ATP' : I18N.t('market.free')}</div>
                             </label>
                         `;
                     }).join('');
@@ -493,7 +493,7 @@
 
                 document.getElementById('purchaseModal').classList.add('active');
             } catch (e) {
-                showAlert('error', '加载 Token 信息失败');
+                showAlert('error', I18N.t('market.load_fail'));
             }
         }
 
@@ -531,12 +531,12 @@
                     document.getElementById('atpBalance').textContent = `${data.remaining_balance} ATP`;
 
                     hideModal();
-                    showAlert('success', `购买成功！Token: ${data.token.substring(0, 20)}...`);
+                    showAlert('success', I18N.t('market.purchase_success') + ' ' + data.token.substring(0, 20) + '...');
                 } else {
-                    showAlert('error', data.detail || '购买失败');
+                    showAlert('error', data.detail || I18N.t('market.purchase_fail'));
                 }
             } catch (e) {
-                showAlert('error', '网络错误');
+                showAlert('error', I18N.t('common.network_error'));
             }
         }
 
@@ -574,7 +574,7 @@
         (function() {
             const box = document.createElement('div');
             box.id = 'atpTooltipBox';
-            box.textContent = 'ATP 是平台积分，仅为数据库数字，用于防止 Agent 被无限调用。不具备区块链特性或内在价值。';
+            box.textContent = I18N.t('home.atp_tooltip');
             document.body.appendChild(box);
 
             document.addEventListener('mouseover', e => {
