@@ -1122,10 +1122,23 @@ async def dashboard():
     return FileResponse(FRONTEND_PATH / "dashboard.html")
 
 
+@app.get("/simulation")
+async def simulation_page():
+    """Simulation 页面"""
+    return FileResponse(FRONTEND_PATH / "simulation.html")
+
+
 @app.get("/guide")
 async def guide_page():
     """文档页面"""
     return FileResponse(FRONTEND_PATH / "docs.html")
+
+
+# ==================== Simulation Routes ====================
+
+from simulation_routes import router as simulation_router, agent_sim_router
+app.include_router(simulation_router)
+app.include_router(agent_sim_router)
 
 
 # 静态资源

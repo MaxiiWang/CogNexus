@@ -1,0 +1,1458 @@
+"""
+Simulation Engine - Agent-Based Prediction System
+
+核心模块: Simulation CRUD, 招募, 多轮采集, 聚合, 结算
+"""
+import os
+import uuid
+import json
+import httpx
+import asyncio
+from datetime import datetime
+from typing import Optional, List, Dict, Any, Tuple
+
+from database import get_db
+
+
+# ==========================================
+# LLM Integration (OpenClaw Gateway)
+# ==========================================
+
+LLM_ENABLED = os.environ.get("LLM_ENABLED", "false").lower() == "true"
+
+
+def _load_openclaw_token() -> Optional[str]:
+    """从 ~/.openclaw/openclaw.json 读取 gateway auth token"""
+    try:
+        config_path = os.path.expanduser("~/.openclaw/openclaw.json")
+        with open(config_path, "r") as f:
+            config = json.load(f)
+        return config.get("gateway", {}).get("auth", {}).get("token")
+    except Exception:
+        return None
+
+
+async def llm_call(system: str, user: str) -> Optional[str]:
+    """
+    通过 OpenClaw Gateway 调用 LLM
+
+    URL: http://127.0.0.1:18789/v1/chat/completions
+    Auth: Bearer token from OpenClaw config
+    Model: 'openclaw'
+
+    如果 LLM_ENABLED=false 或调用失败，返回 None（由调用方 fallback）
+    """
+    if not LLM_ENABLED:
+        return None
+
+    token = _load_openclaw_token()
+    if not token:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            res = await client.post(
+                "http://127.0.0.1:18789/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "openclaw",
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user", "content": user},
+                    ],
+                    "temperature": 0.7,
+                },
+            )
+            if res.status_code == 200:
+                data = res.json()
+                return data["choices"][0]["message"]["content"]
+    except Exception:
+        pass
+
+    return None
+
+
+# ==========================================
+# Helpers
+# ==========================================
+
+def _gen_id(prefix: str = "sim") -> str:
+    return f"{prefix}_{uuid.uuid4().hex[:12]}"
+
+
+def _now() -> str:
+    return datetime.now().isoformat()
+
+
+def _row_to_dict(row) -> dict:
+    return dict(row) if row else None
+
+
+# ==========================================
+# Simulation CRUD
+# ==========================================
+
+def create_simulation(
+    title: str,
+    question: str,
+    category: str,
+    resolution_criteria: str,
+    created_by: str,
+    description: str = "",
+    tags: List[str] = None,
+    outcome_type: str = "binary",
+    outcome_options: List[str] = None,
+    resolution_source: str = None,
+    total_rounds: int = 1,
+    round_interval: str = None,
+    min_agents: int = 3,
+    max_agents: int = 50,
+    stake_per_agent: int = 5,
+    round_titles: List[str] = None,
+) -> Dict[str, Any]:
+    """创建 Simulation + 初始化轮次"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    sim_id = _gen_id("sim")
+    if outcome_options is None:
+        outcome_options = ["yes", "no"]
+    if tags is None:
+        tags = []
+
+    cursor.execute("""
+        INSERT INTO simulations (
+            simulation_id, title, description, question,
+            category, tags,
+            outcome_type, outcome_options, resolution_criteria, resolution_source,
+            total_rounds, current_round, round_interval,
+            min_agents, max_agents, stake_per_agent,
+            status, created_by, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'draft', ?, ?)
+    """, (
+        sim_id, title, description, question,
+        category, json.dumps(tags),
+        outcome_type, json.dumps(outcome_options), resolution_criteria, resolution_source,
+        total_rounds, round_interval,
+        min_agents, max_agents, stake_per_agent,
+        created_by, _now()
+    ))
+
+    # 初始化轮次
+    rounds = []
+    for i in range(1, total_rounds + 1):
+        round_id = _gen_id("rnd")
+        round_title = ""
+        if round_titles and i <= len(round_titles):
+            round_title = round_titles[i - 1]
+        cursor.execute("""
+            INSERT INTO simulation_rounds (round_id, simulation_id, round_number, title, status)
+            VALUES (?, ?, ?, ?, 'pending')
+        """, (round_id, sim_id, i, round_title))
+        rounds.append({"round_id": round_id, "round_number": i, "title": round_title})
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "simulation_id": sim_id,
+        "title": title,
+        "total_rounds": total_rounds,
+        "rounds": rounds,
+        "status": "draft"
+    }
+
+
+def get_simulation(simulation_id: str) -> Optional[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM simulations WHERE simulation_id = ?", (simulation_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    result = _row_to_dict(row)
+    # Parse JSON fields
+    for field in ("tags", "outcome_options", "final_prediction"):
+        if result.get(field) and isinstance(result[field], str):
+            try:
+                result[field] = json.loads(result[field])
+            except:
+                pass
+    return result
+
+
+def list_simulations(
+    status: str = None,
+    category: str = None,
+    limit: int = 50,
+    offset: int = 0
+) -> Dict:
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = "SELECT * FROM simulations WHERE 1=1"
+    params = []
+
+    if status:
+        query += " AND status = ?"
+        params.append(status)
+    if category:
+        query += " AND category = ?"
+        params.append(category)
+
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    sims = []
+    for row in rows:
+        sim = _row_to_dict(row)
+        for field in ("tags", "outcome_options", "final_prediction"):
+            if sim.get(field) and isinstance(sim[field], str):
+                try:
+                    sim[field] = json.loads(sim[field])
+                except:
+                    pass
+        sims.append(sim)
+
+    # Total count
+    count_query = "SELECT COUNT(*) FROM simulations WHERE 1=1"
+    count_params = []
+    if status:
+        count_query += " AND status = ?"
+        count_params.append(status)
+    if category:
+        count_query += " AND category = ?"
+        count_params.append(category)
+    cursor.execute(count_query, count_params)
+    total = cursor.fetchone()[0]
+
+    conn.close()
+    return {"simulations": sims, "total": total}
+
+
+def update_simulation(simulation_id: str, **kwargs) -> bool:
+    """更新 Simulation (仅 draft 状态可改核心字段)"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status FROM simulations WHERE simulation_id = ?", (simulation_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return False
+
+    # JSON encode list fields
+    for field in ("tags", "outcome_options"):
+        if field in kwargs and isinstance(kwargs[field], list):
+            kwargs[field] = json.dumps(kwargs[field])
+
+    # Build SET clause
+    allowed = {
+        "title", "description", "question", "category", "tags",
+        "outcome_type", "outcome_options", "resolution_criteria",
+        "resolution_source", "total_rounds", "round_interval",
+        "min_agents", "max_agents", "stake_per_agent",
+        "status", "actual_outcome", "final_prediction",
+        "current_round", "recruiting_at", "opens_at", "closes_at",
+        "resolved_at", "settled_at"
+    }
+    sets = []
+    vals = []
+    for k, v in kwargs.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            vals.append(v)
+
+    if not sets:
+        conn.close()
+        return False
+
+    vals.append(simulation_id)
+    cursor.execute(
+        f"UPDATE simulations SET {', '.join(sets)} WHERE simulation_id = ?",
+        vals
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+def delete_simulation(simulation_id: str) -> bool:
+    """删除 Simulation (仅 draft)"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT status FROM simulations WHERE simulation_id = ?", (simulation_id,))
+    row = cursor.fetchone()
+    if not row or row["status"] != "draft":
+        conn.close()
+        return False
+
+    cursor.execute("DELETE FROM round_reactions WHERE simulation_id = ?", (simulation_id,))
+    cursor.execute("DELETE FROM simulation_rounds WHERE simulation_id = ?", (simulation_id,))
+    cursor.execute("DELETE FROM simulation_participants WHERE simulation_id = ?", (simulation_id,))
+    cursor.execute("DELETE FROM simulations WHERE simulation_id = ?", (simulation_id,))
+
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ==========================================
+# Rounds
+# ==========================================
+
+def get_rounds(simulation_id: str) -> List[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM simulation_rounds
+        WHERE simulation_id = ? ORDER BY round_number
+    """, (simulation_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    result = []
+    for row in rows:
+        r = _row_to_dict(row)
+        if r.get("aggregated_result") and isinstance(r["aggregated_result"], str):
+            try:
+                r["aggregated_result"] = json.loads(r["aggregated_result"])
+            except:
+                pass
+        result.append(r)
+    return result
+
+
+def get_round(simulation_id: str, round_number: int) -> Optional[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM simulation_rounds
+        WHERE simulation_id = ? AND round_number = ?
+    """, (simulation_id, round_number))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    r = _row_to_dict(row)
+    if r.get("aggregated_result") and isinstance(r["aggregated_result"], str):
+        try:
+            r["aggregated_result"] = json.loads(r["aggregated_result"])
+        except:
+            pass
+    return r
+
+
+def update_round(round_id: str, **kwargs) -> bool:
+    conn = get_db()
+    cursor = conn.cursor()
+    allowed = {"title", "context", "status", "opens_at", "closes_at",
+               "aggregated_result", "result_summary"}
+    sets = []
+    vals = []
+    for k, v in kwargs.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            if k == "aggregated_result" and isinstance(v, dict):
+                v = json.dumps(v)
+            vals.append(v)
+    if not sets:
+        conn.close()
+        return False
+    vals.append(round_id)
+    cursor.execute(f"UPDATE simulation_rounds SET {', '.join(sets)} WHERE round_id = ?", vals)
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ==========================================
+# Participants
+# ==========================================
+
+def add_participant(
+    simulation_id: str,
+    agent_id: str,
+    relevance_score: float = 0,
+    influence_weight: float = 0.5,
+    qualification_method: str = "auto",
+    role: str = "",
+    role_description: str = ""
+) -> bool:
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO simulation_participants (
+                simulation_id, agent_id,
+                relevance_score, influence_weight, qualification_method,
+                role, role_description, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'invited')
+        """, (simulation_id, agent_id, relevance_score, influence_weight,
+              qualification_method, role, role_description))
+        conn.commit()
+        return True
+    except Exception as e:
+        # Duplicate or FK error
+        return False
+    finally:
+        conn.close()
+
+
+def get_participants(simulation_id: str) -> List[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT sp.*, a.name as agent_name, a.agent_type, a.endpoint_url,
+               a.namespace, a.description as agent_description, a.avatar_url
+        FROM simulation_participants sp
+        JOIN agents a ON sp.agent_id = a.agent_id
+        WHERE sp.simulation_id = ?
+    """, (simulation_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return [_row_to_dict(row) for row in rows]
+
+
+def update_participant(simulation_id: str, agent_id: str, **kwargs) -> bool:
+    conn = get_db()
+    cursor = conn.cursor()
+    allowed = {"relevance_score", "influence_weight", "role", "role_description",
+               "status", "stake_amount", "final_stance", "final_confidence",
+               "was_correct", "reward_amount"}
+    sets = []
+    vals = []
+    for k, v in kwargs.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            vals.append(v)
+    if not sets:
+        conn.close()
+        return False
+    vals.extend([simulation_id, agent_id])
+    cursor.execute(
+        f"UPDATE simulation_participants SET {', '.join(sets)} "
+        f"WHERE simulation_id = ? AND agent_id = ?",
+        vals
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
+# ==========================================
+# Reactions
+# ==========================================
+
+def insert_reaction(
+    round_id: str,
+    simulation_id: str,
+    agent_id: str,
+    prompt: str,
+    prompt_type: str = "predictive"
+) -> str:
+    conn = get_db()
+    cursor = conn.cursor()
+    reaction_id = _gen_id("rxn")
+    cursor.execute("""
+        INSERT INTO round_reactions (
+            reaction_id, round_id, simulation_id, agent_id,
+            prompt, prompt_type, status
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
+    """, (reaction_id, round_id, simulation_id, agent_id, prompt, prompt_type))
+    conn.commit()
+    conn.close()
+    return reaction_id
+
+
+def update_reaction(reaction_id: str, **kwargs) -> bool:
+    conn = get_db()
+    cursor = conn.cursor()
+    allowed = {"response_text", "key_points", "sentiment",
+               "stance", "confidence", "brief_reasoning",
+               "knowledge_depth", "status", "collected_at",
+               "owner_disputed", "owner_correction", "disputed_at"}
+    sets = []
+    vals = []
+    for k, v in kwargs.items():
+        if k in allowed:
+            sets.append(f"{k} = ?")
+            if k == "key_points" and isinstance(v, list):
+                v = json.dumps(v)
+            vals.append(v)
+    if not sets:
+        conn.close()
+        return False
+    vals.append(reaction_id)
+    cursor.execute(f"UPDATE round_reactions SET {', '.join(sets)} WHERE reaction_id = ?", vals)
+    conn.commit()
+    conn.close()
+    return True
+
+
+def get_round_reactions(round_id: str) -> List[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT rr.*, sp.role, sp.role_description,
+               a.name as agent_name, a.agent_type
+        FROM round_reactions rr
+        JOIN simulation_participants sp
+            ON rr.simulation_id = sp.simulation_id AND rr.agent_id = sp.agent_id
+        JOIN agents a ON rr.agent_id = a.agent_id
+        WHERE rr.round_id = ?
+    """, (round_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        r = _row_to_dict(row)
+        if r.get("key_points") and isinstance(r["key_points"], str):
+            try:
+                r["key_points"] = json.loads(r["key_points"])
+            except:
+                pass
+        results.append(r)
+    return results
+
+
+def get_agent_reactions(agent_id: str) -> List[Dict]:
+    """获取 Agent 的所有历史 React 记录"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT rr.*, s.title as sim_title, s.category,
+               sr.round_number, sr.title as round_title
+        FROM round_reactions rr
+        JOIN simulations s ON rr.simulation_id = s.simulation_id
+        JOIN simulation_rounds sr ON rr.round_id = sr.round_id
+        WHERE rr.agent_id = ?
+        ORDER BY rr.collected_at DESC
+    """, (agent_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        r = _row_to_dict(row)
+        if r.get("key_points") and isinstance(r["key_points"], str):
+            try:
+                r["key_points"] = json.loads(r["key_points"])
+            except:
+                pass
+        results.append(r)
+    return results
+
+
+# ==========================================
+# Agent Qualification
+# ==========================================
+
+async def evaluate_agent_qualification(
+    agent: Dict,
+    simulation: Dict
+) -> Dict:
+    """
+    评估 Agent 参与 Simulation 的资质
+
+    基于:
+    1. 标签重叠
+    2. Agent 描述 vs Simulation 问题 相关度（简单文本匹配）
+    3. 历史评分
+
+    返回: {qualified, relevance, influence, reason}
+    """
+    # 1. Tag overlap
+    agent_tags = set()
+    if agent.get("tags"):
+        try:
+            agent_tags = set(json.loads(agent["tags"]) if isinstance(agent["tags"], str) else agent["tags"])
+        except:
+            pass
+
+    sim_tags = set()
+    if simulation.get("tags"):
+        try:
+            sim_tags = set(simulation["tags"] if isinstance(simulation["tags"], list) else json.loads(simulation["tags"]))
+        except:
+            pass
+
+    tag_overlap = len(agent_tags & sim_tags) / max(len(sim_tags), 1) if sim_tags else 0
+
+    # 2. Simple text relevance (keyword overlap until we have embeddings)
+    sim_words = set((simulation.get("question", "") + " " + simulation.get("description", "")).lower().split())
+    agent_words = set((agent.get("description", "") or "").lower().split())
+    word_overlap = len(sim_words & agent_words) / max(len(sim_words), 1) if sim_words else 0
+
+    # Combine
+    relevance = tag_overlap * 0.5 + min(word_overlap * 3, 1.0) * 0.5
+    relevance = round(min(relevance, 1.0), 3)
+
+    # 3. Influence from historical score
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM agent_sim_scores WHERE agent_id = ?", (agent["agent_id"],))
+    score_row = cursor.fetchone()
+    conn.close()
+
+    if score_row:
+        score = _row_to_dict(score_row)
+        category_acc_raw = score.get("accuracy_by_category", "{}")
+        try:
+            category_acc = json.loads(category_acc_raw) if isinstance(category_acc_raw, str) else category_acc_raw
+        except:
+            category_acc = {}
+        cat_accuracy = category_acc.get(simulation["category"], 0.5)
+        calibration = score.get("calibration_score", 0.5)
+        experience = min(score.get("total_participated", 0) / 20, 1.0)
+    else:
+        cat_accuracy = 0.5
+        calibration = 0.5
+        experience = 0
+
+    influence = round(cat_accuracy * 0.4 + calibration * 0.3 + experience * 0.1 + 0.2 * relevance, 3)
+
+    qualified = relevance >= 0.15  # 低门槛，多包含
+
+    return {
+        "qualified": qualified,
+        "relevance": relevance,
+        "influence": influence,
+        "tag_overlap": round(tag_overlap, 3),
+        "reason": f"相关度 {relevance:.0%}, 影响力 {influence:.0%}"
+    }
+
+
+async def recruit_agents(simulation_id: str) -> Dict:
+    """
+    自动招募: 评估所有活跃 Agent → 符合条件的加入参与者
+    """
+    sim = get_simulation(simulation_id)
+    if not sim:
+        return {"error": "simulation_not_found"}
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM agents WHERE status = 'active'")
+    agents = [_row_to_dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    recruited = []
+    skipped = []
+
+    for agent in agents:
+        qual = await evaluate_agent_qualification(agent, sim)
+
+        if qual["qualified"]:
+            success = add_participant(
+                simulation_id=simulation_id,
+                agent_id=agent["agent_id"],
+                relevance_score=qual["relevance"],
+                influence_weight=qual["influence"],
+                qualification_method="auto"
+            )
+            if success:
+                recruited.append({
+                    "agent_id": agent["agent_id"],
+                    "name": agent["name"],
+                    "agent_type": agent["agent_type"],
+                    **qual
+                })
+        else:
+            skipped.append({
+                "agent_id": agent["agent_id"],
+                "name": agent["name"],
+                **qual
+            })
+
+    # 更新状态
+    if recruited:
+        update_simulation(simulation_id, status="recruiting", recruiting_at=_now())
+
+    return {
+        "recruited": recruited,
+        "skipped": skipped,
+        "total_recruited": len(recruited),
+        "total_skipped": len(skipped)
+    }
+
+
+# ==========================================
+# Role Assignment (LLM)
+# ==========================================
+
+async def assign_roles(
+    simulation_id: str,
+    llm_call=None
+) -> List[Dict]:
+    """
+    为参与者分配角色
+    如果提供 llm_call 函数则用 LLM 分配，否则用 Agent 自身信息
+    """
+    sim = get_simulation(simulation_id)
+    participants = get_participants(simulation_id)
+
+    if not participants:
+        return []
+
+    if llm_call:
+        # LLM 批量分配角色
+        agents_desc = "\n".join([
+            f"- agent_id={p['agent_id']}, name={p['agent_name']}, "
+            f"type={p['agent_type']}, description={p.get('agent_description', '')}"
+            for p in participants
+        ])
+
+        prompt = f"""模拟主题: {sim['title']}
+问题: {sim['question']}
+类别: {sim['category']}
+
+参与的 Agent:
+{agents_desc}
+
+为每个 Agent 分配一个角色（role）和角色描述（role_description）。
+角色应该符合该 Agent 的特性，并且在模拟中有明确的视角。
+
+JSON 输出:
+[
+  {{"agent_id": "...", "role": "角色名", "role_description": "一句话描述该角色在此模拟中的视角"}}
+]"""
+
+        try:
+            result = await llm_call(
+                system="你是模拟推演系统的角色分配器。为每个参与者分配一个合理的角色。",
+                user=prompt
+            )
+            assignments = json.loads(result) if isinstance(result, str) else result
+            for a in assignments:
+                update_participant(
+                    simulation_id, a["agent_id"],
+                    role=a.get("role", ""),
+                    role_description=a.get("role_description", "")
+                )
+            return assignments
+        except Exception as e:
+            pass  # Fall through to default
+
+    # 默认: 用 Agent 自身信息
+    results = []
+    for p in participants:
+        role = p["agent_name"]
+        role_desc = p.get("agent_description", "") or f"{p['agent_type']} agent"
+        update_participant(simulation_id, p["agent_id"],
+                          role=role, role_description=role_desc)
+        results.append({
+            "agent_id": p["agent_id"],
+            "role": role,
+            "role_description": role_desc
+        })
+
+    return results
+
+
+# ==========================================
+# Prompt Generation (LLM)
+# ==========================================
+
+async def generate_round_prompts(
+    simulation_id: str,
+    round_number: int,
+    llm_call=None
+) -> List[Dict]:
+    """
+    为某轮的每个 Agent 生成角色化问题
+
+    返回: [{agent_id, prompt_type, prompt}, ...]
+    """
+    sim = get_simulation(simulation_id)
+    rnd = get_round(simulation_id, round_number)
+    participants = get_participants(simulation_id)
+
+    if not sim or not rnd or not participants:
+        return []
+
+    if llm_call:
+        agents_info = "\n".join([
+            f"- agent_id={p['agent_id']}, role={p.get('role', p['agent_name'])}, "
+            f"type={p['agent_type']}, description={p.get('role_description', '')}"
+            for p in participants
+        ])
+
+        options = sim.get("outcome_options", ["yes", "no"])
+        if isinstance(options, str):
+            options = json.loads(options)
+
+        prompt = f"""模拟: {sim['title']}
+预测问题: {sim['question']}
+可选结果: {json.dumps(options)}
+当前轮次: 第 {round_number} 轮 - {rnd.get('title', '')}
+
+前序发展:
+{rnd.get('context', '（首轮，无前序）')}
+
+角色:
+{agents_info}
+
+为每个角色生成一个针对性问题。
+
+问题分两类:
+1. narrative — 适用于当事人、决策者、利益相关方（推动剧情）
+2. predictive — 适用于分析师、专家、观察者（做出预测）
+
+判断原则:
+- 角色本身是事件的参与者/当事人 → narrative
+- 角色是旁观者/分析者/预测者 → predictive
+- 不确定时偏向 predictive
+
+JSON 输出:
+[
+  {{"agent_id": "...", "prompt_type": "narrative|predictive", "prompt": "..."}}
+]"""
+
+        try:
+            result = await llm_call(
+                system="你是模拟推演系统的主持人。为每个参与角色生成一个针对性问题。",
+                user=prompt
+            )
+            prompts = json.loads(result) if isinstance(result, str) else result
+            return prompts
+        except Exception as e:
+            pass  # Fall through to default
+
+    # 默认: 所有人用相同的 predictive 问题
+    return [
+        {
+            "agent_id": p["agent_id"],
+            "prompt_type": "predictive",
+            "prompt": f"关于「{sim['question']}」，基于你的知识和判断，你的预测是什么？"
+        }
+        for p in participants
+    ]
+
+
+# ==========================================
+# Reaction Collection
+# ==========================================
+
+async def collect_single_reaction(
+    agent: Dict,
+    prompt_data: Dict,
+    simulation: Dict,
+    rnd: Dict,
+    timeout: int = 30
+) -> Dict:
+    """
+    向单个 Agent 的 Cogmate 发起 React 请求
+
+    agent: 参与者信息 (含 endpoint_url, namespace)
+    prompt_data: {agent_id, prompt_type, prompt}
+    """
+    endpoint = agent.get("endpoint_url", "").rstrip("/")
+    ns = agent.get("namespace", "default")
+
+    if not endpoint:
+        return {"agent_id": agent["agent_id"], "status": "failed", "error": "no_endpoint"}
+
+    # 需要一个有效 token 来调用 Cogmate API
+    # 从 agent_tokens 获取一个 validated token
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT token_value FROM agent_tokens
+        WHERE agent_id = ? AND validated = 1
+        LIMIT 1
+    """, (agent["agent_id"],))
+    token_row = cursor.fetchone()
+    conn.close()
+
+    if not token_row:
+        return {"agent_id": agent["agent_id"], "status": "failed", "error": "no_token"}
+
+    token = token_row["token_value"]
+    outcome_options = simulation.get("outcome_options", ["yes", "no"])
+    if isinstance(outcome_options, str):
+        outcome_options = json.loads(outcome_options)
+
+    payload = {
+        "simulation_id": simulation["simulation_id"],
+        "round_id": rnd["round_id"],
+        "prompt": prompt_data["prompt"],
+        "prompt_type": prompt_data.get("prompt_type", "predictive"),
+        "description": simulation.get("description", ""),
+        "outcome_options": outcome_options,
+        "previous_context": rnd.get("context", "")
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            res = await client.post(
+                f"{endpoint}/api/simulation/react",
+                params={"token": token, "ns": ns},
+                json=payload
+            )
+            if res.status_code == 200:
+                data = res.json()
+                data["agent_id"] = agent["agent_id"]
+                data["status"] = "collected"
+                return data
+            else:
+                return {
+                    "agent_id": agent["agent_id"],
+                    "status": "failed",
+                    "error": f"http_{res.status_code}"
+                }
+    except Exception as e:
+        return {
+            "agent_id": agent["agent_id"],
+            "status": "failed",
+            "error": str(e)
+        }
+
+
+async def run_round(
+    simulation_id: str,
+    round_number: int,
+    llm_call=None,
+    timeout: int = 30
+) -> Dict:
+    """
+    执行一轮完整采集流程
+
+    1. 生成角色化问题
+    2. 向所有 Agent 发起采集
+    3. 存储反应
+    4. 聚合结果
+    5. 生成摘要
+
+    返回: {round_id, reactions, aggregated, summary}
+    """
+    sim = get_simulation(simulation_id)
+    rnd = get_round(simulation_id, round_number)
+    participants = get_participants(simulation_id)
+
+    if not sim or not rnd:
+        return {"error": "not_found"}
+    if not participants:
+        return {"error": "no_participants"}
+
+    # 1. 生成角色化问题
+    prompts = await generate_round_prompts(simulation_id, round_number, llm_call)
+
+    # 建立 prompt 查找表
+    prompt_by_agent = {p["agent_id"]: p for p in prompts}
+
+    # 2. 为每个 Agent 创建 pending reaction + 并发采集
+    collection_tasks = []
+    for p in participants:
+        agent_id = p["agent_id"]
+        prompt_data = prompt_by_agent.get(agent_id, {
+            "agent_id": agent_id,
+            "prompt_type": "predictive",
+            "prompt": f"关于「{sim['question']}」，你的预测是什么？"
+        })
+
+        # 创建 pending reaction
+        reaction_id = insert_reaction(
+            round_id=rnd["round_id"],
+            simulation_id=simulation_id,
+            agent_id=agent_id,
+            prompt=prompt_data["prompt"],
+            prompt_type=prompt_data.get("prompt_type", "predictive")
+        )
+
+        collection_tasks.append({
+            "reaction_id": reaction_id,
+            "agent": p,
+            "prompt_data": prompt_data
+        })
+
+    # 3. 并发采集
+    update_round(rnd["round_id"], status="active", opens_at=_now())
+    update_simulation(simulation_id, status="active", current_round=round_number)
+
+    async def _collect_one(task):
+        result = await collect_single_reaction(
+            agent=task["agent"],
+            prompt_data=task["prompt_data"],
+            simulation=sim,
+            rnd=rnd,
+            timeout=timeout
+        )
+        # 更新 reaction
+        if result.get("status") == "collected":
+            update_kwargs = {
+                "status": "collected",
+                "collected_at": _now(),
+                "response_text": result.get("response_text", ""),
+                "knowledge_depth": result.get("knowledge_depth", 0),
+            }
+            if task["prompt_data"].get("prompt_type") == "narrative":
+                update_kwargs["key_points"] = result.get("key_points", [])
+                update_kwargs["sentiment"] = result.get("sentiment", "")
+            else:
+                update_kwargs["stance"] = result.get("stance", "")
+                update_kwargs["confidence"] = result.get("confidence", 0)
+                update_kwargs["brief_reasoning"] = result.get("brief_reasoning", "")
+            update_reaction(task["reaction_id"], **update_kwargs)
+        else:
+            update_reaction(task["reaction_id"], status="failed")
+
+        result["reaction_id"] = task["reaction_id"]
+        return result
+
+    results = await asyncio.gather(
+        *[_collect_one(t) for t in collection_tasks],
+        return_exceptions=True
+    )
+
+    # 处理异常
+    clean_results = []
+    for r in results:
+        if isinstance(r, Exception):
+            clean_results.append({"status": "failed", "error": str(r)})
+        else:
+            clean_results.append(r)
+
+    # 4. 聚合
+    aggregated = aggregate_round(rnd["round_id"])
+
+    # 5. 生成摘要 (简单版，后续可用 LLM)
+    summary = _generate_simple_summary(sim, rnd, clean_results, aggregated)
+
+    # 6. 更新轮次状态
+    update_round(
+        rnd["round_id"],
+        status="closed",
+        closes_at=_now(),
+        aggregated_result=aggregated,
+        result_summary=summary
+    )
+
+    # 7. 如果是最后一轮，更新 final_stance
+    if round_number == sim["total_rounds"]:
+        _update_final_stances(simulation_id, rnd["round_id"])
+        update_simulation(
+            simulation_id,
+            status="closed",
+            closes_at=_now(),
+            final_prediction=json.dumps(aggregated.get("prediction", {}))
+        )
+
+    # 8. 如果有下一轮，准备 context
+    if round_number < sim["total_rounds"]:
+        all_summaries = _get_all_summaries(simulation_id)
+        next_rnd = get_round(simulation_id, round_number + 1)
+        if next_rnd:
+            update_round(next_rnd["round_id"], context="\n\n".join(all_summaries))
+
+    return {
+        "round_id": rnd["round_id"],
+        "round_number": round_number,
+        "reactions": clean_results,
+        "aggregated": aggregated,
+        "summary": summary,
+        "collected": sum(1 for r in clean_results if r.get("status") == "collected"),
+        "failed": sum(1 for r in clean_results if r.get("status") == "failed"),
+    }
+
+
+def _update_final_stances(simulation_id: str, last_round_id: str):
+    """用最后一轮的 predictive 反应更新 participants 的 final_stance"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT agent_id, stance, confidence FROM round_reactions
+        WHERE round_id = ? AND prompt_type = 'predictive' AND status = 'collected'
+    """, (last_round_id,))
+    for row in cursor.fetchall():
+        cursor.execute("""
+            UPDATE simulation_participants
+            SET final_stance = ?, final_confidence = ?
+            WHERE simulation_id = ? AND agent_id = ?
+        """, (row["stance"], row["confidence"], simulation_id, row["agent_id"]))
+    conn.commit()
+    conn.close()
+
+
+def _get_all_summaries(simulation_id: str) -> List[str]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT round_number, result_summary FROM simulation_rounds
+        WHERE simulation_id = ? AND result_summary IS NOT NULL
+        ORDER BY round_number
+    """, (simulation_id,))
+    summaries = [f"第{row['round_number']}轮: {row['result_summary']}" for row in cursor.fetchall()]
+    conn.close()
+    return summaries
+
+
+def _generate_simple_summary(
+    sim: Dict, rnd: Dict,
+    results: List[Dict], aggregated: Dict
+) -> str:
+    """生成简单的轮次摘要（不依赖 LLM）"""
+    parts = []
+    parts.append(f"第{rnd['round_number']}轮 - {rnd.get('title', '')}")
+
+    # Narratives
+    narratives = [r for r in results
+                  if r.get("status") == "collected" and r.get("prompt_type") == "narrative"]
+    for n in narratives:
+        name = n.get("agent_name", n.get("agent_id", "?"))
+        text = (n.get("response_text", "") or "")[:200]
+        parts.append(f"【{name}】{text}")
+
+    # Prediction summary
+    pred = aggregated.get("prediction", {})
+    if pred:
+        pred_str = ", ".join([f"{k}: {v:.0%}" for k, v in pred.items()])
+        parts.append(f"预测汇总: {pred_str} (参与 {aggregated.get('total_agents', 0)} 位)")
+
+    return "\n".join(parts)
+
+
+# ==========================================
+# Aggregation
+# ==========================================
+
+def aggregate_round(round_id: str) -> Dict:
+    """聚合某轮的 predictive 反应"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT rr.agent_id, rr.stance, rr.confidence,
+               sp.relevance_score, sp.influence_weight
+        FROM round_reactions rr
+        JOIN simulation_participants sp
+            ON rr.simulation_id = sp.simulation_id AND rr.agent_id = sp.agent_id
+        WHERE rr.round_id = ?
+            AND rr.prompt_type = 'predictive'
+            AND rr.status = 'collected'
+            AND rr.stance IS NOT NULL
+    """, (round_id,))
+
+    reactions = cursor.fetchall()
+    conn.close()
+
+    if not reactions:
+        return {"prediction": {}, "total_agents": 0, "total_weight": 0}
+
+    outcome_scores = {}
+    total_weight = 0
+    breakdown = []
+
+    for r in reactions:
+        rel = r["relevance_score"] or 0.5
+        inf = r["influence_weight"] or 0.5
+        conf = r["confidence"] or 0.5
+        weight = rel * inf * conf
+
+        stance = r["stance"]
+        outcome_scores[stance] = outcome_scores.get(stance, 0) + weight
+        total_weight += weight
+
+        breakdown.append({
+            "agent_id": r["agent_id"],
+            "stance": stance,
+            "confidence": conf,
+            "weight": round(weight, 4)
+        })
+
+    prediction = {}
+    if total_weight > 0:
+        prediction = {
+            outcome: round(score / total_weight, 4)
+            for outcome, score in outcome_scores.items()
+        }
+
+    top_outcome = max(prediction, key=prediction.get) if prediction else None
+
+    return {
+        "prediction": prediction,
+        "top_outcome": top_outcome,
+        "top_probability": prediction.get(top_outcome, 0) if top_outcome else 0,
+        "total_agents": len(reactions),
+        "total_weight": round(total_weight, 4),
+        "agent_breakdown": breakdown
+    }
+
+
+# ==========================================
+# Settlement
+# ==========================================
+
+def settle_simulation(simulation_id: str, actual_outcome: str) -> Dict:
+    """
+    判定结果 + ATP 结算
+
+    reward = stake × (2 × confidence - 1) × direction
+    direction = +1 (正确) / -1 (错误)
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM simulations WHERE simulation_id = ?", (simulation_id,))
+    sim = _row_to_dict(cursor.fetchone())
+    if not sim:
+        conn.close()
+        return {"error": "not_found"}
+
+    stake = sim["stake_per_agent"]
+
+    # 更新 actual_outcome
+    cursor.execute("""
+        UPDATE simulations SET actual_outcome = ?, resolved_at = ?, status = 'resolved'
+        WHERE simulation_id = ?
+    """, (actual_outcome, _now(), simulation_id))
+
+    # 获取所有有 final_stance 的参与者
+    cursor.execute("""
+        SELECT sp.*, a.owner_id
+        FROM simulation_participants sp
+        JOIN agents a ON sp.agent_id = a.agent_id
+        WHERE sp.simulation_id = ? AND sp.final_stance IS NOT NULL
+    """, (simulation_id,))
+
+    participants = cursor.fetchall()
+    total_rewards = 0
+    total_correct = 0
+    details = []
+
+    for p in participants:
+        correct = p["final_stance"] == actual_outcome
+        conf = p["final_confidence"] or 0.5
+        direction = 1 if correct else -1
+
+        reward = int(stake * (2 * conf - 1) * direction)
+
+        if correct:
+            total_correct += 1
+
+        # 更新参与者
+        cursor.execute("""
+            UPDATE simulation_participants
+            SET was_correct = ?, reward_amount = ?
+            WHERE simulation_id = ? AND agent_id = ?
+        """, (1 if correct else 0, reward, simulation_id, p["agent_id"]))
+
+        # 更新 owner ATP
+        cursor.execute("""
+            UPDATE users SET atp_balance = atp_balance + ?
+            WHERE user_id = ?
+        """, (reward, p["owner_id"]))
+
+        # 记录交易
+        tx_type = "reward" if reward >= 0 else "purchase"  # reuse existing types
+        tx_id = _gen_id("tx")
+        cursor.execute("""
+            INSERT INTO transactions (tx_id, to_user_id, agent_id, atp_amount, tx_type, description)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (tx_id, p["owner_id"], p["agent_id"], reward, tx_type,
+              f"Simulation 结算: {sim['title'][:50]}"))
+
+        # 更新 agent_sim_scores
+        _update_agent_score(cursor, p["agent_id"], correct, conf, sim["category"])
+
+        total_rewards += reward
+        details.append({
+            "agent_id": p["agent_id"],
+            "owner_id": p["owner_id"],
+            "stance": p["final_stance"],
+            "confidence": conf,
+            "correct": correct,
+            "reward": reward
+        })
+
+    # 创建结算记录
+    settlement_id = _gen_id("stl")
+    cursor.execute("""
+        INSERT INTO simulation_settlements (
+            settlement_id, simulation_id, total_agents, total_correct,
+            total_stake_collected, total_rewards_distributed, settlement_details
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (settlement_id, simulation_id, len(details), total_correct,
+          stake * len(details), total_rewards, json.dumps(details)))
+
+    # 更新 simulation 状态
+    cursor.execute("""
+        UPDATE simulations SET status = 'settled', settled_at = ?
+        WHERE simulation_id = ?
+    """, (_now(), simulation_id))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "settlement_id": settlement_id,
+        "actual_outcome": actual_outcome,
+        "total_agents": len(details),
+        "total_correct": total_correct,
+        "total_rewards": total_rewards,
+        "details": details
+    }
+
+
+def _update_agent_score(cursor, agent_id: str, correct: bool, confidence: float, category: str):
+    """更新 Agent 的 Simulation 历史评分"""
+    cursor.execute("SELECT * FROM agent_sim_scores WHERE agent_id = ?", (agent_id,))
+    row = cursor.fetchone()
+
+    if row:
+        score = _row_to_dict(row)
+        total = score["total_participated"] + 1
+        total_correct = score["total_correct"] + (1 if correct else 0)
+        accuracy = total_correct / total
+
+        # 更新分类准确率
+        try:
+            cat_acc = json.loads(score["accuracy_by_category"]) if isinstance(score["accuracy_by_category"], str) else score["accuracy_by_category"]
+        except:
+            cat_acc = {}
+
+        cat_total_key = f"__{category}_total"
+        cat_correct_key = f"__{category}_correct"
+        cat_acc[cat_total_key] = cat_acc.get(cat_total_key, 0) + 1
+        cat_acc[cat_correct_key] = cat_acc.get(cat_correct_key, 0) + (1 if correct else 0)
+        cat_acc[category] = cat_acc[cat_correct_key] / cat_acc[cat_total_key]
+
+        # 简单校准度更新 (EMA)
+        expected = confidence
+        actual = 1.0 if correct else 0.0
+        old_cal = score["calibration_score"]
+        new_cal = old_cal * 0.9 + (1.0 - abs(expected - actual)) * 0.1
+
+        # 平均 confidence (EMA)
+        old_avg_conf = score["avg_confidence"]
+        new_avg_conf = old_avg_conf * 0.9 + confidence * 0.1
+
+        cursor.execute("""
+            UPDATE agent_sim_scores SET
+                total_participated = ?, total_correct = ?, accuracy_rate = ?,
+                accuracy_by_category = ?, calibration_score = ?, avg_confidence = ?,
+                last_participated_at = ?, updated_at = ?
+            WHERE agent_id = ?
+        """, (total, total_correct, accuracy, json.dumps(cat_acc),
+              round(new_cal, 4), round(new_avg_conf, 4), _now(), _now(), agent_id))
+    else:
+        cat_acc = {
+            category: 1.0 if correct else 0.0,
+            f"__{category}_total": 1,
+            f"__{category}_correct": 1 if correct else 0
+        }
+        cursor.execute("""
+            INSERT INTO agent_sim_scores (
+                agent_id, total_participated, total_correct, accuracy_rate,
+                accuracy_by_category, avg_confidence, calibration_score,
+                last_participated_at, updated_at
+            ) VALUES (?, 1, ?, ?, ?, ?, 0.5, ?, ?)
+        """, (agent_id, 1 if correct else 0, 1.0 if correct else 0.0,
+              json.dumps(cat_acc), confidence, _now(), _now()))
+
+
+# ==========================================
+# Dispute
+# ==========================================
+
+def dispute_reaction(
+    reaction_id: str,
+    user_id: str,
+    correction_stance: str = None,
+    correction_confidence: float = None,
+    correction_text: str = None,
+    reason: str = ""
+) -> Dict:
+    """Agent Owner 标记某次反应不准确"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # 验证
+    cursor.execute("""
+        SELECT rr.*, a.owner_id, sr.status as round_status, rr.prompt_type
+        FROM round_reactions rr
+        JOIN agents a ON rr.agent_id = a.agent_id
+        JOIN simulation_rounds sr ON rr.round_id = sr.round_id
+        WHERE rr.reaction_id = ?
+    """, (reaction_id,))
+
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return {"error": "not_found"}
+
+    reaction = _row_to_dict(row)
+
+    if reaction["owner_id"] != user_id:
+        conn.close()
+        return {"error": "forbidden", "message": "只能修正自己 Agent 的反应"}
+
+    # 构建修正记录
+    correction = {
+        "original_stance": reaction.get("stance"),
+        "original_confidence": reaction.get("confidence"),
+        "original_text": (reaction.get("response_text") or "")[:500],
+        "correction_stance": correction_stance,
+        "correction_confidence": correction_confidence,
+        "correction_text": correction_text,
+        "reason": reason,
+        "disputed_at": _now()
+    }
+
+    update_kwargs = {
+        "owner_disputed": 1,
+        "owner_correction": json.dumps(correction),
+        "disputed_at": _now(),
+    }
+
+    # predictive: 修正 stance/confidence
+    if reaction["prompt_type"] == "predictive":
+        if correction_stance is not None:
+            update_kwargs["stance"] = correction_stance
+        if correction_confidence is not None:
+            update_kwargs["confidence"] = correction_confidence
+
+    # narrative: 修正 response_text
+    if correction_text is not None:
+        update_kwargs["response_text"] = correction_text
+
+    update_reaction(reaction_id, **update_kwargs)
+
+    conn.close()
+    return {"success": True, "message": "已标记并修正"}
+
+
+# ==========================================
+# Leaderboard
+# ==========================================
+
+def get_leaderboard(limit: int = 20) -> List[Dict]:
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT s.*, a.name as agent_name, a.agent_type, a.avatar_url
+        FROM agent_sim_scores s
+        JOIN agents a ON s.agent_id = a.agent_id
+        WHERE s.total_participated >= 1
+        ORDER BY s.accuracy_rate DESC, s.calibration_score DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cursor.fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        r = _row_to_dict(row)
+        if r.get("accuracy_by_category") and isinstance(r["accuracy_by_category"], str):
+            try:
+                raw = json.loads(r["accuracy_by_category"])
+                # 过滤掉内部计数键
+                r["accuracy_by_category"] = {k: v for k, v in raw.items() if not k.startswith("__")}
+            except:
+                pass
+        results.append(r)
+    return results

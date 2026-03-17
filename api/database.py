@@ -106,6 +106,11 @@ def init_db():
     
     conn.commit()
     conn.close()
+    
+    # Simulation 相关表 (独立迁移)
+    from migrate_simulation import migrate as migrate_sim
+    migrate_sim()
+    
     print("✅ 数据库初始化完成")
 
 
