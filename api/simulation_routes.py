@@ -461,6 +461,82 @@ async def api_run_round(
     return result
 
 
+@router.post("/{simulation_id}/rounds/{round_number}/retry")
+async def api_retry_round(
+    simulation_id: str,
+    round_number: int,
+    user: dict = Depends(get_current_user)
+):
+    """重试失败的 Agent 采集"""
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+
+    rnd = get_round(simulation_id, round_number)
+    if not rnd:
+        raise HTTPException(404, "Round not found")
+    if rnd["status"] == "closed":
+        raise HTTPException(400, "该轮已关闭，无法重试")
+
+    # 删除失败的 reactions，重新执行
+    from database import get_db
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM round_reactions WHERE round_id = ? AND status = 'failed'",
+        (rnd["round_id"],)
+    )
+    conn.commit()
+    conn.close()
+
+    result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+
+    return result
+
+
+@router.post("/{simulation_id}/rounds/{round_number}/close")
+async def api_close_round(
+    simulation_id: str,
+    round_number: int,
+    user: dict = Depends(get_current_user)
+):
+    """手动关闭轮次（即使有失败的采集）"""
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+
+    rnd = get_round(simulation_id, round_number)
+    if not rnd:
+        raise HTTPException(404, "Round not found")
+    if rnd["status"] == "closed":
+        raise HTTPException(400, "该轮已关闭")
+
+    from simulation import aggregate_round, update_round, update_simulation, _update_final_stances, _get_all_summaries, _now, get_round as get_rnd
+
+    aggregated = aggregate_round(rnd["round_id"])
+    update_round(rnd["round_id"], status="closed", closes_at=_now(), aggregated_result=aggregated)
+
+    if round_number == sim["total_rounds"]:
+        _update_final_stances(simulation_id, rnd["round_id"])
+        import json
+        update_simulation(simulation_id, status="closed", closes_at=_now(),
+                          final_prediction=json.dumps(aggregated.get("prediction", {})))
+
+    if round_number < sim["total_rounds"]:
+        all_summaries = _get_all_summaries(simulation_id)
+        next_rnd = get_rnd(simulation_id, round_number + 1)
+        if next_rnd:
+            update_round(next_rnd["round_id"], context="\n\n".join(all_summaries))
+
+    return {"success": True, "message": f"第{round_number}轮已手动关闭"}
+
+
 @router.get("/{simulation_id}/rounds/{round_number}/reactions")
 async def api_get_round_reactions(
     simulation_id: str,

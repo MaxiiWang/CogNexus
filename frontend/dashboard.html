@@ -1392,9 +1392,14 @@
                             actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
                         }
                     } else if (s === 'active') {
-                        const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
-                        if (nextRound) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
+                        const activeRound = (sim.rounds || []).find(r => r.status === 'active');
+                        const pendingRound = (sim.rounds || []).find(r => r.status === 'pending');
+                        if (activeRound) {
+                            // Round active with failures — show retry + close
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>` +
+                                      `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>` + actions;
+                        } else if (pendingRound) {
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>` + actions;
                         }
                     } else if (s === 'closed') {
                         actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">判定结果</button>` + actions;
@@ -1698,7 +1703,7 @@
 
         async function doRunRoundSim(simId, roundNumber) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', `正在执行第${roundNumber}轮...`);
+            showAlert('success', `正在执行第${roundNumber}轮，Agent 回应可能需要 30-60 秒...`);
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/run`, {
                     method: 'POST',
@@ -1706,10 +1711,60 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    showAlert('success', `第${roundNumber}轮执行完成`);
+                    const failed = data.failed || 0;
+                    if (failed > 0) {
+                        showAlert('error', `第${roundNumber}轮：${data.collected || 0} 个成功，${failed} 个失败，可重试`);
+                    } else {
+                        showAlert('success', `第${roundNumber}轮执行完成 ✅`);
+                    }
                     loadMySimulations();
                 } else {
                     showAlert('error', data.detail || '执行失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误或超时，请稍后重试');
+            }
+        }
+
+        async function doRetryRoundSim(simId, roundNumber) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', `正在重试第${roundNumber}轮失败的 Agent...`);
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/retry`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const failed = data.failed || 0;
+                    if (failed > 0) {
+                        showAlert('error', `重试后仍有 ${failed} 个失败`);
+                    } else {
+                        showAlert('success', `重试成功，第${roundNumber}轮全部完成 ✅`);
+                    }
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '重试失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function doCloseRoundSim(simId, roundNumber) {
+            if (!confirm(`确定要手动关闭第${roundNumber}轮吗？失败的 Agent 反应将不计入结果。`)) return;
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/close`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('success', `第${roundNumber}轮已手动关闭`);
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '关闭失败');
                 }
             } catch (e) {
                 showAlert('error', '网络错误');

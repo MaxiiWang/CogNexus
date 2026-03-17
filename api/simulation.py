@@ -1083,7 +1083,7 @@ async def collect_single_reaction(
     prompt_data: Dict,
     simulation: Dict,
     rnd: Dict,
-    timeout: int = 30
+    timeout: int = 120
 ) -> Dict:
     """
     向单个 Agent 的 Cogmate 发起 React 请求
@@ -1157,7 +1157,7 @@ async def run_round(
     simulation_id: str,
     round_number: int,
     llm_call=None,
-    timeout: int = 30
+    timeout: int = 120
 ) -> Dict:
     """
     执行一轮完整采集流程
@@ -1257,37 +1257,51 @@ async def run_round(
         else:
             clean_results.append(r)
 
-    # 4. 聚合
+    # 4. 统计成功/失败
+    collected_count = sum(1 for r in clean_results if r.get("status") == "collected")
+    failed_count = sum(1 for r in clean_results if r.get("status") == "failed")
+    all_collected = failed_count == 0
+
+    # 5. 聚合（即使部分失败也聚合已有的）
     aggregated = aggregate_round(rnd["round_id"])
 
-    # 5. 生成摘要 (简单版，后续可用 LLM)
+    # 6. 生成摘要
     summary = _generate_simple_summary(sim, rnd, clean_results, aggregated)
 
-    # 6. 更新轮次状态
-    update_round(
-        rnd["round_id"],
-        status="closed",
-        closes_at=_now(),
-        aggregated_result=aggregated,
-        result_summary=summary
-    )
-
-    # 7. 如果是最后一轮，更新 final_stance
-    if round_number == sim["total_rounds"]:
-        _update_final_stances(simulation_id, rnd["round_id"])
-        update_simulation(
-            simulation_id,
+    # 7. 更新轮次状态：有失败的保持 active（允许重试），全部成功才 close
+    if all_collected:
+        update_round(
+            rnd["round_id"],
             status="closed",
             closes_at=_now(),
-            final_prediction=json.dumps(aggregated.get("prediction", {}))
+            aggregated_result=aggregated,
+            result_summary=summary
+        )
+    else:
+        # 部分失败：保持 active，存储已有结果，等用户重试或手动 close
+        update_round(
+            rnd["round_id"],
+            status="active",
+            aggregated_result=aggregated,
+            result_summary=f"{summary}\n⚠️ {failed_count} 个 Agent 采集失败，可重试"
         )
 
-    # 8. 如果有下一轮，准备 context
-    if round_number < sim["total_rounds"]:
-        all_summaries = _get_all_summaries(simulation_id)
-        next_rnd = get_round(simulation_id, round_number + 1)
-        if next_rnd:
-            update_round(next_rnd["round_id"], context="\n\n".join(all_summaries))
+    # 8. 只在轮次 closed 时处理后续
+    if all_collected:
+        if round_number == sim["total_rounds"]:
+            _update_final_stances(simulation_id, rnd["round_id"])
+            update_simulation(
+                simulation_id,
+                status="closed",
+                closes_at=_now(),
+                final_prediction=json.dumps(aggregated.get("prediction", {}))
+            )
+
+        if round_number < sim["total_rounds"]:
+            all_summaries = _get_all_summaries(simulation_id)
+            next_rnd = get_round(simulation_id, round_number + 1)
+            if next_rnd:
+                update_round(next_rnd["round_id"], context="\n\n".join(all_summaries))
 
     return {
         "round_id": rnd["round_id"],
