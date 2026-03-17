@@ -1083,74 +1083,143 @@ async def collect_single_reaction(
     prompt_data: Dict,
     simulation: Dict,
     rnd: Dict,
-    timeout: int = 120
+    timeout: int = 120,
+    llm_fallback: bool = True
 ) -> Dict:
     """
     向单个 Agent 的 Cogmate 发起 React 请求
-
-    agent: 参与者信息 (含 endpoint_url, namespace)
-    prompt_data: {agent_id, prompt_type, prompt}
+    如果 Cogmate 不可用且 Simulation 配了 LLM，则用 LLM 直接生成回应
     """
     endpoint = agent.get("endpoint_url", "").rstrip("/")
     ns = agent.get("namespace", "default")
+    agent_id = agent["agent_id"]
+    prompt_type = prompt_data.get("prompt_type", "predictive")
+    prompt = prompt_data["prompt"]
 
-    if not endpoint:
-        return {"agent_id": agent["agent_id"], "status": "failed", "error": "no_endpoint"}
-
-    # 需要一个有效 token 来调用 Cogmate API
-    # 从 agent_tokens 获取一个 validated token
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT token_value FROM agent_tokens
-        WHERE agent_id = ? AND validated = 1
-        LIMIT 1
-    """, (agent["agent_id"],))
-    token_row = cursor.fetchone()
-    conn.close()
-
-    if not token_row:
-        return {"agent_id": agent["agent_id"], "status": "failed", "error": "no_token"}
-
-    token = token_row["token_value"]
     outcome_options = simulation.get("outcome_options", ["yes", "no"])
     if isinstance(outcome_options, str):
         outcome_options = json.loads(outcome_options)
 
-    payload = {
-        "simulation_id": simulation["simulation_id"],
-        "round_id": rnd["round_id"],
-        "prompt": prompt_data["prompt"],
-        "prompt_type": prompt_data.get("prompt_type", "predictive"),
-        "description": simulation.get("description", ""),
-        "outcome_options": outcome_options,
-        "previous_context": rnd.get("context", "")
-    }
+    # === 尝试 Cogmate 端点 ===
+    cogmate_error = None
+    if endpoint:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT token_value FROM agent_tokens WHERE agent_id = ? AND validated = 1 LIMIT 1", (agent_id,))
+        token_row = cursor.fetchone()
+        conn.close()
+
+        if token_row:
+            payload = {
+                "simulation_id": simulation["simulation_id"],
+                "round_id": rnd["round_id"],
+                "prompt": prompt,
+                "prompt_type": prompt_type,
+                "description": simulation.get("description", ""),
+                "outcome_options": outcome_options,
+                "previous_context": rnd.get("context", "")
+            }
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    res = await client.post(
+                        f"{endpoint}/api/simulation/react",
+                        params={"token": token_row["token_value"], "ns": ns},
+                        json=payload
+                    )
+                    if res.status_code == 200:
+                        data = res.json()
+                        data["agent_id"] = agent_id
+                        data["status"] = "collected"
+                        data["source"] = "cogmate"
+                        return data
+                    else:
+                        cogmate_error = f"http_{res.status_code}"
+            except Exception as e:
+                cogmate_error = str(e)[:200]
+        else:
+            cogmate_error = "no_token"
+    else:
+        cogmate_error = "no_endpoint"
+
+    # === Cogmate 失败 → LLM Fallback ===
+    if not llm_fallback:
+        return {"agent_id": agent_id, "status": "failed", "error": cogmate_error}
+
+    # 读取 Simulation 的 LLM 配置
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id = ?",
+                   (simulation["simulation_id"],))
+    llm_row = cursor.fetchone()
+    conn.close()
+
+    if not llm_row or not llm_row["llm_api_key_enc"] or not llm_row["llm_base_url"]:
+        return {"agent_id": agent_id, "status": "failed", "error": f"cogmate:{cogmate_error}, no_llm_fallback"}
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            res = await client.post(
-                f"{endpoint}/api/simulation/react",
-                params={"token": token, "ns": ns},
-                json=payload
-            )
-            if res.status_code == 200:
-                data = res.json()
-                data["agent_id"] = agent["agent_id"]
-                data["status"] = "collected"
-                return data
-            else:
-                return {
-                    "agent_id": agent["agent_id"],
-                    "status": "failed",
-                    "error": f"http_{res.status_code}"
-                }
-    except Exception as e:
-        return {
-            "agent_id": agent["agent_id"],
-            "status": "failed",
-            "error": str(e)
+        from crypto_utils import decrypt_api_key
+        api_key = decrypt_api_key(llm_row["llm_api_key_enc"])
+        base_url = llm_row["llm_base_url"]
+        model = llm_row["llm_model"]
+
+        role_name = agent.get("role", agent.get("agent_name", "Agent"))
+        role_desc = agent.get("role_description", agent.get("agent_description", ""))
+        agent_type = agent.get("agent_type", "human")
+
+        system = f"你是「{role_name}」，{role_desc}。请以这个角色的身份回答。"
+
+        if prompt_type == "predictive":
+            options_str = " / ".join(outcome_options)
+            user_msg = f"""{prompt}
+
+请先简要分析，然后给出预测：
+
+---PREDICTION---
+{{"stance": "<{options_str}>", "confidence": <0.0-1.0>, "brief_reasoning": "<一句话理由>"}}"""
+        else:
+            user_msg = prompt
+
+        llm_response = await _call_sim_llm(base_url, api_key, model, system, user_msg)
+
+        if not llm_response:
+            return {"agent_id": agent_id, "status": "failed", "error": f"cogmate:{cogmate_error}, llm_no_response"}
+
+        result = {
+            "agent_id": agent_id,
+            "status": "collected",
+            "source": "llm_fallback",
+            "response_text": llm_response,
+            "knowledge_depth": 0,
         }
+
+        if prompt_type == "predictive":
+            # 解析 prediction
+            import re
+            json_match = re.search(r'\{[^{}]*"stance"[^{}]*\}', llm_response, re.DOTALL)
+            if json_match:
+                try:
+                    pred = json.loads(json_match.group())
+                    result["stance"] = pred.get("stance", outcome_options[0])
+                    result["confidence"] = max(0.0, min(1.0, float(pred.get("confidence", 0.5))))
+                    result["brief_reasoning"] = pred.get("brief_reasoning", "")
+                    result["response_text"] = llm_response.split("---PREDICTION---")[0].strip() if "---PREDICTION---" in llm_response else llm_response
+                except (json.JSONDecodeError, ValueError):
+                    result["stance"] = outcome_options[0]
+                    result["confidence"] = 0.3
+                    result["brief_reasoning"] = "LLM fallback, 无法解析预测"
+            else:
+                result["stance"] = outcome_options[0]
+                result["confidence"] = 0.3
+                result["brief_reasoning"] = "LLM fallback, 无法解析预测"
+        else:
+            # narrative
+            result["key_points"] = []
+            result["sentiment"] = "neutral"
+
+        return result
+
+    except Exception as e:
+        return {"agent_id": agent_id, "status": "failed", "error": f"cogmate:{cogmate_error}, llm_fallback:{str(e)[:100]}"}
 
 
 async def run_round(
