@@ -395,6 +395,29 @@
             gap: var(--space-md);
         }
 
+        .llm-preset-btn {
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-family: var(--font-sans);
+        }
+
+        .llm-preset-btn:hover {
+            border-color: rgba(124, 153, 184, 0.4);
+            color: var(--text-primary);
+        }
+
+        .llm-preset-btn.active {
+            border-color: #7c99b8;
+            background: rgba(124, 153, 184, 0.12);
+            color: #7c99b8;
+        }
+
         .sim-form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -825,21 +848,41 @@
                 <div style="border-top:1px solid var(--border-subtle);padding-top:var(--space-md);margin-top:var(--space-md);">
                     <h3 style="font-size:0.95em;color:var(--text-primary);margin-bottom:var(--space-md);">🤖 LLM 配置（可选）</h3>
                     <p style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-md);">配置后将使用 AI 智能招募 Agent 并生成模拟策略</p>
-                    <div class="sim-form-row">
-                        <div class="sim-form-group">
-                            <label>Base URL</label>
-                            <input type="url" name="llm_base_url" placeholder="https://api.openai.com">
-                        </div>
-                        <div class="sim-form-group">
-                            <label>模型</label>
-                            <input type="text" name="llm_model" placeholder="gpt-4o">
-                        </div>
-                    </div>
                     <div class="sim-form-group">
-                        <label>API Key</label>
-                        <input type="password" name="llm_api_key" placeholder="sk-...">
-                        <small style="font-size:0.78em;color:var(--text-muted);">密钥将加密存储，仅用于本次 Simulation 的 LLM 调用</small>
+                        <label>选择模型</label>
+                        <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm);margin-bottom:var(--space-md);" id="llmPresets">
+                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPreset(this)">
+                                🌋 豆包 Seed Lite
+                            </button>
+                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPreset(this)">
+                                🌋 豆包 1.5 Pro
+                            </button>
+                            <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectLLMPreset(this)">
+                                ⚙️ 自定义
+                            </button>
+                        </div>
                     </div>
+                    <div id="llmCustomFields" style="display:none;">
+                        <div class="sim-form-row">
+                            <div class="sim-form-group">
+                                <label>Base URL</label>
+                                <input type="url" name="llm_base_url" placeholder="https://api.openai.com/v1">
+                            </div>
+                            <div class="sim-form-group">
+                                <label>模型</label>
+                                <input type="text" name="llm_model" placeholder="gpt-4o">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="llmApiKeyGroup" style="display:none;">
+                        <div class="sim-form-group">
+                            <label>API Key</label>
+                            <input type="password" name="llm_api_key" placeholder="输入 API Key...">
+                            <small style="font-size:0.78em;color:var(--text-muted);">密钥将加密存储，仅用于本次 Simulation 的 LLM 调用</small>
+                        </div>
+                    </div>
+                    <input type="hidden" name="llm_base_url_hidden" value="">
+                    <input type="hidden" name="llm_model_hidden" value="">
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
@@ -1370,7 +1413,44 @@
         function showCreateSim() {
             document.getElementById('createSimForm').reset();
             document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
+            // Reset LLM preset state
+            document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('llmCustomFields').style.display = 'none';
+            document.getElementById('llmApiKeyGroup').style.display = 'none';
+            document.querySelector('input[name="llm_base_url_hidden"]').value = '';
+            document.querySelector('input[name="llm_model_hidden"]').value = '';
             document.getElementById('createSimModal').classList.add('active');
+        }
+
+        function selectLLMPreset(btn) {
+            // Toggle: click again to deselect
+            const wasActive = btn.classList.contains('active');
+            document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
+
+            if (wasActive) {
+                // Deselect
+                document.getElementById('llmCustomFields').style.display = 'none';
+                document.getElementById('llmApiKeyGroup').style.display = 'none';
+                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
+                document.querySelector('input[name="llm_model_hidden"]').value = '';
+                return;
+            }
+
+            btn.classList.add('active');
+            const provider = btn.dataset.provider;
+
+            if (provider === 'custom') {
+                document.getElementById('llmCustomFields').style.display = '';
+                document.getElementById('llmApiKeyGroup').style.display = '';
+                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
+                document.querySelector('input[name="llm_model_hidden"]').value = '';
+            } else {
+                // Preset: fill hidden fields, hide custom inputs
+                document.getElementById('llmCustomFields').style.display = 'none';
+                document.getElementById('llmApiKeyGroup').style.display = '';
+                document.querySelector('input[name="llm_base_url_hidden"]').value = btn.dataset.base;
+                document.querySelector('input[name="llm_model_hidden"]').value = btn.dataset.model;
+            }
         }
 
         document.getElementById('simOutcomeType').addEventListener('change', function() {
@@ -1396,9 +1476,9 @@
                 outcome_options: form.outcome_type.value === 'multi' && form.outcome_options.value
                     ? form.outcome_options.value.split(',').map(s => s.trim()).filter(Boolean)
                     : ['yes', 'no'],
-                llm_base_url: form.llm_base_url.value || null,
+                llm_base_url: form.llm_base_url_hidden.value || (form.llm_base_url ? form.llm_base_url.value : null) || null,
                 llm_api_key: form.llm_api_key.value || null,
-                llm_model: form.llm_model.value || null
+                llm_model: form.llm_model_hidden.value || (form.llm_model ? form.llm_model.value : null) || null
             };
 
             try {

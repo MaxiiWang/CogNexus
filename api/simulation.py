@@ -696,11 +696,18 @@ async def recruit_agents(simulation_id: str) -> Dict:
 
 async def _call_sim_llm(base_url: str, api_key: str, model: str, system: str, user: str) -> Optional[str]:
     """通过 Simulation 自带的 LLM 配置调用（OpenAI 兼容格式）"""
-    url = f"{base_url.rstrip('/')}/v1/chat/completions"
-    if '/v1/chat/completions' in base_url:
-        url = base_url
-    elif base_url.endswith('/v1'):
-        url = f"{base_url}/chat/completions"
+    base = base_url.rstrip('/')
+    # 已经是完整 chat/completions URL
+    if '/chat/completions' in base:
+        url = base
+    # 火山引擎豆包: /api/v3 → /api/v3/chat/completions
+    elif base.endswith('/api/v3') or base.endswith('/api/v2'):
+        url = f"{base}/chat/completions"
+    # 标准 OpenAI: /v1 → /v1/chat/completions
+    elif base.endswith('/v1'):
+        url = f"{base}/chat/completions"
+    else:
+        url = f"{base}/v1/chat/completions"
 
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
     data = {
