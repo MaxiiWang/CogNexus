@@ -453,6 +453,27 @@ async def api_run_round(
         if prev and prev["status"] != "closed":
             raise HTTPException(400, f"第{round_number - 1}轮尚未完成")
 
+    # Pre-check: estimate react cost and verify creator balance
+    from database import get_db
+    participants = get_participants(simulation_id)
+    total_cost = 0
+    conn = get_db()
+    cursor = conn.cursor()
+    for p in participants:
+        cursor.execute("SELECT price_react FROM agent_tokens WHERE agent_id = ? LIMIT 1", (p["agent_id"],))
+        row = cursor.fetchone()
+        if row and row["price_react"]:
+            total_cost += row["price_react"]
+
+    if total_cost > 0:
+        cursor.execute("SELECT atp_balance FROM users WHERE user_id = ?", (sim["created_by"],))
+        creator = cursor.fetchone()
+        balance = creator["atp_balance"] if creator and creator["atp_balance"] else 0
+        if balance < total_cost:
+            conn.close()
+            raise HTTPException(400, f"ATP 余额不足。本轮预计费用 {total_cost} ATP，当前余额 {balance} ATP")
+    conn.close()
+
     result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
 
     if "error" in result:

@@ -415,7 +415,8 @@ def get_participants(simulation_id: str) -> List[Dict]:
     cursor = conn.cursor()
     cursor.execute("""
         SELECT sp.*, a.name as agent_name, a.agent_type, a.endpoint_url,
-               a.namespace, a.description as agent_description, a.avatar_url
+               a.namespace, a.description as agent_description, a.avatar_url,
+               (SELECT price_react FROM agent_tokens WHERE agent_id = a.agent_id LIMIT 1) as price_react
         FROM simulation_participants sp
         JOIN agents a ON sp.agent_id = a.agent_id
         WHERE sp.simulation_id = ?
@@ -1307,6 +1308,51 @@ async def run_round(
                 update_kwargs["confidence"] = result.get("confidence", 0)
                 update_kwargs["brief_reasoning"] = result.get("brief_reasoning", "")
             update_reaction(task["reaction_id"], **update_kwargs)
+
+            # React payment: charge simulation creator, credit agent owner
+            try:
+                conn = get_db()
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT price_react FROM agent_tokens WHERE agent_id = ? LIMIT 1",
+                    (task["agent"]["agent_id"],)
+                )
+                price_row = cursor.fetchone()
+                price = price_row["price_react"] if price_row and price_row["price_react"] else 0
+
+                if price > 0:
+                    # Get agent owner
+                    cursor.execute(
+                        "SELECT owner_id FROM agents WHERE agent_id = ?",
+                        (task["agent"]["agent_id"],)
+                    )
+                    owner_row = cursor.fetchone()
+                    owner_id = owner_row["owner_id"] if owner_row else None
+
+                    if owner_id:
+                        # Deduct from simulation creator
+                        cursor.execute(
+                            "UPDATE users SET atp_balance = atp_balance - ? WHERE user_id = ? AND atp_balance >= ?",
+                            (price, sim["created_by"], price)
+                        )
+                        if cursor.rowcount > 0:
+                            # Credit agent owner
+                            cursor.execute(
+                                "UPDATE users SET atp_balance = atp_balance + ? WHERE user_id = ?",
+                                (price, owner_id)
+                            )
+                            # Record transaction
+                            tx_id = _gen_id("tx")
+                            cursor.execute(
+                                "INSERT INTO transactions (tx_id, from_user_id, to_user_id, agent_id, atp_amount, tx_type, description) VALUES (?, ?, ?, ?, ?, 'react_payment', ?)",
+                                (tx_id, sim["created_by"], owner_id, task["agent"]["agent_id"], price,
+                                 f"Simulation React: {sim['title'][:50]}")
+                            )
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                # Payment failure should not block reaction collection
+                pass
         else:
             update_reaction(task["reaction_id"], status="failed")
 

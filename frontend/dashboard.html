@@ -2035,6 +2035,12 @@
                 if (s === 'draft') {
                     actionsHtml += `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}');hideSimDetail()">✏️ 编辑</button>`;
                 }
+                // Estimate react cost per round
+                let estimatedCost = 0;
+                (sim.participants || []).forEach(p => {
+                    estimatedCost += (p.price_react || 0);
+                });
+
                 if (s === 'draft' || s === 'recruiting') {
                     if (sim.llm_base_url) {
                         actionsHtml += `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '🤖 智能招募'}</button>`;
@@ -2043,6 +2049,7 @@
                     }
                     if (hasP && pendingRound) {
                         actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
                 if (s === 'active') {
@@ -2051,6 +2058,7 @@
                         actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>`;
                     } else if (pendingRound) {
                         actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
                 if (s === 'closed') {

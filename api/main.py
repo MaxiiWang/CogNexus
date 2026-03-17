@@ -81,6 +81,7 @@ class AgentImport(BaseModel):
     namespace: str   # 角色 namespace
     profile: dict    # 角色信息 {name, title, type, avatar, bio, fact_count}
     tokens: List[dict] = []  # Token 列表 [{value, scope, qa_limit, unit_price}]
+    price_react: Optional[int] = None  # React 定价 (ATP)
 
 
 # ==================== 依赖 ====================
@@ -711,24 +712,31 @@ async def import_agent(data: AgentImport, user: dict = Depends(get_current_user)
         ))
         created = True
     
+    # Update price_react on existing tokens if provided
+    if data.price_react is not None:
+        cursor.execute(
+            "UPDATE agent_tokens SET price_react = ? WHERE agent_id = ?",
+            (data.price_react, agent_id)
+        )
+
     # 导入 Tokens
     tokens_imported = 0
     for t in data.tokens:
         token_value = t.get("value", "").strip()
         if not token_value:
             continue
-        
+
         # 检查 token 是否已存在
         cursor.execute("SELECT token_id FROM agent_tokens WHERE token_value = ?", (token_value,))
         if cursor.fetchone():
             continue  # 跳过已存在的 token
-        
+
         token_id = f"tkn_{uuid.uuid4().hex[:12]}"
         cursor.execute("""
             INSERT INTO agent_tokens (
                 token_id, agent_id, token_value, permissions,
-                scope, qa_limit, unit_price, namespace, validated
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                scope, qa_limit, unit_price, namespace, validated, price_react
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             token_id, agent_id, token_value,
             '["chat","read"]',
@@ -736,10 +744,11 @@ async def import_agent(data: AgentImport, user: dict = Depends(get_current_user)
             t.get("qa_limit", 20),
             t.get("unit_price", 5),
             data.namespace,
-            1  # 从 Cogmate 导入的默认已验证
+            1,  # 从 Cogmate 导入的默认已验证
+            data.price_react or 0
         ))
         tokens_imported += 1
-    
+
     conn.commit()
     conn.close()
     
