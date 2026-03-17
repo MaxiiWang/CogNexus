@@ -271,137 +271,137 @@
 
                 <article class="docs-content">
                     <h1 id="intro" data-i18n="docs.what_is">What is CogNexus</h1>
-                    <p>CogNexus 是一个<strong>分布式认知枢纽</strong>，让 AI Agent 的能力可以流通和交换。你可以在这里发现他人的 Agent，也可以发布自己的 Agent 供他人使用。</p>
+                    <p data-i18n-html="docs.intro_p1">CogNexus is a <strong>distributed cognitive hub</strong> that enables AI Agent capabilities to flow and exchange. You can discover other people's Agents here, or publish your own for others to use.</p>
 
                     <div class="tip">
                         <span class="tip-icon">💡</span>
-                        <p>CogNexus 目前处于实验阶段，功能和 API 可能随时变更。</p>
+                        <p data-i18n="docs.intro_tip">CogNexus is currently in experimental stage. Features and APIs may change at any time.</p>
                     </div>
 
                     <h2 id="agent" data-i18n="docs.agent_types">Agent Types</h2>
-                    <p>CogNexus 支持三种类型的 Agent：</p>
+                    <p data-i18n="docs.agent_intro">CogNexus supports three types of Agents:</p>
 
                     <div class="info-box">
-                        <h4>👤 Human</h4>
-                        <p>真实用户的知识库。通过 <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> 构建，包含用户的观点、经历、专业知识。你可以向 Human Agent 提问，获取基于其知识库的回答。</p>
+                        <h4 data-i18n="docs.agent_human_title">👤 Human</h4>
+                        <p data-i18n-html="docs.agent_human_desc">A real user's knowledge base. Built with <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a>, it contains the user's perspectives, experiences, and expertise. You can ask a Human Agent questions and receive answers based on their knowledge base.</p>
                     </div>
 
                     <div class="info-box">
-                        <h4>🎭 Character（待建）</h4>
-                        <p>AI 角色扮演。可以是历史人物、虚构角色或特定领域专家。与 Character 对话，体验不同视角的思维方式。</p>
+                        <h4 data-i18n="docs.agent_character_title">🎭 Character (Coming Soon)</h4>
+                        <p data-i18n="docs.agent_character_desc">AI role-playing. Can be historical figures, fictional characters, or domain experts. Chat with a Character to experience different perspectives and ways of thinking.</p>
                     </div>
 
                     <div class="info-box">
-                        <h4>🔮 Simulation（待建）</h4>
-                        <p>模拟环境和场景。用于测试决策、预演对话、探索假设情境。</p>
+                        <h4 data-i18n="docs.agent_sim_title">🔮 Simulation (Coming Soon)</h4>
+                        <p data-i18n="docs.agent_sim_desc">Simulated environments and scenarios. Used for testing decisions, rehearsing conversations, and exploring hypothetical situations.</p>
                     </div>
 
                     <h2 id="atp" data-i18n="docs.atp_credits">ATP Credits</h2>
-                    <p><strong>ATP（Agent Trade Points）</strong>是 CogNexus 的内部积分系统，用于 Agent 能力的交换。</p>
+                    <p data-i18n-html="docs.atp_intro"><strong>ATP (Agent Trade Points)</strong> is CogNexus's internal credit system used for exchanging Agent capabilities.</p>
 
                     <table>
                         <thead>
                             <tr>
-                                <th>获取方式</th>
-                                <th>说明</th>
+                                <th data-i18n="docs.atp_table_header_method">Method</th>
+                                <th data-i18n="docs.atp_table_header_desc">Description</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td>注册奖励</td>
-                                <td>新用户获得 100 ATP</td>
+                                <td data-i18n="docs.atp_register">Registration Bonus</td>
+                                <td data-i18n="docs.atp_register_desc">New users receive 100 ATP</td>
                             </tr>
                             <tr>
-                                <td>出售 Token</td>
-                                <td>他人购买你的 Agent Token 时获得</td>
+                                <td data-i18n="docs.atp_sell">Sell Tokens</td>
+                                <td data-i18n="docs.atp_sell_desc">Earned when others purchase your Agent Tokens</td>
                             </tr>
                         </tbody>
                     </table>
 
                     <div class="tip">
                         <span class="tip-icon">⚠️</span>
-                        <p><strong>重要提示：</strong>ATP 仅为平台内部积分，无任何现实货币价值，不可兑换、提现或转让。</p>
+                        <p data-i18n-html="docs.atp_warning"><strong>Important:</strong> ATP is an internal platform credit only. It has no real-world monetary value and cannot be redeemed, withdrawn, or transferred.</p>
                     </div>
 
                     <h2 id="token" data-i18n="docs.token_mechanism">Token Mechanism</h2>
-                    <p>Token 是访问 Agent 的凭证。不同类型的 Token 有不同的权限：</p>
+                    <p data-i18n="docs.token_intro">Tokens are credentials for accessing Agents. Different token types have different permissions:</p>
 
                     <table>
                         <thead>
                             <tr>
-                                <th>类型</th>
-                                <th>权限</th>
-                                <th>说明</th>
+                                <th data-i18n="docs.token_table_header_type">Type</th>
+                                <th data-i18n="docs.token_table_header_perm">Permission</th>
+                                <th data-i18n="docs.token_table_header_desc">Description</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><code>full</code></td>
-                                <td>完整访问</td>
-                                <td>浏览知识库 + 问答交互 + 查看详情</td>
+                                <td data-i18n="docs.token_full_perm">Full Access</td>
+                                <td data-i18n="docs.token_full_desc">Browse knowledge base + Q&A interaction + View details</td>
                             </tr>
                             <tr>
                                 <td><code>qa_public</code></td>
-                                <td>公开问答</td>
-                                <td>有次数限制的问答，适合试用</td>
+                                <td data-i18n="docs.token_qa_perm">Public Q&A</td>
+                                <td data-i18n="docs.token_qa_desc">Limited Q&A sessions, suitable for trials</td>
                             </tr>
                             <tr>
                                 <td><code>browse_public</code></td>
-                                <td>仅浏览</td>
-                                <td>只能查看公开内容，不能交互</td>
+                                <td data-i18n="docs.token_browse_perm">Browse Only</td>
+                                <td data-i18n="docs.token_browse_desc">Can only view public content, no interaction</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <p>Token 通常有有效期，过期后需要重新购买。</p>
+                    <p data-i18n="docs.token_expiry">Tokens typically have an expiration date and need to be repurchased after expiry.</p>
 
                     <h2 id="browse" data-i18n="docs.browse_market">Browse Market</h2>
-                    <p>在 <a href="/marketplace">市场页面</a> 可以看到所有已发布的 Agent。每个 Agent 卡片显示：</p>
+                    <p data-i18n-html="docs.browse_intro">On the <a href="/marketplace">Market page</a> you can see all published Agents. Each Agent card displays:</p>
                     <ul>
-                        <li><strong>名称和描述</strong> - Agent 的基本信息</li>
-                        <li><strong>类型标签</strong> - Human / Character / Simulation</li>
-                        <li><strong>价格</strong> - 购买 Token 所需的 ATP</li>
-                        <li><strong>在线状态</strong> - Agent 是否可访问</li>
+                        <li data-i18n-html="docs.browse_item_name"><strong>Name and description</strong> — basic Agent information</li>
+                        <li data-i18n-html="docs.browse_item_type"><strong>Type tag</strong> — Human / Character / Simulation</li>
+                        <li data-i18n-html="docs.browse_item_price"><strong>Price</strong> — ATP required to purchase a Token</li>
+                        <li data-i18n-html="docs.browse_item_status"><strong>Online status</strong> — whether the Agent is accessible</li>
                     </ul>
 
                     <h2 id="purchase" data-i18n="docs.purchase_token">Purchase Token</h2>
-                    <p>找到感兴趣的 Agent 后：</p>
+                    <p data-i18n="docs.purchase_intro">After finding an Agent you're interested in:</p>
                     <ol>
-                        <li>点击 Agent 卡片上的「购买」按钮</li>
-                        <li>确认价格和 Token 类型</li>
-                        <li>ATP 从余额中扣除</li>
-                        <li>获得 Token，可在仪表盘查看</li>
+                        <li data-i18n="docs.purchase_step1">Click the "Purchase" button on the Agent card</li>
+                        <li data-i18n="docs.purchase_step2">Confirm the price and Token type</li>
+                        <li data-i18n="docs.purchase_step3">ATP is deducted from your balance</li>
+                        <li data-i18n="docs.purchase_step4">Receive your Token, viewable in the Dashboard</li>
                     </ol>
 
                     <h2 id="use" data-i18n="docs.use_agent">Use Agent</h2>
-                    <p>购买 Token 后，在 <a href="/dashboard">仪表盘</a> 的「我购买的」区域可以看到你的 Token。</p>
+                    <p data-i18n-html="docs.use_intro">After purchasing a Token, you can find it in the "Purchased" section of your <a href="/dashboard">Dashboard</a>.</p>
                     <ol>
-                        <li>点击「复制」获取完整 Token</li>
-                        <li>点击「访问」跳转到 Agent 界面</li>
-                        <li>在 Agent 界面中使用 Token 进行交互</li>
+                        <li data-i18n="docs.use_step1">Click "Copy" to get the full Token</li>
+                        <li data-i18n="docs.use_step2">Click "Visit" to go to the Agent interface</li>
+                        <li data-i18n="docs.use_step3">Use the Token in the Agent interface to interact</li>
                     </ol>
 
                     <h2 id="publish" data-i18n="docs.publish_agent">Publish Agent</h2>
-                    <p>要发布自己的 Agent，你需要先部署 <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> 作为 Agent 后端。</p>
-                    <p>部署完成后：</p>
+                    <p data-i18n-html="docs.publish_intro">To publish your own Agent, you first need to deploy <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> as the Agent backend.</p>
+                    <p data-i18n="docs.publish_prereq">Once deployment is complete:</p>
                     <ol>
-                        <li>在 <a href="/dashboard">仪表盘</a> 点击「发布 Agent」</li>
-                        <li>输入你的 Cogmate API 地址</li>
-                        <li>点击「检测」自动获取 Agent 信息</li>
-                        <li>补充描述和定价</li>
-                        <li>提交发布</li>
+                        <li data-i18n-html="docs.publish_step1">Click "Publish Agent" in the <a href="/dashboard">Dashboard</a></li>
+                        <li data-i18n="docs.publish_step2">Enter your Cogmate API address</li>
+                        <li data-i18n="docs.publish_step3">Click "Detect" to auto-fetch Agent information</li>
+                        <li data-i18n="docs.publish_step4">Add description and pricing</li>
+                        <li data-i18n="docs.publish_step5">Submit for publication</li>
                     </ol>
 
                     <h2 id="manage" data-i18n="docs.manage_tokens">Manage Tokens</h2>
-                    <p>发布 Agent 后，你需要生成 Token 供用户购买：</p>
+                    <p data-i18n="docs.manage_intro">After publishing an Agent, you need to generate Tokens for users to purchase:</p>
                     <ol>
-                        <li>在 Cogmate 中生成 Token</li>
-                        <li>在 CogNexus 仪表盘找到你的 Agent</li>
-                        <li>点击「管理 Token」</li>
-                        <li>添加生成的 Token</li>
-                        <li>设置单价</li>
+                        <li data-i18n="docs.manage_step1">Generate Tokens in Cogmate</li>
+                        <li data-i18n="docs.manage_step2">Find your Agent in the CogNexus Dashboard</li>
+                        <li data-i18n="docs.manage_step3">Click "Manage Tokens"</li>
+                        <li data-i18n="docs.manage_step4">Add the generated Tokens</li>
+                        <li data-i18n="docs.manage_step5">Set the unit price</li>
                     </ol>
-                    <p>用户购买后，Token 会标记为已售，你会收到相应的 ATP。</p>
+                    <p data-i18n="docs.manage_note">When a user purchases a Token, it is marked as sold and you receive the corresponding ATP.</p>
                 </article>
             </div>
         </div>
@@ -409,7 +409,7 @@
 
     <footer>
         <div class="container">
-            <p>&copy; 2026 CogNexus &middot; Powered by ATP</p>
+            <p data-i18n-html="docs.footer">&copy; 2026 CogNexus &middot; Powered by ATP</p>
         </div>
     </footer>
 
