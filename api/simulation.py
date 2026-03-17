@@ -1115,9 +1115,9 @@ async def collect_single_reaction(
                 "round_id": rnd["round_id"],
                 "prompt": prompt,
                 "prompt_type": prompt_type,
-                "description": simulation.get("description", ""),
+                "description": simulation.get("description") or "",
                 "outcome_options": outcome_options,
-                "previous_context": rnd.get("context", "")
+                "previous_context": rnd.get("context") or ""
             }
             try:
                 async with httpx.AsyncClient(timeout=timeout) as client:
