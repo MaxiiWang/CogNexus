@@ -1353,8 +1353,16 @@
                 const res = await fetch('/api/simulations?limit=100');
                 const data = await res.json();
                 const allSims = data.simulations || [];
-                const mySims = allSims.filter(s => s.created_by === currentUser.user_id);
-                document.getElementById('mySimCount').textContent = mySims.length;
+                const mySimsBasic = allSims.filter(s => s.created_by === currentUser.user_id);
+                document.getElementById('mySimCount').textContent = mySimsBasic.length;
+
+                // Fetch details for each (to get participants and rounds)
+                const mySims = await Promise.all(mySimsBasic.map(async s => {
+                    try {
+                        const r = await fetch(`/api/simulations/${s.simulation_id}`);
+                        return await r.json();
+                    } catch { return s; }
+                }));
 
                 const list = document.getElementById('simsList');
                 if (mySims.length === 0) {
@@ -1371,15 +1379,22 @@
                         actions = `<button class="btn btn-danger btn-small" onclick="deleteSim('${sim.simulation_id}', '${esc(sim.title).replace(/'/g, "\\'")}')">删除</button>` + actions;
                     }
                     if (s === 'draft' || s === 'recruiting') {
+                        // 如果已有参与者，显示执行轮次按钮
+                        const hasParticipants = (sim.participants && sim.participants.length > 0);
+                        const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
+                        if (hasParticipants && nextRound) {
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
+                        }
+                        // 招募按钮（可以继续招募更多 Agent）
                         if (sim.llm_base_url) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">🤖 智能招募</button>` + actions;
+                            actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
                         } else {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">招募</button>` + actions;
+                            actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
                         }
                     } else if (s === 'active') {
                         const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
                         if (nextRound) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">执行第${nextRound.round_number}轮</button>` + actions;
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
                         }
                     } else if (s === 'closed') {
                         actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">判定结果</button>` + actions;
@@ -1393,7 +1408,7 @@
                                 <span class="sim-status-badge ${s}">${s}</span>
                             </h4>
                             <div class="sim-meta">
-                                👥 ${sim.current_agents || 0}/${sim.max_agents} Agent &middot;
+                                👥 ${(sim.participants || []).length}/${sim.max_agents} Agent &middot;
                                 🔄 第 ${sim.current_round || 0}/${sim.total_rounds} 轮
                             </div>
                         </div>
