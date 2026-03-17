@@ -1366,6 +1366,10 @@
                     const s = sim.status;
                     let actions = `<button class="btn btn-secondary btn-small" onclick="window.open('/simulation','_blank')">查看</button>`;
 
+                    if (s === 'draft') {
+                        actions = `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}')">编辑</button>` + actions;
+                        actions = `<button class="btn btn-danger btn-small" onclick="deleteSim('${sim.simulation_id}', '${esc(sim.title).replace(/'/g, "\\'")}')">删除</button>` + actions;
+                    }
                     if (s === 'draft' || s === 'recruiting') {
                         if (sim.llm_base_url) {
                             actions = `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">🤖 智能招募</button>` + actions;
@@ -1410,9 +1414,14 @@
             return d.innerHTML;
         }
 
+        let editingSimId = null;
+
         function showCreateSim() {
+            editingSimId = null;
             document.getElementById('createSimForm').reset();
             document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
+            document.querySelector('#createSimModal h2').textContent = '创建 Simulation';
+            document.querySelector('#createSimModal .btn-primary, #createSimModal button[type="submit"]').textContent = '创建';
             // Reset LLM preset state
             document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('llmCustomFields').style.display = 'none';
@@ -1420,6 +1429,95 @@
             document.querySelector('input[name="llm_base_url_hidden"]').value = '';
             document.querySelector('input[name="llm_model_hidden"]').value = '';
             document.getElementById('createSimModal').classList.add('active');
+        }
+
+        async function editSim(simId) {
+            editingSimId = simId;
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch(`/api/simulations/${simId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const sim = await res.json();
+                const form = document.getElementById('createSimForm');
+
+                form.title.value = sim.title || '';
+                form.question.value = sim.question || '';
+                form.category.value = sim.category || '';
+                form.description.value = sim.description || '';
+                form.resolution_criteria.value = sim.resolution_criteria || '';
+                form.outcome_type.value = sim.outcome_type || 'binary';
+                form.total_rounds.value = sim.total_rounds || 1;
+                form.min_agents.value = sim.min_agents || 3;
+                form.max_agents.value = sim.max_agents || 50;
+                form.stake_per_agent.value = sim.stake_per_agent || 5;
+
+                const tags = Array.isArray(sim.tags) ? sim.tags : (sim.tags ? JSON.parse(sim.tags) : []);
+                form.tags.value = tags.join(', ');
+
+                if (sim.outcome_type === 'multi') {
+                    document.getElementById('simOutcomeOptionsGroup').style.display = '';
+                    const opts = Array.isArray(sim.outcome_options) ? sim.outcome_options : JSON.parse(sim.outcome_options || '[]');
+                    form.outcome_options.value = opts.join(', ');
+                } else {
+                    document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
+                }
+
+                // LLM config
+                document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('llmCustomFields').style.display = 'none';
+                document.getElementById('llmApiKeyGroup').style.display = 'none';
+                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
+                document.querySelector('input[name="llm_model_hidden"]').value = '';
+
+                if (sim.llm_base_url) {
+                    // Try to match a preset
+                    let matched = false;
+                    document.querySelectorAll('.llm-preset-btn[data-base]').forEach(btn => {
+                        if (btn.dataset.base === sim.llm_base_url && btn.dataset.model === sim.llm_model) {
+                            btn.classList.add('active');
+                            document.querySelector('input[name="llm_base_url_hidden"]').value = btn.dataset.base;
+                            document.querySelector('input[name="llm_model_hidden"]').value = btn.dataset.model;
+                            document.getElementById('llmApiKeyGroup').style.display = '';
+                            matched = true;
+                        }
+                    });
+                    if (!matched) {
+                        // Custom LLM
+                        document.querySelector('.llm-preset-btn[data-provider="custom"]').classList.add('active');
+                        document.getElementById('llmCustomFields').style.display = '';
+                        document.getElementById('llmApiKeyGroup').style.display = '';
+                        if (form.llm_base_url) form.llm_base_url.value = sim.llm_base_url;
+                        if (form.llm_model) form.llm_model.value = sim.llm_model || '';
+                    }
+                }
+
+                document.querySelector('#createSimModal h2').textContent = '编辑 Simulation';
+                try { document.querySelector('#createSimModal button[type="submit"]').textContent = '保存'; } catch(e) {}
+                document.getElementById('createSimModal').classList.add('active');
+            } catch (e) {
+                showAlert('error', '加载 Simulation 信息失败');
+            }
+        }
+
+        async function deleteSim(simId, title) {
+            if (!confirm(`确定要删除 Simulation「${title}」吗？此操作不可恢复。`)) return;
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch(`/api/simulations/${simId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    showAlert('success', 'Simulation 已删除');
+                    loadMySimulations();
+                } else {
+                    const data = await res.json();
+                    showAlert('error', data.detail || '删除失败（仅 draft 状态可删除）');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
         }
 
         function selectLLMPreset(btn) {
@@ -1481,19 +1579,40 @@
                 llm_model: form.llm_model_hidden.value || (form.llm_model ? form.llm_model.value : null) || null
             };
 
+            const isEdit = editingSimId !== null;
+            const url = isEdit ? `/api/simulations/${editingSimId}` : '/api/simulations';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            // For edit: also update LLM config if changed
+            if (isEdit && (payload.llm_api_key || payload.llm_base_url)) {
+                // Send LLM update separately since PUT may not handle it
+                try {
+                    await fetch(`/api/simulations/${editingSimId}/llm-config`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({
+                            llm_base_url: payload.llm_base_url,
+                            llm_api_key: payload.llm_api_key,
+                            llm_model: payload.llm_model
+                        })
+                    });
+                } catch (e) { /* ignore, main update below */ }
+            }
+
             try {
-                const res = await fetch('/api/simulations', {
-                    method: 'POST',
+                const res = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify(payload)
                 });
                 const result = await res.json();
                 if (res.ok) {
-                    showAlert('success', 'Simulation 创建成功');
+                    showAlert('success', isEdit ? 'Simulation 已更新' : 'Simulation 创建成功');
                     hideModal();
+                    editingSimId = null;
                     loadMySimulations();
                 } else {
-                    showAlert('error', result.detail || '创建失败');
+                    showAlert('error', result.detail || (isEdit ? '更新失败' : '创建失败'));
                 }
             } catch (e) {
                 showAlert('error', '网络错误');

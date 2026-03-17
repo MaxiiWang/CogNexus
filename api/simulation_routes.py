@@ -264,6 +264,46 @@ async def api_smart_recruit(
     return result
 
 
+class LLMConfigUpdate(BaseModel):
+    llm_base_url: str = None
+    llm_api_key: str = None
+    llm_model: str = None
+
+
+@router.put("/{simulation_id}/llm-config")
+async def api_update_llm_config(
+    simulation_id: str,
+    data: LLMConfigUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """更新 Simulation 的 LLM 配置"""
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+    if sim["status"] != "draft":
+        raise HTTPException(400, "只能在 draft 状态修改 LLM 配置")
+
+    from crypto_utils import encrypt_api_key
+    from database import get_db
+
+    conn = get_db()
+    if data.llm_api_key:
+        conn.execute(
+            "UPDATE simulations SET llm_base_url=?, llm_api_key_enc=?, llm_model=? WHERE simulation_id=?",
+            (data.llm_base_url, encrypt_api_key(data.llm_api_key), data.llm_model, simulation_id)
+        )
+    elif data.llm_base_url:
+        conn.execute(
+            "UPDATE simulations SET llm_base_url=?, llm_model=? WHERE simulation_id=?",
+            (data.llm_base_url, data.llm_model, simulation_id)
+        )
+    conn.commit()
+    conn.close()
+    return {"success": True}
+
+
 @router.post("/{simulation_id}/assign-roles")
 async def api_assign_roles(
     simulation_id: str,
