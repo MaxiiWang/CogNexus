@@ -358,7 +358,7 @@ def update_round(round_id: str, **kwargs) -> bool:
     conn = get_db()
     cursor = conn.cursor()
     allowed = {"title", "context", "status", "opens_at", "closes_at",
-               "aggregated_result", "result_summary"}
+               "aggregated_result", "result_summary", "environment_injection"}
     sets = []
     vals = []
     for k, v in kwargs.items():
@@ -990,6 +990,119 @@ JSON 输出:
 # Prompt Generation (LLM)
 # ==========================================
 
+async def generate_dynamic_prompts(
+    simulation_id: str,
+    round_number: int,
+    environment_injection: str = ""
+) -> List[Dict]:
+    """Generate role-specific prompts for round 2+ based on previous results + new environment"""
+    sim = get_simulation(simulation_id)
+    rnd = get_round(simulation_id, round_number)
+    participants = get_participants(simulation_id)
+
+    if not sim or not rnd or not participants:
+        return []
+
+    # Get previous round reactions
+    prev_rnd = get_round(simulation_id, round_number - 1)
+    prev_reactions = get_round_reactions(prev_rnd["round_id"]) if prev_rnd else []
+
+    # Build previous round summary
+    prev_summary = ""
+    for r in prev_reactions:
+        name = r.get("agent_name", r.get("agent_id", "?"))
+        role = r.get("role", name)
+        text = (r.get("response_text") or "")[:300]
+        stance = r.get("stance", "")
+        conf = r.get("confidence", "")
+        if stance:
+            prev_summary += f"- {role}: 立场={stance}, 置信度={conf}, 要点: {text[:150]}\n"
+        else:
+            prev_summary += f"- {role}: {text[:200]}\n"
+
+    # Read Simulation LLM config
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id = ?", (simulation_id,))
+    llm_row = cursor.fetchone()
+    conn.close()
+
+    if not llm_row or not llm_row["llm_api_key_enc"]:
+        # No LLM - fall back to default prompts with context
+        return _default_prompts_with_context(sim, participants, prev_summary, environment_injection)
+
+    api_key = decrypt_api_key(llm_row["llm_api_key_enc"])
+
+    options = sim.get("outcome_options", ["yes", "no"])
+    if isinstance(options, str):
+        options = json.loads(options)
+
+    agents_info = "\n".join([
+        f"- agent_id={p['agent_id']}, role={p.get('role', p['agent_name'])}, type={p['agent_type']}, description={p.get('role_description', '')}"
+        for p in participants
+    ])
+
+    system = """你是模拟推演系统的主持人。基于上一轮的结果和新的环境变化，为每个参与角色生成针对性的新一轮问题。
+
+问题分两类:
+1. narrative — 适用于当事人、决策者、利益相关方（推动剧情发展）
+2. predictive — 适用于分析师、专家、观察者（更新预测判断）
+
+输出严格JSON:
+[
+  {"agent_id": "...", "prompt_type": "narrative|predictive", "prompt": "..."}
+]"""
+
+    user_msg = f"""模拟: {sim['title']}
+核心问题: {sim['question']}
+可选结果: {json.dumps(options)}
+当前轮次: 第 {round_number} 轮 / 共 {sim['total_rounds']} 轮
+{f'本轮主题: {rnd.get("title", "")}' if rnd.get("title") else ''}
+
+上一轮各角色反应:
+{prev_summary}
+
+{'环境变化（本轮新注入）:' + chr(10) + environment_injection if environment_injection else '（无新环境变化）'}
+
+角色:
+{agents_info}
+
+请为每个角色生成一个针对性问题，问题应该:
+1. 基于上轮结果推进讨论深度
+2. 如有环境变化，引导角色回应新情况
+3. 保持角色视角的独特性"""
+
+    try:
+        result = await _call_sim_llm(llm_row["llm_base_url"], api_key, llm_row["llm_model"], system, user_msg)
+        prompts = json.loads(result) if isinstance(result, str) else result
+        # Validate
+        valid = []
+        for p in prompts:
+            if p.get("agent_id") and p.get("prompt"):
+                valid.append(p)
+        if valid:
+            return valid
+    except Exception:
+        pass
+
+    return _default_prompts_with_context(sim, participants, prev_summary, environment_injection)
+
+
+def _default_prompts_with_context(sim, participants, prev_summary, env_injection):
+    """Fallback: generic prompts with context"""
+    context = f"上轮结果:\n{prev_summary}"
+    if env_injection:
+        context += f"\n\n环境变化:\n{env_injection}"
+    return [
+        {
+            "agent_id": p["agent_id"],
+            "prompt_type": "predictive",
+            "prompt": f"关于「{sim['question']}」，基于以下新信息更新你的判断：\n\n{context}"
+        }
+        for p in participants
+    ]
+
+
 async def generate_round_prompts(
     simulation_id: str,
     round_number: int,
@@ -1006,6 +1119,11 @@ async def generate_round_prompts(
 
     if not sim or not rnd or not participants:
         return []
+
+    # Round 2+: always use dynamic prompts based on previous results
+    if round_number > 1:
+        env = rnd.get("environment_injection", "") or ""
+        return await generate_dynamic_prompts(simulation_id, round_number, env)
 
     # 先检查 round 的 planned_prompts 字段（智能招募时 LLM 规划的）
     if rnd.get('planned_prompts'):
@@ -1223,6 +1341,53 @@ async def collect_single_reaction(
         return {"agent_id": agent_id, "status": "failed", "error": f"cogmate:{cogmate_error}, llm_fallback:{str(e)[:100]}"}
 
 
+async def extract_narrative_stance(
+    response_text: str,
+    simulation: Dict,
+    agent_name: str = ""
+) -> Dict:
+    """Extract implicit stance from narrative response"""
+    options = simulation.get("outcome_options", ["yes", "no"])
+    if isinstance(options, str):
+        options = json.loads(options)
+
+    # Try to use simulation's LLM
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id = ?", (simulation["simulation_id"],))
+    llm_row = cursor.fetchone()
+    conn.close()
+
+    if not llm_row or not llm_row["llm_api_key_enc"]:
+        return {"stance": None, "confidence": None}
+
+    api_key = decrypt_api_key(llm_row["llm_api_key_enc"])
+    options_str = " / ".join(options)
+
+    system = "你是一个文本分析器。从以下叙事回应中提取隐含立场。只输出JSON。"
+    user_msg = f"""问题: {simulation['question']}
+可选立场: {options_str}
+
+角色 {agent_name} 的回应:
+{response_text[:500]}
+
+提取隐含立场:
+{{"stance": "<{options_str}>", "confidence": <0.0-1.0>}}"""
+
+    try:
+        result = await _call_sim_llm(llm_row["llm_base_url"], api_key, llm_row["llm_model"], system, user_msg)
+        import re
+        match = re.search(r'\{[^{}]*"stance"[^{}]*\}', result, re.DOTALL)
+        if match:
+            parsed = json.loads(match.group())
+            stance = parsed.get("stance", "")
+            if stance in options:
+                return {"stance": stance, "confidence": max(0, min(1, float(parsed.get("confidence", 0.3))))}
+    except Exception:
+        pass
+    return {"stance": None, "confidence": None}
+
+
 async def run_round(
     simulation_id: str,
     round_number: int,
@@ -1303,6 +1468,19 @@ async def run_round(
             if task["prompt_data"].get("prompt_type") == "narrative":
                 update_kwargs["key_points"] = result.get("key_points", [])
                 update_kwargs["sentiment"] = result.get("sentiment", "")
+                # Extract implicit stance from narrative response
+                try:
+                    extracted = await extract_narrative_stance(
+                        result.get("response_text", ""),
+                        sim,
+                        agent_name=task["agent"].get("agent_name", "")
+                    )
+                    if extracted.get("stance"):
+                        update_kwargs["stance"] = extracted["stance"]
+                        update_kwargs["confidence"] = extracted["confidence"]
+                        update_kwargs["brief_reasoning"] = f"[从叙事回应中提取] {extracted['stance']}"
+                except Exception:
+                    pass
             else:
                 update_kwargs["stance"] = result.get("stance", "")
                 update_kwargs["confidence"] = result.get("confidence", 0)

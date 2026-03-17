@@ -971,6 +971,24 @@
         </div>
     </div>
 
+    <!-- Environment Injection Modal -->
+    <div class="modal" id="envInjectionModal">
+        <div class="modal-content" style="max-width:560px;">
+            <h2>环境注入 - 第<span id="envRoundNum"></span>轮</h2>
+            <p style="font-size:0.88em;color:var(--text-secondary);margin-bottom:var(--space-md);">
+                输入本轮的新环境变化（如新事件、新数据），Agent 将基于此更新判断
+            </p>
+            <div class="form-group">
+                <label>环境变化描述</label>
+                <textarea id="envInjectionText" rows="5" placeholder="例如：中国宣布对等反制措施，美股期货跌3%..."></textarea>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="executeRoundWithEnv('')">跳过（无新环境）</button>
+                <button class="btn btn-primary" onclick="executeRoundWithEnv(document.getElementById('envInjectionText').value)">注入并执行</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Simulation Detail Panel -->
     <div class="modal" id="simDetailModal" onclick="if(event.target===this)hideSimDetail()">
         <div class="modal-content" style="max-width:960px;padding:0;overflow:hidden;">
@@ -1793,13 +1811,34 @@
             }
         }
 
+        let _pendingRunSimId = null;
+        let _pendingRunRound = null;
+
         async function doRunRoundSim(simId, roundNumber) {
+            if (roundNumber > 1) {
+                _pendingRunSimId = simId;
+                _pendingRunRound = roundNumber;
+                document.getElementById('envRoundNum').textContent = roundNumber;
+                document.getElementById('envInjectionText').value = '';
+                document.getElementById('envInjectionModal').classList.add('active');
+                return;
+            }
+            executeRoundDirect(simId, roundNumber, '');
+        }
+
+        async function executeRoundWithEnv(envText) {
+            document.getElementById('envInjectionModal').classList.remove('active');
+            executeRoundDirect(_pendingRunSimId, _pendingRunRound, envText);
+        }
+
+        async function executeRoundDirect(simId, roundNumber, envInjection) {
             const token = localStorage.getItem('cog_token');
             showAlert('success', `正在执行第${roundNumber}轮，Agent 回应可能需要 30-60 秒...`);
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/run`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ environment_injection: envInjection || '' })
                 });
                 const data = await res.json();
                 if (res.ok) {
@@ -2154,13 +2193,19 @@
                     }
                 }
                 const summary = rnd.result_summary ? `<div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:var(--space-sm);">${esc(rnd.result_summary)}</div>` : '';
+                const envHtml = rnd.environment_injection
+                    ? `<div style="background:rgba(212,160,84,0.08);border:1px solid rgba(212,160,84,0.2);border-radius:6px;padding:8px 12px;margin-bottom:8px;font-size:0.85em;">
+                        <span style="color:var(--accent-text);">环境注入:</span>
+                        <span style="color:var(--text-secondary);">${esc(rnd.environment_injection)}</span>
+                       </div>`
+                    : '';
 
                 return `<div class="sdp-round ${cls}">
                     <div class="sdp-rh" onclick="toggleSimRound('${sim.simulation_id}', ${rnd.round_number})">
                         <span class="sdp-rt">第${rnd.round_number}轮${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
                         <span class="sdp-rs">${rnd.status}</span>
                     </div>
-                    ${summary}${aggHtml}
+                    ${envHtml}${summary}${aggHtml}
                     <div class="sdp-rxns" id="sdpRxns${rnd.round_number}"></div>
                 </div>`;
             }).join('');

@@ -110,6 +110,10 @@ class RoundUpdate(BaseModel):
     context: str = None
 
 
+class RunRoundRequest(BaseModel):
+    environment_injection: str = ""
+
+
 # ==========================================
 # Simulation CRUD
 # ==========================================
@@ -432,6 +436,7 @@ async def api_update_round(
 async def api_run_round(
     simulation_id: str,
     round_number: int,
+    data: RunRoundRequest = RunRoundRequest(),
     user: dict = Depends(get_current_user)
 ):
     """执行某轮采集"""
@@ -452,6 +457,10 @@ async def api_run_round(
         prev = get_round(simulation_id, round_number - 1)
         if prev and prev["status"] != "closed":
             raise HTTPException(400, f"第{round_number - 1}轮尚未完成")
+
+    # Save environment injection if provided
+    if data.environment_injection:
+        update_round(rnd["round_id"], environment_injection=data.environment_injection)
 
     # Pre-check: estimate react cost and verify creator balance
     from database import get_db

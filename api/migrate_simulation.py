@@ -274,6 +274,13 @@ def migrate():
         cursor.execute('ALTER TABLE simulation_rounds ADD COLUMN planned_prompts TEXT')
         print('  ✅ simulation_rounds.planned_prompts added')
 
+    # Re-read columns after potential addition
+    cursor.execute("PRAGMA table_info(simulation_rounds)")
+    round_columns = [row[1] for row in cursor.fetchall()]
+    if 'environment_injection' not in round_columns:
+        cursor.execute('ALTER TABLE simulation_rounds ADD COLUMN environment_injection TEXT')
+        print('  ✅ simulation_rounds.environment_injection added')
+
     # ==========================================
     # 索引
     # ==========================================
