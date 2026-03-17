@@ -952,8 +952,8 @@
                     url += `&status=${currentFilter}`;
                 }
                 const res = await fetch(url);
-                const sims = await res.json();
-                renderSimulations(sims);
+                const data = await res.json();
+                renderSimulations(data.simulations || []);
             } catch (e) {
                 console.error('Load simulations error:', e);
             }
