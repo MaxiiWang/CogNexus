@@ -388,6 +388,72 @@
         .sim-status-badge.resolved { background: rgba(76, 175, 80, 0.15); color: #66bb6a; }
         .sim-status-badge.settled { background: rgba(76, 175, 80, 0.25); color: #81c784; }
 
+        /* ===== Sim Detail Panel ===== */
+        .sim-dtab {
+            padding: var(--space-sm) var(--space-lg);
+            background: none; border: none;
+            color: var(--text-muted); font-size: 0.88em;
+            font-family: var(--font-sans); cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-fast);
+        }
+        .sim-dtab:hover { color: var(--text-secondary); }
+        .sim-dtab.active { color: #7c99b8; border-bottom-color: #7c99b8; }
+        .sim-dtab-content { display: none; }
+        .sim-dtab-content.active { display: block; }
+
+        .sdp-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: var(--space-xl); }
+        .sdp-block { margin-bottom: var(--space-lg); }
+        .sdp-block h4 { font-size: 0.78em; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-sm); }
+        .sdp-block p { font-size: 0.9em; color: var(--text-secondary); line-height: 1.6; }
+        .sdp-configs { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-sm); }
+        .sdp-config { background: var(--bg-card); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); }
+        .sdp-config .lbl { font-size: 0.72em; color: var(--text-muted); }
+        .sdp-config .val { font-size: 0.88em; color: var(--text-primary); font-weight: 500; }
+        .sdp-actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; padding-top: var(--space-md); border-top: 1px solid var(--border-subtle); margin-top: var(--space-lg); }
+
+        .sdp-p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-md); }
+        .sdp-p-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-md); }
+        .sdp-p-head { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
+        .sdp-p-av { width: 36px; height: 36px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 1em; background: rgba(124,153,184,0.12); color: #7c99b8; flex-shrink: 0; }
+        .sdp-p-name { font-weight: 500; color: var(--text-primary); font-size: 0.92em; }
+        .sdp-p-role { font-size: 0.82em; color: var(--text-muted); margin-bottom: var(--space-sm); line-height: 1.4; }
+        .sdp-scores { display: flex; gap: var(--space-md); }
+        .sdp-score { flex: 1; }
+        .sdp-score .sl { font-size: 0.72em; color: var(--text-muted); margin-bottom: 2px; }
+        .sdp-score .st { height: 4px; background: var(--bg-tertiary); border-radius: 2px; overflow: hidden; }
+        .sdp-score .sf { height: 100%; border-radius: 2px; background: #7c99b8; }
+
+        .sdp-round { position: relative; padding-left: var(--space-xl); padding-bottom: var(--space-lg); border-left: 2px solid var(--border-subtle); margin-left: 8px; }
+        .sdp-round:last-child { border-left-color: transparent; }
+        .sdp-round::before { content: ''; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--border-subtle); border: 2px solid var(--bg-secondary); }
+        .sdp-round.done::before { background: #7c99b8; }
+        .sdp-round.act::before { background: var(--accent-text); box-shadow: 0 0 6px rgba(212,160,84,0.4); }
+        .sdp-rh { display: flex; justify-content: space-between; align-items: center; cursor: pointer; margin-bottom: var(--space-sm); }
+        .sdp-rh:hover .sdp-rt { color: #7c99b8; }
+        .sdp-rt { font-weight: 500; color: var(--text-primary); transition: color var(--transition-fast); }
+        .sdp-rs { font-size: 0.78em; color: var(--text-muted); }
+        .sdp-rxns { display: none; }
+        .sdp-rxns.expanded { display: block; }
+        .sdp-rxn { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--space-md); margin-bottom: var(--space-sm); }
+        .sdp-rxn-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm); }
+        .sdp-rxn-name { font-weight: 500; color: var(--text-primary); font-size: 0.9em; }
+        .sdp-rxn-type { font-size: 0.75em; padding: 2px 8px; border-radius: var(--radius-pill); background: rgba(124,153,184,0.12); color: #7c99b8; }
+        .sdp-rxn-body { font-size: 0.85em; color: var(--text-secondary); line-height: 1.6; }
+        .sdp-rxn-stance { display: inline-block; margin-top: var(--space-sm); padding: 4px 10px; border-radius: var(--radius-sm); font-size: 0.82em; font-weight: 500; background: rgba(124,153,184,0.12); color: #7c99b8; }
+        .sdp-rxn-conf { display: inline-block; margin-left: var(--space-sm); font-size: 0.78em; color: var(--text-muted); }
+        .sdp-agg { margin-top: var(--space-md); padding: var(--space-md); background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); }
+        .sdp-bar { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-xs); }
+        .sdp-bar-l { width: 80px; font-size: 0.82em; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+        .sdp-bar-t { flex: 1; height: 20px; background: var(--bg-tertiary); border-radius: var(--radius-sm); overflow: hidden; }
+        .sdp-bar-f { height: 100%; border-radius: var(--radius-sm); display: flex; align-items: center; padding-left: var(--space-sm); font-size: 0.75em; color: #fff; }
+
+        @media (max-width: 768px) {
+            .sdp-grid { grid-template-columns: 1fr; }
+            .sdp-p-grid { grid-template-columns: 1fr; }
+            #simDetailModal .modal-content { max-width: 100% !important; margin: var(--space-sm); }
+        }
+
         /* ===== Sim Create Form ===== */
         .create-sim-form {
             display: flex;
@@ -905,10 +971,36 @@
         </div>
     </div>
 
+    <!-- Simulation Detail Panel -->
+    <div class="modal" id="simDetailModal" onclick="if(event.target===this)hideSimDetail()">
+        <div class="modal-content" style="max-width:960px;padding:0;overflow:hidden;">
+            <div style="padding:var(--space-xl) var(--space-xl) 0;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                    <div>
+                        <h2 id="simPanelTitle" style="font-family:var(--font-display);font-size:1.3em;color:var(--text-primary);margin-bottom:var(--space-xs);"></h2>
+                        <div id="simPanelMeta" style="font-size:0.85em;color:var(--text-muted);"></div>
+                    </div>
+                    <button onclick="hideSimDetail()" style="background:none;border:none;color:var(--text-muted);font-size:1.5em;cursor:pointer;padding:4px 8px;">&times;</button>
+                </div>
+            </div>
+            <div id="simPanelTabs" style="display:flex;border-bottom:1px solid var(--border-subtle);padding:0 var(--space-xl);margin-top:var(--space-md);">
+                <button class="sim-dtab active" data-tab="overview" onclick="switchSimTab('overview')">概览</button>
+                <button class="sim-dtab" data-tab="participants" onclick="switchSimTab('participants')">参与者</button>
+                <button class="sim-dtab" data-tab="rounds" onclick="switchSimTab('rounds')">轮次 & 结果</button>
+            </div>
+            <div style="padding:var(--space-lg) var(--space-xl) var(--space-xl);max-height:65vh;overflow-y:auto;">
+                <div class="sim-dtab-content active" id="tabOverview"></div>
+                <div class="sim-dtab-content" id="tabParticipants"></div>
+                <div class="sim-dtab-content" id="tabRounds"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
         let resolvingSimId = null;
         let selectedSimOutcome = null;
+        let currentSimDetail = null;
 
         function checkAuth() {
             const token = localStorage.getItem('cog_token');
@@ -1372,7 +1464,7 @@
 
                 list.innerHTML = mySims.map(sim => {
                     const s = sim.status;
-                    let actions = `<button class="btn btn-secondary btn-small" onclick="window.open('/simulation','_blank')">查看</button>`;
+                    let actions = `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">查看</button>`;
 
                     if (s === 'draft') {
                         actions = `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}')">编辑</button>` + actions;
@@ -1530,7 +1622,7 @@
                 });
                 if (res.ok) {
                     showAlert('success', 'Simulation 已删除');
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     const data = await res.json();
                     showAlert('error', data.detail || '删除失败（仅 draft 状态可删除）');
@@ -1630,7 +1722,7 @@
                     showAlert('success', isEdit ? 'Simulation 已更新' : 'Simulation 创建成功');
                     hideModal();
                     editingSimId = null;
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', result.detail || (isEdit ? '更新失败' : '创建失败'));
                 }
@@ -1651,7 +1743,7 @@
                 const data = await res.json();
                 if (res.ok) {
                     showAlert('success', `招募完成: ${data.recruited || 0} 个 Agent 已加入`);
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '招募失败');
                 }
@@ -1672,7 +1764,7 @@
                 if (res.ok) {
                     const method = data.method === 'smart' ? '（智能）' : '';
                     showAlert('success', `招募完成${method}: ${data.total_recruited || 0} 个 Agent 已加入`);
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '智能招募失败');
                 }
@@ -1692,7 +1784,7 @@
                 const data = await res.json();
                 if (res.ok) {
                     showAlert('success', '角色分配完成');
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '分配失败');
                 }
@@ -1717,7 +1809,7 @@
                     } else {
                         showAlert('success', `第${roundNumber}轮执行完成 ✅`);
                     }
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '执行失败');
                 }
@@ -1742,7 +1834,7 @@
                     } else {
                         showAlert('success', `重试成功，第${roundNumber}轮全部完成 ✅`);
                     }
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '重试失败');
                 }
@@ -1762,7 +1854,7 @@
                 const data = await res.json();
                 if (res.ok) {
                     showAlert('success', `第${roundNumber}轮已手动关闭`);
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '关闭失败');
                 }
@@ -1806,7 +1898,7 @@
                 if (res.ok) {
                     showAlert('success', '判定并结算完成');
                     hideModal();
-                    loadMySimulations();
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', data.detail || '判定失败');
                 }
@@ -1883,6 +1975,233 @@
                 }
             });
         })();
+
+        // ==================== Simulation Detail Panel ====================
+
+        function switchSimTab(tab) {
+            document.querySelectorAll('.sim-dtab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.sim-dtab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.sim-dtab[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById(tab === 'overview' ? 'tabOverview' : tab === 'participants' ? 'tabParticipants' : 'tabRounds').classList.add('active');
+        }
+
+        async function openSimDetail(simId) {
+            try {
+                const res = await fetch(`/api/simulations/${simId}`);
+                currentSimDetail = await res.json();
+                document.getElementById('simPanelTitle').textContent = currentSimDetail.title;
+                document.getElementById('simPanelMeta').innerHTML =
+                    `<span class="sim-status-badge ${currentSimDetail.status}">${currentSimDetail.status}</span> &nbsp; 📂 ${esc(currentSimDetail.category)} &nbsp; 🔄 ${currentSimDetail.total_rounds} 轮`;
+                renderSimOverview(currentSimDetail);
+                renderSimParticipants(currentSimDetail);
+                renderSimRounds(currentSimDetail);
+                switchSimTab('overview');
+                document.getElementById('simDetailModal').classList.add('active');
+            } catch (e) {
+                showAlert('error', '加载详情失败');
+            }
+        }
+
+        function hideSimDetail() {
+            document.getElementById('simDetailModal').classList.remove('active');
+            currentSimDetail = null;
+        }
+
+        async function refreshSimDetail() {
+            if (!currentSimDetail) return;
+            try {
+                const res = await fetch(`/api/simulations/${currentSimDetail.simulation_id}`);
+                currentSimDetail = await res.json();
+                document.getElementById('simPanelTitle').textContent = currentSimDetail.title;
+                document.getElementById('simPanelMeta').innerHTML =
+                    `<span class="sim-status-badge ${currentSimDetail.status}">${currentSimDetail.status}</span> &nbsp; 📂 ${esc(currentSimDetail.category)} &nbsp; 🔄 ${currentSimDetail.total_rounds} 轮`;
+                renderSimOverview(currentSimDetail);
+                renderSimParticipants(currentSimDetail);
+                renderSimRounds(currentSimDetail);
+            } catch (e) {}
+        }
+
+        function renderSimOverview(sim) {
+            const s = sim.status;
+            const tags = Array.isArray(sim.tags) ? sim.tags : (() => { try { return JSON.parse(sim.tags || '[]'); } catch { return []; } })();
+            const opts = Array.isArray(sim.outcome_options) ? sim.outcome_options : (() => { try { return JSON.parse(sim.outcome_options || '[]'); } catch { return ['yes','no']; } })();
+
+            let actionsHtml = '';
+            const isOwner = currentUser && sim.created_by === currentUser.user_id;
+            if (isOwner) {
+                const hasP = (sim.participants || []).length > 0;
+                const activeRound = (sim.rounds || []).find(r => r.status === 'active');
+                const pendingRound = (sim.rounds || []).find(r => r.status === 'pending');
+                if (s === 'draft') {
+                    actionsHtml += `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}');hideSimDetail()">✏️ 编辑</button>`;
+                }
+                if (s === 'draft' || s === 'recruiting') {
+                    if (sim.llm_base_url) {
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '🤖 智能招募'}</button>`;
+                    } else {
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '招募'}</button>`;
+                    }
+                    if (hasP && pendingRound) {
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                    }
+                }
+                if (s === 'active') {
+                    if (activeRound) {
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>`;
+                        actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>`;
+                    } else if (pendingRound) {
+                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                    }
+                }
+                if (s === 'closed') {
+                    actionsHtml += `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">⚖ 判定结果</button>`;
+                }
+            }
+
+            document.getElementById('tabOverview').innerHTML = `
+                <div class="sdp-grid">
+                    <div>
+                        <div class="sdp-block">
+                            <h4>问题</h4>
+                            <p>${esc(sim.question)}</p>
+                        </div>
+                        ${sim.description ? `<div class="sdp-block"><h4>描述</h4><p>${esc(sim.description)}</p></div>` : ''}
+                        <div class="sdp-block">
+                            <h4>判定标准</h4>
+                            <p>${esc(sim.resolution_criteria)}</p>
+                        </div>
+                        ${sim.actual_outcome ? `<div class="sdp-block"><h4>最终结果</h4><p style="color:#66bb6a;font-weight:600;">✅ ${esc(sim.actual_outcome)}</p></div>` : ''}
+                        ${tags.length ? `<div class="sdp-block"><h4>标签</h4><div style="display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>` : ''}
+                    </div>
+                    <div>
+                        <div class="sdp-block">
+                            <h4>配置</h4>
+                            <div class="sdp-configs">
+                                <div class="sdp-config"><div class="lbl">轮次</div><div class="val">${sim.total_rounds}</div></div>
+                                <div class="sdp-config"><div class="lbl">Agent</div><div class="val">${(sim.participants||[]).length}/${sim.max_agents}</div></div>
+                                <div class="sdp-config"><div class="lbl">质押</div><div class="val">${sim.stake_per_agent} ATP</div></div>
+                                <div class="sdp-config"><div class="lbl">结果类型</div><div class="val">${sim.outcome_type === 'binary' ? '二元' : '多选'}</div></div>
+                                <div class="sdp-config"><div class="lbl">选项</div><div class="val">${opts.join(' / ')}</div></div>
+                                <div class="sdp-config"><div class="lbl">LLM</div><div class="val">${sim.llm_model ? esc(sim.llm_model) : '未配置'}</div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ${actionsHtml ? `<div class="sdp-actions">${actionsHtml}</div>` : ''}
+            `;
+        }
+
+        function renderSimParticipants(sim) {
+            const ps = sim.participants || [];
+            if (ps.length === 0) {
+                document.getElementById('tabParticipants').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">暂无参与者</p>';
+                return;
+            }
+            document.getElementById('tabParticipants').innerHTML = `<div class="sdp-p-grid">${ps.map(p => {
+                const icon = p.agent_type === 'human' ? '👤' : p.agent_type === 'character' ? '🎭' : '🔮';
+                const rel = (p.relevance_score || 0) * 100;
+                const inf = (p.influence_weight || 0) * 100;
+                return `<div class="sdp-p-card">
+                    <div class="sdp-p-head">
+                        <div class="sdp-p-av">${icon}</div>
+                        <div>
+                            <div class="sdp-p-name">${esc(p.agent_name || p.agent_id)}</div>
+                            <span class="type-badge ${p.agent_type}">${p.agent_type}</span>
+                        </div>
+                    </div>
+                    <div class="sdp-p-role"><strong>${esc(p.role || '未分配')}</strong>${p.role_description ? '<br>' + esc(p.role_description) : ''}</div>
+                    <div class="sdp-scores">
+                        <div class="sdp-score"><div class="sl">相关度 ${rel.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${rel}%"></div></div></div>
+                        <div class="sdp-score"><div class="sl">影响力 ${inf.toFixed(0)}%</div><div class="st"><div class="sf" style="width:${inf}%"></div></div></div>
+                    </div>
+                    ${p.final_stance ? `<div style="margin-top:var(--space-sm);font-size:0.82em;">立场: <span class="sdp-rxn-stance">${esc(p.final_stance)}</span> <span class="sdp-rxn-conf">置信度 ${((p.final_confidence||0)*100).toFixed(0)}%</span></div>` : ''}
+                    ${p.was_correct !== null && p.was_correct !== undefined ? `<div style="margin-top:var(--space-xs);font-size:0.82em;">${p.was_correct ? '✅ 正确' : '❌ 错误'} ${p.reward_amount ? `(${p.reward_amount > 0 ? '+' : ''}${p.reward_amount} ATP)` : ''}</div>` : ''}
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function renderSimRounds(sim) {
+            const rounds = sim.rounds || [];
+            if (rounds.length === 0) {
+                document.getElementById('tabRounds').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">尚未创建轮次</p>';
+                return;
+            }
+
+            document.getElementById('tabRounds').innerHTML = rounds.map(rnd => {
+                const cls = rnd.status === 'closed' ? 'done' : rnd.status === 'active' ? 'act' : '';
+                let aggHtml = '';
+                if (rnd.aggregated_result) {
+                    const agg = typeof rnd.aggregated_result === 'string' ? (() => { try { return JSON.parse(rnd.aggregated_result); } catch { return null; } })() : rnd.aggregated_result;
+                    if (agg && agg.prediction) {
+                        const entries = Object.entries(agg.prediction);
+                        const total = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
+                        const colors = ['#7c99b8', '#d4a054', '#4ecdc4', '#9d8bb8', '#6da89b'];
+                        if (total > 0) {
+                            aggHtml = `<div class="sdp-agg"><div style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-sm);">聚合结果 (${agg.total_agents || 0} 位)</div>` +
+                                entries.map(([k, v], i) => {
+                                    const pct = ((Number(v) / total) * 100).toFixed(1);
+                                    return `<div class="sdp-bar"><span class="sdp-bar-l">${esc(k)}</span><div class="sdp-bar-t"><div class="sdp-bar-f" style="width:${pct}%;background:${colors[i%colors.length]}">${pct}%</div></div></div>`;
+                                }).join('') + '</div>';
+                        }
+                    }
+                }
+                const summary = rnd.result_summary ? `<div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:var(--space-sm);">${esc(rnd.result_summary)}</div>` : '';
+
+                return `<div class="sdp-round ${cls}">
+                    <div class="sdp-rh" onclick="toggleSimRound('${sim.simulation_id}', ${rnd.round_number})">
+                        <span class="sdp-rt">第${rnd.round_number}轮${rnd.title ? ': ' + esc(rnd.title) : ''}</span>
+                        <span class="sdp-rs">${rnd.status}</span>
+                    </div>
+                    ${summary}${aggHtml}
+                    <div class="sdp-rxns" id="sdpRxns${rnd.round_number}"></div>
+                </div>`;
+            }).join('');
+        }
+
+        async function toggleSimRound(simId, roundNumber) {
+            const container = document.getElementById(`sdpRxns${roundNumber}`);
+            if (container.classList.contains('expanded')) {
+                container.classList.remove('expanded');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/reactions`);
+                const data = await res.json();
+                const reactions = data.reactions || [];
+                if (reactions.length === 0) {
+                    container.innerHTML = '<p style="font-size:0.85em;color:var(--text-muted);padding:var(--space-sm) 0;">暂无反应数据</p>';
+                } else {
+                    container.innerHTML = reactions.map(r => {
+                        const body = esc(r.response_text || r.brief_reasoning || '(无回应)');
+                        let kpHtml = '';
+                        if (r.key_points) {
+                            try {
+                                const kp = typeof r.key_points === 'string' ? JSON.parse(r.key_points) : r.key_points;
+                                if (Array.isArray(kp) && kp.length) kpHtml = `<div style="margin-top:var(--space-xs);font-size:0.82em;color:var(--text-muted);">关键点: ${kp.map(esc).join('; ')}</div>`;
+                            } catch {}
+                        }
+                        return `<div class="sdp-rxn">
+                            <div class="sdp-rxn-h">
+                                <span class="sdp-rxn-name">${esc(r.agent_name || r.agent_id)}</span>
+                                <div>
+                                    <span class="sdp-rxn-type">${r.prompt_type || '?'}</span>
+                                    ${r.status === 'failed' ? '<span style="margin-left:var(--space-xs);font-size:0.75em;color:var(--color-danger);">⚠ 失败</span>' : ''}
+                                </div>
+                            </div>
+                            <div class="sdp-rxn-body">${body}</div>
+                            ${kpHtml}
+                            ${r.sentiment ? `<div style="font-size:0.78em;color:var(--text-muted);margin-top:var(--space-xs);">情感: ${esc(r.sentiment)}</div>` : ''}
+                            ${r.stance ? `<span class="sdp-rxn-stance">${esc(r.stance)}</span>` : ''}
+                            ${r.confidence ? `<span class="sdp-rxn-conf">置信度 ${(r.confidence * 100).toFixed(0)}%</span>` : ''}
+                        </div>`;
+                    }).join('');
+                }
+                container.classList.add('expanded');
+            } catch (e) {
+                container.innerHTML = '<p style="color:var(--color-danger);font-size:0.85em;">加载失败</p>';
+                container.classList.add('expanded');
+            }
+        }
 
         // Init
         if (checkAuth()) {
