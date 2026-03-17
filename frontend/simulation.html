@@ -576,59 +576,8 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <nav>
-                <a href="/" class="logo">CogNexus<span class="dot">.</span></a>
-                <div class="nav-links">
-                    <a href="/marketplace">市场</a>
-                    <a href="/simulation" class="active">Simulation</a>
-                    <div class="auth-buttons" id="authButtons">
-                        <a href="/" class="btn btn-primary btn-small">登录 / 注册</a>
-                    </div>
-                    <div class="user-menu" id="userMenu">
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-trigger">
-                                <div class="avatar" id="userAvatar">M</div>
-                                <span class="username" id="username"></span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="user-dropdown-menu">
-                                <div class="user-dropdown-header">
-                                    <div class="name" id="userDisplayName"></div>
-                                    <div class="balance">
-                                        <span class="balance-icon">⚡</span>
-                                        <span class="atp-tooltip" id="atpBalance">0 ATP</span>
-                                    </div>
-                                </div>
-                                <a href="/dashboard" class="user-dropdown-item">
-                                    <span class="icon">📊</span>
-                                    仪表盘
-                                </a>
-                                <a href="/marketplace" class="user-dropdown-item">
-                                    <span class="icon">🏪</span>
-                                    市场
-                                </a>
-                                <a href="/simulation" class="user-dropdown-item">
-                                    <span class="icon">🔮</span>
-                                    Simulation
-                                </a>
-                                <a href="/guide" class="user-dropdown-item">
-                                    <span class="icon">📖</span>
-                                    文档
-                                </a>
-                                <div class="user-dropdown-divider"></div>
-                                <button class="user-dropdown-item danger" onclick="logout()">
-                                    <span class="icon">🚪</span>
-                                    退出登录
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/header.js"></script>
 
     <main>
         <section class="page-header centered">
@@ -693,19 +642,8 @@
         }
 
         function checkAuth() {
-            const token = getToken();
-            const user = getUser();
-
-            if (token && user) {
-                document.getElementById('authButtons').classList.add('hidden');
-                document.getElementById('userMenu').classList.add('active');
-                document.getElementById('username').textContent = user.username;
-                document.getElementById('userDisplayName').textContent = user.username;
-                document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
-                document.getElementById('atpBalance').textContent = `${user.atp_balance} ATP`;
-                return true;
-            }
-            return false;
+            const result = window._headerInitAuth && window._headerInitAuth();
+            return !!result;
         }
 
         function logout() {

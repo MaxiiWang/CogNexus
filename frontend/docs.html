@@ -240,42 +240,8 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <nav>
-                <a href="/" class="logo">CogNexus<span class="dot">.</span></a>
-                <div class="nav-links">
-                    <a href="/marketplace">市场</a>
-                    <a href="/simulation">Simulation</a>
-                    <a href="/guide" class="active">文档</a>
-                    <div class="auth-buttons" id="authButtons">
-                        <a href="/" class="btn btn-primary btn-small">登录 / 注册</a>
-                    </div>
-                    <div class="user-menu" id="userMenu">
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-trigger">
-                                <span class="user-avatar" id="userAvatar">M</span>
-                                <span class="user-name" id="username">User</span>
-                                <span class="dropdown-arrow">▼</span>
-                            </div>
-                            <div class="user-dropdown-menu">
-                                <div class="user-dropdown-header">
-                                    <span class="dropdown-username" id="dropdownUsername">User</span>
-                                    <span class="dropdown-atp">⚡ <span id="atpBalance">0</span> ATP</span>
-                                </div>
-                                <div class="user-dropdown-divider"></div>
-                                <a href="/dashboard" class="user-dropdown-item">📊 仪表盘</a>
-                                <a href="/marketplace" class="user-dropdown-item">🏪 市场</a>
-                                <a href="/guide" class="user-dropdown-item">📖 文档</a>
-                                <div class="user-dropdown-divider"></div>
-                                <a href="#" class="user-dropdown-item logout" onclick="logout()">🚪 退出登录</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/header.js"></script>
 
     <main>
         <div class="container">
@@ -451,19 +417,8 @@
         const API_BASE = '';
 
         function checkAuth() {
-            const token = localStorage.getItem('cog_token');
-            const user = JSON.parse(localStorage.getItem('cog_user') || 'null');
-
-            if (token && user) {
-                document.getElementById('authButtons').classList.add('hidden');
-                document.getElementById('userMenu').classList.add('active');
-                document.getElementById('username').textContent = user.username;
-                document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
-                document.getElementById('dropdownUsername').textContent = user.username;
-                document.getElementById('atpBalance').textContent = user.atp_balance;
-                return true;
-            }
-            return false;
+            const result = window._headerInitAuth && window._headerInitAuth();
+            return !!result;
         }
 
         function logout() {

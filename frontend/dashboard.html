@@ -461,6 +461,45 @@
             gap: var(--space-md);
         }
 
+        .sim-create-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: var(--space-xl);
+        }
+        .sim-create-side {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        .sim-config-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .sim-config-title {
+            font-size: 0.78em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-sm);
+        }
+        .sim-select, .sim-input-sm {
+            width: 100%;
+            padding: 6px 10px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.85em;
+            font-family: var(--font-sans);
+        }
+        .sim-select:focus, .sim-input-sm:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
         .llm-preset-btn {
             padding: 8px 16px;
             border-radius: var(--radius-md);
@@ -573,6 +612,10 @@
             .sim-form-row {
                 grid-template-columns: 1fr;
             }
+
+            .sim-create-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Modal Tip */
@@ -612,52 +655,8 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <nav>
-                <a href="/" class="logo">CogNexus<span class="dot">.</span></a>
-                <div class="nav-links">
-                    <a href="/marketplace">市场</a>
-                    <a href="/simulation">Simulation</a>
-                    <div class="user-menu" id="userMenu">
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-trigger">
-                                <div class="avatar" id="userAvatar">M</div>
-                                <span class="username" id="username"></span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="user-dropdown-menu">
-                                <div class="user-dropdown-header">
-                                    <div class="name" id="userDisplayName"></div>
-                                    <div class="balance">
-                                        <span class="balance-icon">⚡</span>
-                                        <span class="atp-tooltip" id="atpBalance">0 ATP</span>
-                                    </div>
-                                </div>
-                                <a href="/dashboard" class="user-dropdown-item">
-                                    <span class="icon">📊</span>
-                                    仪表盘
-                                </a>
-                                <a href="/marketplace" class="user-dropdown-item">
-                                    <span class="icon">🏪</span>
-                                    市场
-                                </a>
-                                <a href="/guide" class="user-dropdown-item">
-                                    <span class="icon">📖</span>
-                                    文档
-                                </a>
-                                <div class="user-dropdown-divider"></div>
-                                <button class="user-dropdown-item danger" onclick="logout()">
-                                    <span class="icon">🚪</span>
-                                    退出登录
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/header.js"></script>
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
@@ -851,122 +850,116 @@
 
     <!-- Create Simulation Modal -->
     <div class="modal" id="createSimModal">
-        <div class="modal-content" style="max-width: 640px;">
-            <h2>创建 Simulation</h2>
-            <form class="create-sim-form" id="createSimForm" onsubmit="return handleCreateSim(event)">
-                <div class="sim-form-group">
-                    <label>标题 *</label>
-                    <input type="text" name="title" required placeholder="如：AI 是否会在 2027 年通过图灵测试">
-                </div>
-                <div class="sim-form-group">
-                    <label>核心问题 *</label>
-                    <textarea name="question" required placeholder="详细描述需要推演的问题"></textarea>
-                </div>
-                <div class="sim-form-row">
-                    <div class="sim-form-group">
-                        <label>分类 *</label>
-                        <input type="text" name="category" required placeholder="如：AI/科技/经济">
-                    </div>
-                    <div class="sim-form-group">
-                        <label>结果类型</label>
-                        <select name="outcome_type" id="simOutcomeType">
-                            <option value="binary">二元 (Yes/No)</option>
-                            <option value="multi">多选项</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="sim-form-group" id="simOutcomeOptionsGroup" style="display:none;">
-                    <label>结果选项（逗号分隔）</label>
-                    <input type="text" name="outcome_options" placeholder="选项A, 选项B, 选项C">
-                </div>
-                <div class="sim-form-group">
-                    <label>描述</label>
-                    <textarea name="description" placeholder="背景信息、上下文"></textarea>
-                </div>
-                <div class="sim-form-group">
-                    <label>判定标准 *</label>
-                    <textarea name="resolution_criteria" required placeholder="如何确定最终结果"></textarea>
-                </div>
-                <div class="sim-form-row">
-                    <div class="sim-form-group">
-                        <label>标签（逗号分隔）</label>
-                        <input type="text" name="tags" placeholder="AI, 预测, 科技">
-                    </div>
-                    <div class="sim-form-group">
-                        <label>总轮次</label>
-                        <input type="number" name="total_rounds" value="1" min="1" max="10">
-                    </div>
-                </div>
-                <div class="sim-form-row">
-                    <div class="sim-form-group">
-                        <label>最少参与 Agent</label>
-                        <input type="number" name="min_agents" value="3" min="1">
-                    </div>
-                    <div class="sim-form-group">
-                        <label>最多参与 Agent</label>
-                        <input type="number" name="max_agents" value="50" min="1">
-                    </div>
-                </div>
-                <div class="sim-form-group">
-                    <label>每 Agent 质押 (ATP)</label>
-                    <input type="number" name="stake_per_agent" value="5" min="0">
-                </div>
-                <div class="sim-form-group">
-                    <label>模拟模式</label>
-                    <select name="simulation_mode" id="simMode" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
-                        <option value="standard">标准模式（Agent 直接回应）</option>
-                        <option value="monte_carlo">蒙特卡洛模式（少量采样 + 统计外推）</option>
-                    </select>
-                </div>
-                <div id="mcConfigGroup" style="display:none;">
-                    <div class="sim-form-group">
-                        <label>目标模拟人数</label>
-                        <input type="number" name="mc_population" value="100" min="10" max="10000">
-                        <small style="font-size:0.78em;color:var(--text-muted);">实际 LLM 调用约 15-25 次</small>
-                    </div>
-                </div>
-                <div style="border-top:1px solid var(--border-subtle);padding-top:var(--space-md);margin-top:var(--space-md);">
-                    <h3 style="font-size:0.95em;color:var(--text-primary);margin-bottom:var(--space-md);">🤖 LLM 配置（可选）</h3>
-                    <p style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-md);">配置后将使用 AI 智能招募 Agent 并生成模拟策略</p>
-                    <div class="sim-form-group">
-                        <label>选择模型</label>
-                        <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm);margin-bottom:var(--space-md);" id="llmPresets">
-                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPreset(this)">
-                                🌋 豆包 Seed Lite
-                            </button>
-                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPreset(this)">
-                                🌋 豆包 1.5 Pro
-                            </button>
-                            <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectLLMPreset(this)">
-                                ⚙️ 自定义
-                            </button>
-                        </div>
-                    </div>
-                    <div id="llmCustomFields" style="display:none;">
-                        <div class="sim-form-row">
-                            <div class="sim-form-group">
-                                <label>Base URL</label>
-                                <input type="url" name="llm_base_url" placeholder="https://api.openai.com/v1">
-                            </div>
-                            <div class="sim-form-group">
-                                <label>模型</label>
-                                <input type="text" name="llm_model" placeholder="gpt-4o">
-                            </div>
-                        </div>
-                    </div>
-                    <div id="llmApiKeyGroup" style="display:none;">
+        <div class="modal-content" style="max-width:960px;padding:0;overflow:hidden;">
+            <div style="padding:var(--space-xl) var(--space-xl) 0;">
+                <h2 id="createSimTitle" style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
+                <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);" data-i18n="sim.configure">配置多 Agent 推演参数</p>
+            </div>
+            <form class="create-sim-form" id="createSimForm" onsubmit="return handleCreateSim(event)" style="padding:var(--space-lg) var(--space-xl) var(--space-xl);">
+                <div class="sim-create-grid">
+                    <!-- Left Column: Core Config -->
+                    <div class="sim-create-main">
                         <div class="sim-form-group">
-                            <label>API Key</label>
-                            <input type="password" name="llm_api_key" placeholder="输入 API Key...">
-                            <small style="font-size:0.78em;color:var(--text-muted);">密钥将加密存储，仅用于本次 Simulation 的 LLM 调用</small>
+                            <label data-i18n="sim.title">标题 *</label>
+                            <input type="text" name="title" required placeholder="e.g., Will AI pass the Turing test by 2027?">
+                        </div>
+                        <div class="sim-form-group">
+                            <label data-i18n="sim.question">核心问题 *</label>
+                            <textarea name="question" required rows="3" placeholder="Describe the question to simulate"></textarea>
+                        </div>
+                        <div class="sim-form-group">
+                            <label data-i18n="sim.description">描述</label>
+                            <textarea name="description" rows="2" placeholder="Background context"></textarea>
+                        </div>
+                        <div class="sim-form-group">
+                            <label data-i18n="sim.resolution">判定标准 *</label>
+                            <textarea name="resolution_criteria" required rows="2" placeholder="How will the outcome be determined?"></textarea>
                         </div>
                     </div>
-                    <input type="hidden" name="llm_base_url_hidden" value="">
-                    <input type="hidden" name="llm_model_hidden" value="">
+
+                    <!-- Right Column: Settings -->
+                    <div class="sim-create-side">
+                        <!-- Mode -->
+                        <div class="sim-config-section">
+                            <div class="sim-config-title" data-i18n="sim.mode">模式</div>
+                            <select name="simulation_mode" id="simMode" class="sim-select" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
+                                <option value="standard" data-i18n="sim.mode.standard">标准模式</option>
+                                <option value="monte_carlo">🎲 Monte Carlo</option>
+                            </select>
+                            <div id="mcConfigGroup" style="display:none;margin-top:8px;">
+                                <label style="font-size:0.78em;color:var(--text-muted);" data-i18n="sim.target_population">目标模拟人数</label>
+                                <input type="number" name="mc_population" value="100" min="10" max="10000" class="sim-input-sm">
+                                <small style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.llm_calls">实际 LLM 调用约 15-25 次</small>
+                            </div>
+                        </div>
+
+                        <!-- Category & Tags -->
+                        <div class="sim-config-section">
+                            <div class="sim-config-title" data-i18n="sim.classification">分类</div>
+                            <input type="text" name="category" required placeholder="Category" class="sim-input-sm" style="margin-bottom:6px;">
+                            <input type="text" name="tags" placeholder="Tags (comma separated)" class="sim-input-sm">
+                        </div>
+
+                        <!-- Outcome -->
+                        <div class="sim-config-section">
+                            <div class="sim-config-title" data-i18n="sim.outcome">结果类型</div>
+                            <select name="outcome_type" id="simOutcomeType" class="sim-select">
+                                <option value="binary" data-i18n="sim.binary">二元 (Yes/No)</option>
+                                <option value="multi" data-i18n="sim.multi">多选项</option>
+                            </select>
+                            <div id="simOutcomeOptionsGroup" style="display:none;margin-top:6px;">
+                                <input type="text" name="outcome_options" placeholder="Option A, Option B, ..." class="sim-input-sm">
+                            </div>
+                        </div>
+
+                        <!-- Rounds & Agents -->
+                        <div class="sim-config-section">
+                            <div class="sim-config-title" data-i18n="sim.parameters">参数</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                <div>
+                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.rounds">轮次</label>
+                                    <input type="number" name="total_rounds" value="1" min="1" max="10" class="sim-input-sm">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.stake_agent">质押/Agent</label>
+                                    <input type="number" name="stake_per_agent" value="5" min="0" class="sim-input-sm">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.min_agents">最少 Agent</label>
+                                    <input type="number" name="min_agents" value="3" min="1" class="sim-input-sm">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.max_agents">最多 Agent</label>
+                                    <input type="number" name="max_agents" value="50" min="1" class="sim-input-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LLM Config -->
+                        <div class="sim-config-section">
+                            <div class="sim-config-title">🤖 LLM</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="llmPresets">
+                                <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPreset(this)">🌋 Doubao Lite</button>
+                                <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPreset(this)">🌋 Doubao Pro</button>
+                                <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectLLMPreset(this)">⚙️ Custom</button>
+                            </div>
+                            <div id="llmCustomFields" style="display:none;">
+                                <input type="url" name="llm_base_url" placeholder="Base URL" class="sim-input-sm" style="margin-bottom:4px;">
+                                <input type="text" name="llm_model" placeholder="Model" class="sim-input-sm">
+                            </div>
+                            <div id="llmApiKeyGroup" style="display:none;margin-top:6px;">
+                                <input type="password" name="llm_api_key" placeholder="API Key" class="sim-input-sm">
+                            </div>
+                            <input type="hidden" name="llm_base_url_hidden" value="">
+                            <input type="hidden" name="llm_model_hidden" value="">
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
-                    <button type="submit" class="btn btn-primary">创建</button>
+
+                <!-- Bottom actions -->
+                <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);margin-top:var(--space-lg);">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">取消</button>
+                    <button type="submit" class="btn btn-primary" id="createSimSubmitBtn" data-i18n="common.create">创建</button>
                 </div>
             </form>
         </div>
@@ -1035,22 +1028,14 @@
         let currentSimDetail = null;
 
         function checkAuth() {
-            const token = localStorage.getItem('cog_token');
-            const user = JSON.parse(localStorage.getItem('cog_user') || 'null');
-
-            if (!token || !user) {
+            const result = window._headerInitAuth && window._headerInitAuth();
+            if (!result) {
                 document.getElementById('loginPrompt').style.display = 'block';
                 document.getElementById('dashboardContent').style.display = 'none';
                 return false;
             }
-
-            currentUser = user;
-            document.getElementById('username').textContent = user.username;
-            document.getElementById('userDisplayName').textContent = user.username;
-            document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
-            document.getElementById('atpBalance').textContent = `${user.atp_balance} ATP`;
-            document.getElementById('myBalance').textContent = user.atp_balance;
-            document.getElementById('userMenu').classList.add('active');
+            currentUser = result.user;
+            document.getElementById('myBalance').textContent = result.user.atp_balance;
             return true;
         }
 
@@ -1582,8 +1567,8 @@
             document.getElementById('createSimForm').reset();
             document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
             document.getElementById('mcConfigGroup').style.display = 'none';
-            document.querySelector('#createSimModal h2').textContent = '创建 Simulation';
-            document.querySelector('#createSimModal .btn-primary, #createSimModal button[type="submit"]').textContent = '创建';
+            document.getElementById('createSimTitle').textContent = I18N.t('sim.create');
+            document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.create');
             // Reset LLM preset state
             document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('llmCustomFields').style.display = 'none';
@@ -1654,8 +1639,8 @@
                     }
                 }
 
-                document.querySelector('#createSimModal h2').textContent = '编辑 Simulation';
-                try { document.querySelector('#createSimModal button[type="submit"]').textContent = '保存'; } catch(e) {}
+                document.getElementById('createSimTitle').textContent = I18N.t('common.edit') + ' Simulation';
+                document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.save');
                 document.getElementById('createSimModal').classList.add('active');
             } catch (e) {
                 showAlert('error', '加载 Simulation 信息失败');

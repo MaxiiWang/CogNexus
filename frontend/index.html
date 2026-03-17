@@ -319,56 +319,8 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <nav>
-                <div class="logo">CogNexus<span class="dot">.</span></div>
-                <div class="nav-links">
-                    <a href="/marketplace">市场</a>
-                    <a href="/simulation">Simulation</a>
-                    <div class="auth-buttons" id="authButtons">
-                        <button class="btn btn-secondary" onclick="showModal('login')">登录</button>
-                        <button class="btn btn-primary" onclick="showModal('register')">注册</button>
-                    </div>
-                    <div class="user-menu" id="userMenu">
-                        <div class="user-dropdown">
-                            <div class="user-dropdown-trigger">
-                                <div class="avatar" id="userAvatar">M</div>
-                                <span class="username" id="username"></span>
-                                <span class="chevron">▼</span>
-                            </div>
-                            <div class="user-dropdown-menu">
-                                <div class="user-dropdown-header">
-                                    <div class="name" id="userDisplayName"></div>
-                                    <div class="balance">
-                                        <span class="balance-icon">⚡</span>
-                                        <span class="atp-tooltip" id="atpBalance">0 ATP</span>
-                                    </div>
-                                </div>
-                                <a href="/dashboard" class="user-dropdown-item">
-                                    <span class="icon">📊</span>
-                                    仪表盘
-                                </a>
-                                <a href="/marketplace" class="user-dropdown-item">
-                                    <span class="icon">🏪</span>
-                                    市场
-                                </a>
-                                <a href="/guide" class="user-dropdown-item">
-                                    <span class="icon">📖</span>
-                                    文档
-                                </a>
-                                <div class="user-dropdown-divider"></div>
-                                <button class="user-dropdown-item danger" onclick="logout()">
-                                    <span class="icon">🚪</span>
-                                    退出登录
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </nav>
-        </div>
-    </header>
+    <script src="/static/js/i18n.js"></script>
+    <script src="/static/js/header.js"></script>
 
     <main>
         <section class="hero">
@@ -526,17 +478,8 @@
 
         // 检查登录状态
         function checkAuth() {
-            const token = localStorage.getItem('cog_token');
-            const user = JSON.parse(localStorage.getItem('cog_user') || 'null');
-
-            if (token && user) {
-                document.getElementById('authButtons').classList.add('hidden');
-                document.getElementById('userMenu').classList.add('active');
-                document.getElementById('username').textContent = user.username;
-                document.getElementById('userDisplayName').textContent = user.username;
-                document.getElementById('userAvatar').textContent = user.username.charAt(0).toUpperCase();
-                document.getElementById('atpBalance').textContent = `${user.atp_balance} ATP`;
-            }
+            const result = window._headerInitAuth && window._headerInitAuth();
+            return !!result;
         }
 
         // 加载统计
@@ -688,6 +631,12 @@
                 }
             });
         })();
+
+        // Override header auth buttons for index.html (has login/register modals)
+        const loginBtn = document.getElementById('headerLoginBtn');
+        if (loginBtn) { loginBtn.href = '#'; loginBtn.onclick = (e) => { e.preventDefault(); showModal('login'); }; }
+        const regBtn = document.getElementById('headerRegisterBtn');
+        if (regBtn) { regBtn.href = '#'; regBtn.onclick = (e) => { e.preventDefault(); showModal('register'); }; }
 
         // 初始化
         checkAuth();
