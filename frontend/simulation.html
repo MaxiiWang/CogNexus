@@ -584,52 +584,6 @@
             color: var(--accent-text);
         }
 
-        /* ===== Create Modal ===== */
-        .create-form {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-md);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--space-md);
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 0.82em;
-            color: var(--text-muted);
-            margin-bottom: var(--space-xs);
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 8px 12px;
-            background: var(--bg-input);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            color: var(--text-primary);
-            font-size: 0.88em;
-            font-family: var(--font-body);
-            transition: border-color var(--transition-fast);
-        }
-
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--sim-primary);
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
         /* ===== Empty State ===== */
         .empty-state {
             text-align: center;
@@ -643,36 +597,9 @@
             opacity: 0.5;
         }
 
-        /* ===== Resolve Modal ===== */
-        .outcome-option {
-            display: block;
-            padding: var(--space-sm) var(--space-md);
-            margin-bottom: var(--space-xs);
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            font-size: 0.88em;
-            color: var(--text-secondary);
-        }
-
-        .outcome-option:hover {
-            border-color: var(--sim-primary);
-        }
-
-        .outcome-option.selected {
-            border-color: var(--sim-primary);
-            background: var(--sim-primary-muted);
-            color: var(--sim-primary);
-        }
-
         /* ===== Responsive ===== */
         @media (max-width: 768px) {
             .sim-grid {
-                grid-template-columns: 1fr;
-            }
-            .form-row {
                 grid-template-columns: 1fr;
             }
             .sim-detail-overlay {
@@ -759,7 +686,6 @@
                     <button class="filter-btn" data-status="resolved">已判定</button>
                     <button class="filter-btn" data-status="settled">已结算</button>
                 </div>
-                <button class="btn-sim" onclick="showCreateModal()">+ 创建 Simulation</button>
             </div>
 
             <!-- Simulation Grid -->
@@ -770,7 +696,7 @@
             <div class="empty-state" id="emptyState" style="display: none;">
                 <div class="empty-state-icon">🔮</div>
                 <h3>暂无 Simulation</h3>
-                <p>创建第一个 Simulation 推演</p>
+                <p>暂时还没有推演数据</p>
             </div>
         </section>
 
@@ -807,94 +733,11 @@
         </div>
     </div>
 
-    <!-- Create Modal -->
-    <div class="modal" id="createModal">
-        <div class="modal-content" style="max-width: 640px;">
-            <h2>创建 Simulation</h2>
-            <form class="create-form" id="createForm" onsubmit="return handleCreate(event)">
-                <div class="form-group">
-                    <label>标题 *</label>
-                    <input type="text" name="title" required placeholder="如：AI 是否会在 2027 年通过图灵测试">
-                </div>
-                <div class="form-group">
-                    <label>核心问题 *</label>
-                    <textarea name="question" required placeholder="详细描述需要推演的问题"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>分类 *</label>
-                        <input type="text" name="category" required placeholder="如：AI/科技/经济">
-                    </div>
-                    <div class="form-group">
-                        <label>结果类型</label>
-                        <select name="outcome_type">
-                            <option value="binary">二元 (Yes/No)</option>
-                            <option value="multi">多选项</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-group" id="outcomeOptionsGroup" style="display:none;">
-                    <label>结果选项（逗号分隔）</label>
-                    <input type="text" name="outcome_options" placeholder="选项A, 选项B, 选项C">
-                </div>
-                <div class="form-group">
-                    <label>描述</label>
-                    <textarea name="description" placeholder="背景信息、上下文"></textarea>
-                </div>
-                <div class="form-group">
-                    <label>判定标准 *</label>
-                    <textarea name="resolution_criteria" required placeholder="如何确定最终结果"></textarea>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>标签（逗号分隔）</label>
-                        <input type="text" name="tags" placeholder="AI, 预测, 科技">
-                    </div>
-                    <div class="form-group">
-                        <label>总轮次</label>
-                        <input type="number" name="total_rounds" value="1" min="1" max="10">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>最少参与 Agent</label>
-                        <input type="number" name="min_agents" value="3" min="1">
-                    </div>
-                    <div class="form-group">
-                        <label>最多参与 Agent</label>
-                        <input type="number" name="max_agents" value="50" min="1">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>每 Agent 质押 (ATP)</label>
-                    <input type="number" name="stake_per_agent" value="5" min="0">
-                </div>
-                <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" onclick="hideCreateModal()">取消</button>
-                    <button type="submit" class="btn-sim">创建</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Resolve Modal -->
-    <div class="modal" id="resolveModal">
-        <div class="modal-content" style="max-width: 440px;">
-            <h2>判定结果</h2>
-            <p style="font-size:0.88em; color:var(--text-secondary); margin-bottom:var(--space-md);">选择最终结果：</p>
-            <div id="resolveOptions"></div>
-            <div class="modal-buttons" style="margin-top:var(--space-lg);">
-                <button class="btn btn-secondary" onclick="hideResolveModal()">取消</button>
-                <button class="btn-sim" onclick="confirmResolve()">确认判定</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         const API = '';
         let currentFilter = 'all';
         let currentDetailId = null;
-        let selectedOutcome = null;
 
         // ==================== Auth ====================
 
@@ -904,11 +747,6 @@
 
         function getUser() {
             return JSON.parse(localStorage.getItem('cog_user') || 'null');
-        }
-
-        function authHeaders() {
-            const token = getToken();
-            return token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
         }
 
         function checkAuth() {
@@ -1017,8 +855,6 @@
         }
 
         function renderDetail(sim) {
-            const user = getUser();
-            const isOwner = user && sim.created_by === user.user_id;
             const options = parseOptions(sim.outcome_options);
             const tags = parseTags(sim.tags);
 
@@ -1038,29 +874,9 @@
                 ${tags.length ? `<div style="margin-top:var(--space-sm);display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="badge badge-scope">${esc(t)}</span>`).join('')}</div>` : ''}
             `;
 
-            // Actions (only for owner)
-            let actionsHtml = '';
-            if (isOwner) {
-                const s = sim.status;
-                actionsHtml += `<button class="btn-action" onclick="doRecruit('${sim.simulation_id}')" ${s !== 'draft' && s !== 'recruiting' ? 'disabled' : ''}>🎯 招募 Agent</button>`;
-                actionsHtml += `<button class="btn-action" onclick="doAssignRoles('${sim.simulation_id}')" ${!sim.participants || sim.participants.length === 0 ? 'disabled' : ''}>🎭 分配角色</button>`;
-
-                // Run round buttons
-                if (sim.rounds) {
-                    for (const rnd of sim.rounds) {
-                        if (rnd.status !== 'closed') {
-                            actionsHtml += `<button class="btn-action" onclick="doRunRound('${sim.simulation_id}', ${rnd.round_number})">▶ 执行第${rnd.round_number}轮</button>`;
-                            break;
-                        }
-                    }
-                }
-
-                if (s === 'closed' || s === 'resolved') {
-                    actionsHtml += `<button class="btn-action" onclick="showResolveModal('${sim.simulation_id}')">⚖ 判定结果</button>`;
-                }
-            }
-            document.getElementById('detailActions').innerHTML = actionsHtml;
-            document.getElementById('detailActions').style.display = actionsHtml ? '' : 'none';
+            // Detail is read-only, no action buttons
+            document.getElementById('detailActions').innerHTML = '';
+            document.getElementById('detailActions').style.display = 'none';
 
             // Body
             let bodyHtml = '';
@@ -1223,175 +1039,6 @@
                     ${r.owner_disputed ? '<span style="margin-left:var(--space-sm);font-size:0.75em;color:var(--status-danger);">⚠ 已争议</span>' : ''}
                 </div>`;
             }).join('');
-        }
-
-        // ==================== Actions ====================
-
-        async function doRecruit(simId) {
-            if (!getToken()) { showAlert('error', '请先登录'); return; }
-            try {
-                const res = await fetch(`${API}/api/simulations/${simId}/recruit`, {
-                    method: 'POST', headers: authHeaders()
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showAlert('success', `招募完成: ${data.recruited || 0} 个 Agent 已加入`);
-                    openDetail(simId);
-                } else {
-                    showAlert('error', data.detail || '招募失败');
-                }
-            } catch (e) {
-                showAlert('error', '网络错误');
-            }
-        }
-
-        async function doAssignRoles(simId) {
-            if (!getToken()) { showAlert('error', '请先登录'); return; }
-            try {
-                const res = await fetch(`${API}/api/simulations/${simId}/assign-roles`, {
-                    method: 'POST', headers: authHeaders()
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showAlert('success', '角色分配完成');
-                    openDetail(simId);
-                } else {
-                    showAlert('error', data.detail || '分配失败');
-                }
-            } catch (e) {
-                showAlert('error', '网络错误');
-            }
-        }
-
-        async function doRunRound(simId, roundNumber) {
-            if (!getToken()) { showAlert('error', '请先登录'); return; }
-            try {
-                showAlert('success', `正在执行第${roundNumber}轮...`);
-                const res = await fetch(`${API}/api/simulations/${simId}/rounds/${roundNumber}/run`, {
-                    method: 'POST', headers: authHeaders()
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showAlert('success', `第${roundNumber}轮执行完成`);
-                    openDetail(simId);
-                } else {
-                    showAlert('error', data.detail || '执行失败');
-                }
-            } catch (e) {
-                showAlert('error', '网络错误');
-            }
-        }
-
-        // ==================== Resolve ====================
-
-        function showResolveModal(simId) {
-            currentDetailId = simId;
-            selectedOutcome = null;
-
-            // Get options from the detail header
-            fetch(`${API}/api/simulations/${simId}`)
-                .then(r => r.json())
-                .then(sim => {
-                    const options = parseOptions(sim.outcome_options);
-                    document.getElementById('resolveOptions').innerHTML = options.map(opt => `
-                        <div class="outcome-option" onclick="selectOutcome(this, '${esc(opt)}')">${esc(opt)}</div>
-                    `).join('');
-                    document.getElementById('resolveModal').classList.add('active');
-                });
-        }
-
-        function hideResolveModal() {
-            document.getElementById('resolveModal').classList.remove('active');
-            selectedOutcome = null;
-        }
-
-        function selectOutcome(el, outcome) {
-            document.querySelectorAll('.outcome-option').forEach(o => o.classList.remove('selected'));
-            el.classList.add('selected');
-            selectedOutcome = outcome;
-        }
-
-        async function confirmResolve() {
-            if (!selectedOutcome) { showAlert('error', '请选择结果'); return; }
-            try {
-                const res = await fetch(`${API}/api/simulations/${currentDetailId}/resolve`, {
-                    method: 'POST',
-                    headers: authHeaders(),
-                    body: JSON.stringify({ actual_outcome: selectedOutcome })
-                });
-                const data = await res.json();
-                if (res.ok) {
-                    showAlert('success', '判定并结算完成');
-                    hideResolveModal();
-                    openDetail(currentDetailId);
-                    loadSimulations();
-                    loadLeaderboard();
-                } else {
-                    showAlert('error', data.detail || '判定失败');
-                }
-            } catch (e) {
-                showAlert('error', '网络错误');
-            }
-        }
-
-        // ==================== Create ====================
-
-        function showCreateModal() {
-            if (!getToken()) { showAlert('error', '请先登录'); return; }
-            document.getElementById('createModal').classList.add('active');
-        }
-
-        function hideCreateModal() {
-            document.getElementById('createModal').classList.remove('active');
-            document.getElementById('createForm').reset();
-        }
-
-        // Toggle outcome options visibility
-        document.querySelector('select[name="outcome_type"]').addEventListener('change', function() {
-            document.getElementById('outcomeOptionsGroup').style.display = this.value === 'multi' ? '' : 'none';
-        });
-
-        async function handleCreate(e) {
-            e.preventDefault();
-            const form = e.target;
-            const data = {
-                title: form.title.value,
-                question: form.question.value,
-                category: form.category.value,
-                description: form.description.value,
-                resolution_criteria: form.resolution_criteria.value,
-                outcome_type: form.outcome_type.value,
-                total_rounds: parseInt(form.total_rounds.value) || 1,
-                min_agents: parseInt(form.min_agents.value) || 3,
-                max_agents: parseInt(form.max_agents.value) || 50,
-                stake_per_agent: parseInt(form.stake_per_agent.value) || 5,
-                tags: form.tags.value ? form.tags.value.split(',').map(s => s.trim()).filter(Boolean) : [],
-                outcome_options: form.outcome_type.value === 'multi' && form.outcome_options.value
-                    ? form.outcome_options.value.split(',').map(s => s.trim()).filter(Boolean)
-                    : ['yes', 'no']
-            };
-
-            try {
-                const res = await fetch(`${API}/api/simulations`, {
-                    method: 'POST',
-                    headers: authHeaders(),
-                    body: JSON.stringify(data)
-                });
-                const result = await res.json();
-                if (res.ok) {
-                    showAlert('success', 'Simulation 创建成功');
-                    hideCreateModal();
-                    loadSimulations();
-                    if (result.simulation_id) {
-                        setTimeout(() => openDetail(result.simulation_id), 500);
-                    }
-                } else {
-                    showAlert('error', result.detail || '创建失败');
-                }
-            } catch (e) {
-                showAlert('error', '网络错误');
-            }
-            return false;
         }
 
         // ==================== Leaderboard ====================

@@ -18,7 +18,7 @@
         /* ===== Dashboard Grid ===== */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr;
+            grid-template-columns: repeat(4, 1fr);
             gap: var(--space-lg);
             margin-bottom: var(--space-xl);
         }
@@ -328,9 +328,139 @@
             display: block;
         }
 
+        /* ===== Simulation Management ===== */
+        .sim-manage-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid #7c99b8;
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--space-md);
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-sm), var(--shadow-inset);
+        }
+
+        .sim-manage-card:hover {
+            border-color: rgba(124, 153, 184, 0.5);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .sim-manage-card-info h4 {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 0.95em;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .sim-manage-card-info .sim-meta {
+            color: var(--text-muted);
+            font-size: 0.82em;
+            line-height: 1.5;
+        }
+
+        .sim-manage-actions {
+            display: flex;
+            gap: var(--space-sm);
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .sim-status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            font-size: 0.72em;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .sim-status-badge.draft { background: rgba(107, 102, 94, 0.2); color: var(--text-muted); }
+        .sim-status-badge.recruiting { background: rgba(212, 160, 84, 0.15); color: var(--accent-text); }
+        .sim-status-badge.active { background: rgba(78, 205, 196, 0.15); color: var(--market-teal); }
+        .sim-status-badge.closed { background: rgba(124, 153, 184, 0.15); color: #7c99b8; }
+        .sim-status-badge.resolved { background: rgba(76, 175, 80, 0.15); color: #66bb6a; }
+        .sim-status-badge.settled { background: rgba(76, 175, 80, 0.25); color: #81c784; }
+
+        /* ===== Sim Create Form ===== */
+        .create-sim-form {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+
+        .sim-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+        }
+
+        .sim-form-group label {
+            display: block;
+            font-size: 0.82em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xs);
+        }
+
+        .sim-form-group input,
+        .sim-form-group select,
+        .sim-form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-input, var(--bg-surface));
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.88em;
+            font-family: var(--font-body);
+            transition: border-color var(--transition-fast);
+        }
+
+        .sim-form-group input:focus,
+        .sim-form-group select:focus,
+        .sim-form-group textarea:focus {
+            outline: none;
+            border-color: #7c99b8;
+        }
+
+        .sim-form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* ===== Resolve Modal ===== */
+        .outcome-option {
+            display: block;
+            padding: var(--space-sm) var(--space-md);
+            margin-bottom: var(--space-xs);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-size: 0.88em;
+            color: var(--text-secondary);
+        }
+
+        .outcome-option:hover {
+            border-color: #7c99b8;
+        }
+
+        .outcome-option.selected {
+            border-color: #7c99b8;
+            background: rgba(124, 153, 184, 0.12);
+            color: #7c99b8;
+        }
+
         @media (max-width: 768px) {
             .dashboard-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .agent-card {
@@ -340,6 +470,19 @@
 
             .agent-card-actions {
                 margin-top: var(--space-sm);
+            }
+
+            .sim-manage-card {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .sim-manage-actions {
+                margin-top: var(--space-sm);
+            }
+
+            .sim-form-row {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -453,6 +596,10 @@
                     <div class="stat-value" id="myTokens">0</div>
                     <div class="stat-label">购买的 Token</div>
                 </div>
+                <div class="stat-card animate-in animate-in-delay-4">
+                    <div class="stat-value" id="mySimCount">0</div>
+                    <div class="stat-label">我的 Simulation</div>
+                </div>
             </div>
 
             <section class="section animate-in animate-in-delay-3">
@@ -471,6 +618,16 @@
                 </div>
                 <div class="card-list" id="tokensList">
                     <div class="empty">暂无购买记录</div>
+                </div>
+            </section>
+
+            <section class="section animate-in animate-in-delay-5">
+                <div class="section-header">
+                    <h2>我的 Simulation</h2>
+                    <button class="btn btn-primary btn-small" onclick="showCreateSim()">+ 创建 Simulation</button>
+                </div>
+                <div class="card-list" id="simsList">
+                    <div class="empty">暂无 Simulation，点击上方按钮创建</div>
                 </div>
             </section>
         </div>
@@ -603,8 +760,93 @@
         </div>
     </div>
 
+    <!-- Create Simulation Modal -->
+    <div class="modal" id="createSimModal">
+        <div class="modal-content" style="max-width: 640px;">
+            <h2>创建 Simulation</h2>
+            <form class="create-sim-form" id="createSimForm" onsubmit="return handleCreateSim(event)">
+                <div class="sim-form-group">
+                    <label>标题 *</label>
+                    <input type="text" name="title" required placeholder="如：AI 是否会在 2027 年通过图灵测试">
+                </div>
+                <div class="sim-form-group">
+                    <label>核心问题 *</label>
+                    <textarea name="question" required placeholder="详细描述需要推演的问题"></textarea>
+                </div>
+                <div class="sim-form-row">
+                    <div class="sim-form-group">
+                        <label>分类 *</label>
+                        <input type="text" name="category" required placeholder="如：AI/科技/经济">
+                    </div>
+                    <div class="sim-form-group">
+                        <label>结果类型</label>
+                        <select name="outcome_type" id="simOutcomeType">
+                            <option value="binary">二元 (Yes/No)</option>
+                            <option value="multi">多选项</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="sim-form-group" id="simOutcomeOptionsGroup" style="display:none;">
+                    <label>结果选项（逗号分隔）</label>
+                    <input type="text" name="outcome_options" placeholder="选项A, 选项B, 选项C">
+                </div>
+                <div class="sim-form-group">
+                    <label>描述</label>
+                    <textarea name="description" placeholder="背景信息、上下文"></textarea>
+                </div>
+                <div class="sim-form-group">
+                    <label>判定标准 *</label>
+                    <textarea name="resolution_criteria" required placeholder="如何确定最终结果"></textarea>
+                </div>
+                <div class="sim-form-row">
+                    <div class="sim-form-group">
+                        <label>标签（逗号分隔）</label>
+                        <input type="text" name="tags" placeholder="AI, 预测, 科技">
+                    </div>
+                    <div class="sim-form-group">
+                        <label>总轮次</label>
+                        <input type="number" name="total_rounds" value="1" min="1" max="10">
+                    </div>
+                </div>
+                <div class="sim-form-row">
+                    <div class="sim-form-group">
+                        <label>最少参与 Agent</label>
+                        <input type="number" name="min_agents" value="3" min="1">
+                    </div>
+                    <div class="sim-form-group">
+                        <label>最多参与 Agent</label>
+                        <input type="number" name="max_agents" value="50" min="1">
+                    </div>
+                </div>
+                <div class="sim-form-group">
+                    <label>每 Agent 质押 (ATP)</label>
+                    <input type="number" name="stake_per_agent" value="5" min="0">
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">创建</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resolve Simulation Modal -->
+    <div class="modal" id="resolveSimModal">
+        <div class="modal-content" style="max-width: 440px;">
+            <h2>判定结果</h2>
+            <p style="font-size:0.88em; color:var(--text-secondary); margin-bottom:var(--space-md);">选择最终结果：</p>
+            <div id="resolveSimOptions"></div>
+            <div class="modal-buttons" style="margin-top:var(--space-lg);">
+                <button class="btn btn-secondary" onclick="hideModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmResolveSim()">确认判定</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentUser = null;
+        let resolvingSimId = null;
+        let selectedSimOutcome = null;
 
         function checkAuth() {
             const token = localStorage.getItem('cog_token');
@@ -1041,6 +1283,228 @@
             }
         }
 
+        // ==================== Simulation Management ====================
+
+        async function loadMySimulations() {
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch('/api/simulations?limit=100');
+                const data = await res.json();
+                const allSims = data.simulations || [];
+                const mySims = allSims.filter(s => s.created_by === currentUser.user_id);
+                document.getElementById('mySimCount').textContent = mySims.length;
+
+                const list = document.getElementById('simsList');
+                if (mySims.length === 0) {
+                    list.innerHTML = '<div class="empty">暂无 Simulation，点击上方按钮创建</div>';
+                    return;
+                }
+
+                list.innerHTML = mySims.map(sim => {
+                    const s = sim.status;
+                    let actions = `<button class="btn btn-secondary btn-small" onclick="window.open('/simulation','_blank')">查看</button>`;
+
+                    if (s === 'draft' || s === 'recruiting') {
+                        actions = `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">招募</button>` + actions;
+                    } else if (s === 'active') {
+                        const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
+                        if (nextRound) {
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">执行第${nextRound.round_number}轮</button>` + actions;
+                        }
+                    } else if (s === 'closed') {
+                        actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">判定结果</button>` + actions;
+                    }
+
+                    return `
+                    <div class="sim-manage-card">
+                        <div class="sim-manage-card-info">
+                            <h4>
+                                ${esc(sim.title)}
+                                <span class="sim-status-badge ${s}">${s}</span>
+                            </h4>
+                            <div class="sim-meta">
+                                👥 ${sim.current_agents || 0}/${sim.max_agents} Agent &middot;
+                                🔄 第 ${sim.current_round || 0}/${sim.total_rounds} 轮
+                            </div>
+                        </div>
+                        <div class="sim-manage-actions">
+                            ${actions}
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Failed to load simulations:', e);
+            }
+        }
+
+        function esc(str) {
+            if (!str) return '';
+            const d = document.createElement('div');
+            d.textContent = String(str);
+            return d.innerHTML;
+        }
+
+        function showCreateSim() {
+            document.getElementById('createSimForm').reset();
+            document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
+            document.getElementById('createSimModal').classList.add('active');
+        }
+
+        document.getElementById('simOutcomeType').addEventListener('change', function() {
+            document.getElementById('simOutcomeOptionsGroup').style.display = this.value === 'multi' ? '' : 'none';
+        });
+
+        async function handleCreateSim(e) {
+            e.preventDefault();
+            const form = e.target;
+            const token = localStorage.getItem('cog_token');
+            const payload = {
+                title: form.title.value,
+                question: form.question.value,
+                category: form.category.value,
+                description: form.description.value,
+                resolution_criteria: form.resolution_criteria.value,
+                outcome_type: form.outcome_type.value,
+                total_rounds: parseInt(form.total_rounds.value) || 1,
+                min_agents: parseInt(form.min_agents.value) || 3,
+                max_agents: parseInt(form.max_agents.value) || 50,
+                stake_per_agent: parseInt(form.stake_per_agent.value) || 5,
+                tags: form.tags.value ? form.tags.value.split(',').map(s => s.trim()).filter(Boolean) : [],
+                outcome_options: form.outcome_type.value === 'multi' && form.outcome_options.value
+                    ? form.outcome_options.value.split(',').map(s => s.trim()).filter(Boolean)
+                    : ['yes', 'no']
+            };
+
+            try {
+                const res = await fetch('/api/simulations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    showAlert('success', 'Simulation 创建成功');
+                    hideModal();
+                    loadMySimulations();
+                } else {
+                    showAlert('error', result.detail || '创建失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+            return false;
+        }
+
+        async function doRecruitSim(simId) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', '正在执行招募...');
+            try {
+                const res = await fetch(`/api/simulations/${simId}/recruit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('success', `招募完成: ${data.recruited || 0} 个 Agent 已加入`);
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '招募失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function doAssignRolesSim(simId) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', '正在分配角色...');
+            try {
+                const res = await fetch(`/api/simulations/${simId}/assign-roles`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('success', '角色分配完成');
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '分配失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function doRunRoundSim(simId, roundNumber) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', `正在执行第${roundNumber}轮...`);
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/run`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('success', `第${roundNumber}轮执行完成`);
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '执行失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function showResolveSim(simId) {
+            resolvingSimId = simId;
+            selectedSimOutcome = null;
+            try {
+                const res = await fetch(`/api/simulations/${simId}`);
+                const sim = await res.json();
+                const options = parseSimOptions(sim.outcome_options);
+                document.getElementById('resolveSimOptions').innerHTML = options.map(opt => `
+                    <div class="outcome-option" onclick="selectSimOutcome(this, '${esc(opt)}')">${esc(opt)}</div>
+                `).join('');
+                document.getElementById('resolveSimModal').classList.add('active');
+            } catch (e) {
+                showAlert('error', '加载失败');
+            }
+        }
+
+        function selectSimOutcome(el, outcome) {
+            document.querySelectorAll('#resolveSimOptions .outcome-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedSimOutcome = outcome;
+        }
+
+        async function confirmResolveSim() {
+            if (!selectedSimOutcome) { showAlert('error', '请选择结果'); return; }
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch(`/api/simulations/${resolvingSimId}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ actual_outcome: selectedSimOutcome })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showAlert('success', '判定并结算完成');
+                    hideModal();
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '判定失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        function parseSimOptions(opts) {
+            if (!opts) return ['yes', 'no'];
+            if (Array.isArray(opts)) return opts;
+            try { return JSON.parse(opts); } catch { return ['yes', 'no']; }
+        }
+
         function logout() {
             localStorage.removeItem('cog_token');
             localStorage.removeItem('cog_user');
@@ -1108,6 +1572,7 @@
         if (checkAuth()) {
             loadMyAgents();
             loadMyTokens();
+            loadMySimulations();
         }
     </script>
 </body>
