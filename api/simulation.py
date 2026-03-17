@@ -1084,7 +1084,7 @@ async def collect_single_reaction(
     simulation: Dict,
     rnd: Dict,
     timeout: int = 120,
-    llm_fallback: bool = True
+    llm_fallback: bool = False
 ) -> Dict:
     """
     向单个 Agent 的 Cogmate 发起 React 请求
