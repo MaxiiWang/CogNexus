@@ -16,6 +16,7 @@ from simulation import (
     aggregate_round, settle_simulation,
     dispute_reaction, get_leaderboard,
     evaluate_agent_qualification,
+    smart_recruit,
     llm_call, LLM_ENABLED
 )
 from auth import verify_token
@@ -59,6 +60,9 @@ class SimulationCreate(BaseModel):
     max_agents: int = 50
     stake_per_agent: int = 5
     round_titles: List[str] = []
+    llm_base_url: str = None
+    llm_api_key: str = None  # 明文传入，后端加密存储
+    llm_model: str = None
 
 
 class SimulationUpdate(BaseModel):
@@ -134,6 +138,19 @@ async def api_create_simulation(
         stake_per_agent=data.stake_per_agent,
         round_titles=data.round_titles
     )
+
+    # 如果有 LLM 配置则加密存储
+    if data.llm_api_key:
+        from crypto_utils import encrypt_api_key
+        from database import get_db
+        conn = get_db()
+        conn.execute(
+            'UPDATE simulations SET llm_base_url=?, llm_api_key_enc=?, llm_model=? WHERE simulation_id=?',
+            (data.llm_base_url, encrypt_api_key(data.llm_api_key), data.llm_model, result['simulation_id'])
+        )
+        conn.commit()
+        conn.close()
+
     return result
 
 
@@ -222,6 +239,28 @@ async def api_recruit(
         raise HTTPException(400, f"当前状态 {sim['status']} 不支持招募")
 
     result = await recruit_agents(simulation_id)
+    return result
+
+
+@router.post("/{simulation_id}/smart-recruit")
+async def api_smart_recruit(
+    simulation_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """智能招募 Agent（使用 Simulation 配置的 LLM）"""
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+    if sim["status"] not in ("draft", "recruiting"):
+        raise HTTPException(400, f"当前状态 {sim['status']} 不支持招募")
+
+    result = await smart_recruit(simulation_id)
+
+    if "error" in result and result["error"] != "simulation_not_found":
+        raise HTTPException(400, result.get("error", "招募失败"))
+
     return result
 
 

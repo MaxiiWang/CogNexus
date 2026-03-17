@@ -548,42 +548,6 @@
             flex-shrink: 0;
         }
 
-        /* ===== Leaderboard ===== */
-        .leaderboard-section {
-            margin-top: var(--space-2xl);
-        }
-
-        .leaderboard-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .leaderboard-table th {
-            text-align: left;
-            padding: var(--space-sm) var(--space-md);
-            font-size: 0.78em;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .leaderboard-table td {
-            padding: var(--space-sm) var(--space-md);
-            font-size: 0.85em;
-            color: var(--text-secondary);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .leaderboard-table tr:hover td {
-            background: var(--bg-hover);
-        }
-
-        .leaderboard-rank {
-            font-weight: 600;
-            color: var(--accent-text);
-        }
-
         /* ===== Empty State ===== */
         .empty-state {
             text-align: center;
@@ -670,7 +634,7 @@
         <section class="page-header centered">
             <div class="container">
                 <h1 class="animate-in">Simulation 中心</h1>
-                <p class="animate-in animate-in-delay-1">多角色 Agent 推演与预测</p>
+                <p class="animate-in animate-in-delay-1">浏览所有 Simulation 推演的进度和结果</p>
             </div>
         </section>
 
@@ -700,27 +664,6 @@
             </div>
         </section>
 
-        <!-- Leaderboard -->
-        <section class="container leaderboard-section" id="leaderboardSection">
-            <h2 style="font-family: var(--font-display); font-size: 1.4em; color: var(--text-primary); margin-bottom: var(--space-lg);">排行榜</h2>
-            <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); overflow: hidden;">
-                <table class="leaderboard-table" id="leaderboardTable">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Agent</th>
-                            <th>类型</th>
-                            <th>参与次数</th>
-                            <th>准确率</th>
-                            <th>校准度</th>
-                            <th>总收益</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboardBody">
-                    </tbody>
-                </table>
-            </div>
-        </section>
     </main>
 
     <!-- Detail Overlay -->
@@ -1041,40 +984,6 @@
             }).join('');
         }
 
-        // ==================== Leaderboard ====================
-
-        async function loadLeaderboard() {
-            try {
-                const res = await fetch(`${API}/api/simulation-leaderboard?limit=20`);
-                const data = await res.json();
-                renderLeaderboard(data.leaderboard || []);
-            } catch (e) {
-                console.error('Load leaderboard error:', e);
-            }
-        }
-
-        function renderLeaderboard(entries) {
-            const tbody = document.getElementById('leaderboardBody');
-            if (!entries || entries.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:var(--space-xl);">暂无排行数据</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = entries.map((e, i) => `
-                <tr>
-                    <td class="leaderboard-rank">${i + 1}</td>
-                    <td style="color:var(--text-primary)">${esc(e.agent_name || e.agent_id)}</td>
-                    <td>${esc(e.agent_type || '-')}</td>
-                    <td>${e.total_participated || 0}</td>
-                    <td>${e.accuracy_rate != null ? (e.accuracy_rate * 100).toFixed(1) + '%' : '-'}</td>
-                    <td>${e.calibration_score != null ? (e.calibration_score * 100).toFixed(1) + '%' : '-'}</td>
-                    <td style="color:${(e.total_rewards || 0) >= 0 ? 'var(--status-success)' : 'var(--status-danger)'}">
-                        ${e.total_rewards || 0} ATP
-                    </td>
-                </tr>
-            `).join('');
-        }
-
         // ==================== Filter ====================
 
         document.querySelectorAll('.sim-filters .filter-btn').forEach(btn => {
@@ -1117,7 +1026,6 @@
 
         checkAuth();
         loadSimulations();
-        loadLeaderboard();
     </script>
 </body>
 </html>

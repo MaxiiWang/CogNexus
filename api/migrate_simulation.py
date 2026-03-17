@@ -249,6 +249,32 @@ def migrate():
     # 安全起见: 重建不现实，直接用即可 (SQLite 的 CHECK 在某些版本宽松处理)
 
     # ==========================================
+    # 9. Simulation LLM 配置字段
+    # ==========================================
+
+    cursor.execute("PRAGMA table_info(simulations)")
+    columns_sim = [row[1] for row in cursor.fetchall()]
+
+    for col, col_type in [
+        ('llm_base_url', 'TEXT'),
+        ('llm_api_key_enc', 'TEXT'),  # AES 加密存储
+        ('llm_model', 'TEXT'),
+    ]:
+        if col not in columns_sim:
+            cursor.execute(f'ALTER TABLE simulations ADD COLUMN {col} {col_type}')
+            print(f'  ✅ simulations.{col} added')
+
+    # ==========================================
+    # 10. simulation_rounds 加 planned_prompts
+    # ==========================================
+
+    cursor.execute("PRAGMA table_info(simulation_rounds)")
+    round_columns = [row[1] for row in cursor.fetchall()]
+    if 'planned_prompts' not in round_columns:
+        cursor.execute('ALTER TABLE simulation_rounds ADD COLUMN planned_prompts TEXT')
+        print('  ✅ simulation_rounds.planned_prompts added')
+
+    # ==========================================
     # 索引
     # ==========================================
 

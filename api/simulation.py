@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any, Tuple
 
 from database import get_db
+from crypto_utils import decrypt_api_key
 
 
 # ==========================================
@@ -182,6 +183,8 @@ def get_simulation(simulation_id: str) -> Optional[Dict]:
                 result[field] = json.loads(result[field])
             except:
                 pass
+    # 过滤敏感字段
+    result.pop('llm_api_key_enc', None)
     return result
 
 
@@ -218,6 +221,8 @@ def list_simulations(
                     sim[field] = json.loads(sim[field])
                 except:
                     pass
+        # 过滤敏感字段
+        sim.pop('llm_api_key_enc', None)
         sims.append(sim)
 
     # Total count
@@ -617,7 +622,7 @@ async def evaluate_agent_qualification(
 
     influence = round(cat_accuracy * 0.4 + calibration * 0.3 + experience * 0.1 + 0.2 * relevance, 3)
 
-    qualified = relevance >= 0.15  # 低门槛，多包含
+    qualified = relevance >= 0.05  # 宽松门槛，尽量多包含
 
     return {
         "qualified": qualified,
@@ -645,10 +650,13 @@ async def recruit_agents(simulation_id: str) -> Dict:
     recruited = []
     skipped = []
 
+    # 如果 active agent 总数 < 10，全部招募
+    all_recruit = len(agents) < 10
+
     for agent in agents:
         qual = await evaluate_agent_qualification(agent, sim)
 
-        if qual["qualified"]:
+        if all_recruit or qual["qualified"]:
             success = add_participant(
                 simulation_id=simulation_id,
                 agent_id=agent["agent_id"],
@@ -680,6 +688,221 @@ async def recruit_agents(simulation_id: str) -> Dict:
         "total_recruited": len(recruited),
         "total_skipped": len(skipped)
     }
+
+
+# ==========================================
+# Smart Recruit (Simulation LLM)
+# ==========================================
+
+async def _call_sim_llm(base_url: str, api_key: str, model: str, system: str, user: str) -> Optional[str]:
+    """通过 Simulation 自带的 LLM 配置调用（OpenAI 兼容格式）"""
+    url = f"{base_url.rstrip('/')}/v1/chat/completions"
+    if '/v1/chat/completions' in base_url:
+        url = base_url
+    elif base_url.endswith('/v1'):
+        url = f"{base_url}/chat/completions"
+
+    headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+    data = {
+        'model': model,
+        'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': user}],
+        'max_tokens': 2000,
+        'temperature': 0.7
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        res = await client.post(url, headers=headers, json=data)
+        res.raise_for_status()
+        return res.json()['choices'][0]['message']['content']
+
+
+async def smart_recruit(simulation_id: str) -> Dict:
+    """
+    智能招募流程:
+    1. 获取所有 active Agent
+    2. 如果平台 Agent < 10，直接全选；否则宽松语义匹配 top N
+    3. 将候选 Agent 信息发给 Simulation 配置的 LLM
+    4. LLM 返回：选中 Agent + 角色 + 首轮个性化问题
+    5. 写入 participants + roles + round 1 prompts
+    6. 更新 simulation status -> recruiting
+    Fallback: 如果没配 LLM 或调用失败，退回 recruit_agents() 逻辑
+    """
+    sim = get_simulation(simulation_id)
+    if not sim:
+        return {"error": "simulation_not_found"}
+
+    # 读取 LLM 配置（需要从数据库读加密的 key）
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id = ?",
+        (simulation_id,)
+    )
+    llm_row = cursor.fetchone()
+    conn.close()
+
+    llm_base_url = llm_row['llm_base_url'] if llm_row else None
+    llm_api_key_enc = llm_row['llm_api_key_enc'] if llm_row else None
+    llm_model = llm_row['llm_model'] if llm_row else None
+
+    if not llm_base_url or not llm_api_key_enc or not llm_model:
+        # 没有 LLM 配置，fallback 到普通招募
+        return await recruit_agents(simulation_id)
+
+    try:
+        api_key = decrypt_api_key(llm_api_key_enc)
+    except Exception:
+        return await recruit_agents(simulation_id)
+
+    # 1. 获取所有 active Agent
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM agents WHERE status = 'active'")
+    agents = [_row_to_dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    if not agents:
+        return {"error": "no_active_agents", "total_recruited": 0}
+
+    # 2. 候选筛选
+    if len(agents) < 10:
+        candidates = agents
+    else:
+        # 宽松语义匹配，取 top 20
+        scored = []
+        for agent in agents:
+            qual = await evaluate_agent_qualification(agent, sim)
+            scored.append((agent, qual))
+        scored.sort(key=lambda x: x[1]["relevance"], reverse=True)
+        candidates = [a for a, _ in scored[:20]]
+
+    # 3. 构建 LLM Prompt
+    agents_info = "\n".join([
+        f"- agent_id={a['agent_id']}, name={a['name']}, type={a['agent_type']}, "
+        f"description={a.get('description', '') or ''}, tags={a.get('tags', '[]')}"
+        for a in candidates
+    ])
+
+    options = sim.get("outcome_options", ["yes", "no"])
+    if isinstance(options, str):
+        options = json.loads(options)
+
+    system_prompt = """你是 CogNexus 模拟推演系统的策划师。
+你需要从候选 Agent 列表中选择合适的参与者，为每个参与者分配角色，并为第一轮设计个性化的问题。
+
+输出格式（严格 JSON）：
+{
+  "selected_agents": [
+    {
+      "agent_id": "...",
+      "role": "角色名",
+      "role_description": "一句话描述",
+      "round_1_prompt": "针对该角色的第一轮问题",
+      "prompt_type": "narrative 或 predictive"
+    }
+  ],
+  "strategy_summary": "一段话描述模拟策略"
+}"""
+
+    user_prompt = f"""Simulation 信息:
+- 标题: {sim['title']}
+- 核心问题: {sim['question']}
+- 分类: {sim['category']}
+- 描述: {sim.get('description', '')}
+- 结果选项: {json.dumps(options, ensure_ascii=False)}
+- 判定标准: {sim.get('resolution_criteria', '')}
+- 总轮次: {sim.get('total_rounds', 1)}
+
+候选 Agent 列表:
+{agents_info}
+
+请从中选择最合适的参与者，分配角色，并为第一轮设计个性化问题。"""
+
+    try:
+        llm_result = await _call_sim_llm(llm_base_url, api_key, llm_model, system_prompt, user_prompt)
+
+        # 解析 JSON（处理可能的 markdown 代码块包裹）
+        result_text = llm_result.strip()
+        if result_text.startswith('```'):
+            result_text = result_text.split('\n', 1)[1] if '\n' in result_text else result_text[3:]
+            if result_text.endswith('```'):
+                result_text = result_text[:-3]
+            result_text = result_text.strip()
+
+        parsed = json.loads(result_text)
+        selected = parsed.get("selected_agents", [])
+        strategy = parsed.get("strategy_summary", "")
+
+        if not selected:
+            return await recruit_agents(simulation_id)
+
+        # 4. 为每个 selected agent 添加参与者 + 设置角色
+        recruited = []
+        round_1_prompts = []
+
+        for sa in selected:
+            agent_id = sa.get("agent_id", "")
+            # 验证 agent_id 存在于候选列表
+            if not any(a["agent_id"] == agent_id for a in candidates):
+                continue
+
+            qual = await evaluate_agent_qualification(
+                next(a for a in candidates if a["agent_id"] == agent_id), sim
+            )
+
+            success = add_participant(
+                simulation_id=simulation_id,
+                agent_id=agent_id,
+                relevance_score=qual["relevance"],
+                influence_weight=qual["influence"],
+                qualification_method="smart"
+            )
+
+            if success:
+                update_participant(
+                    simulation_id, agent_id,
+                    role=sa.get("role", ""),
+                    role_description=sa.get("role_description", "")
+                )
+                recruited.append({
+                    "agent_id": agent_id,
+                    "name": next((a["name"] for a in candidates if a["agent_id"] == agent_id), ""),
+                    "role": sa.get("role", ""),
+                    "role_description": sa.get("role_description", ""),
+                    **qual
+                })
+                round_1_prompts.append({
+                    "agent_id": agent_id,
+                    "prompt_type": sa.get("prompt_type", "predictive"),
+                    "prompt": sa.get("round_1_prompt", f"关于「{sim['question']}」，你的看法是什么？")
+                })
+
+        # 5. 存储 round 1 的 planned_prompts
+        if round_1_prompts:
+            rounds = get_rounds(simulation_id)
+            if rounds:
+                round_1 = rounds[0]
+                conn = get_db()
+                conn.execute(
+                    "UPDATE simulation_rounds SET planned_prompts = ? WHERE round_id = ?",
+                    (json.dumps(round_1_prompts, ensure_ascii=False), round_1["round_id"])
+                )
+                conn.commit()
+                conn.close()
+
+        # 6. 更新状态
+        if recruited:
+            update_simulation(simulation_id, status="recruiting", recruiting_at=_now())
+
+        return {
+            "recruited": recruited,
+            "total_recruited": len(recruited),
+            "strategy_summary": strategy,
+            "method": "smart"
+        }
+
+    except Exception as e:
+        # LLM 调用失败，fallback
+        return await recruit_agents(simulation_id)
 
 
 # ==========================================
@@ -775,6 +998,15 @@ async def generate_round_prompts(
 
     if not sim or not rnd or not participants:
         return []
+
+    # 先检查 round 的 planned_prompts 字段（智能招募时 LLM 规划的）
+    if rnd.get('planned_prompts'):
+        try:
+            planned = json.loads(rnd['planned_prompts']) if isinstance(rnd['planned_prompts'], str) else rnd['planned_prompts']
+            if isinstance(planned, list) and len(planned) > 0:
+                return planned
+        except Exception:
+            pass
 
     if llm_call:
         agents_info = "\n".join([

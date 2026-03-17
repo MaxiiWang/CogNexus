@@ -822,6 +822,25 @@
                     <label>每 Agent 质押 (ATP)</label>
                     <input type="number" name="stake_per_agent" value="5" min="0">
                 </div>
+                <div style="border-top:1px solid var(--border-subtle);padding-top:var(--space-md);margin-top:var(--space-md);">
+                    <h3 style="font-size:0.95em;color:var(--text-primary);margin-bottom:var(--space-md);">🤖 LLM 配置（可选）</h3>
+                    <p style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-md);">配置后将使用 AI 智能招募 Agent 并生成模拟策略</p>
+                    <div class="sim-form-row">
+                        <div class="sim-form-group">
+                            <label>Base URL</label>
+                            <input type="url" name="llm_base_url" placeholder="https://api.openai.com">
+                        </div>
+                        <div class="sim-form-group">
+                            <label>模型</label>
+                            <input type="text" name="llm_model" placeholder="gpt-4o">
+                        </div>
+                    </div>
+                    <div class="sim-form-group">
+                        <label>API Key</label>
+                        <input type="password" name="llm_api_key" placeholder="sk-...">
+                        <small style="font-size:0.78em;color:var(--text-muted);">密钥将加密存储，仅用于本次 Simulation 的 LLM 调用</small>
+                    </div>
+                </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
                     <button type="submit" class="btn btn-primary">创建</button>
@@ -1305,7 +1324,11 @@
                     let actions = `<button class="btn btn-secondary btn-small" onclick="window.open('/simulation','_blank')">查看</button>`;
 
                     if (s === 'draft' || s === 'recruiting') {
-                        actions = `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">招募</button>` + actions;
+                        if (sim.llm_base_url) {
+                            actions = `<button class="btn btn-primary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">🤖 智能招募</button>` + actions;
+                        } else {
+                            actions = `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">招募</button>` + actions;
+                        }
                     } else if (s === 'active') {
                         const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
                         if (nextRound) {
@@ -1372,7 +1395,10 @@
                 tags: form.tags.value ? form.tags.value.split(',').map(s => s.trim()).filter(Boolean) : [],
                 outcome_options: form.outcome_type.value === 'multi' && form.outcome_options.value
                     ? form.outcome_options.value.split(',').map(s => s.trim()).filter(Boolean)
-                    : ['yes', 'no']
+                    : ['yes', 'no'],
+                llm_base_url: form.llm_base_url.value || null,
+                llm_api_key: form.llm_api_key.value || null,
+                llm_model: form.llm_model.value || null
             };
 
             try {
@@ -1409,6 +1435,27 @@
                     loadMySimulations();
                 } else {
                     showAlert('error', data.detail || '招募失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function doSmartRecruitSim(simId) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', '🤖 正在智能招募...');
+            try {
+                const res = await fetch(`/api/simulations/${simId}/smart-recruit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const method = data.method === 'smart' ? '（智能）' : '';
+                    showAlert('success', `招募完成${method}: ${data.total_recruited || 0} 个 Agent 已加入`);
+                    loadMySimulations();
+                } else {
+                    showAlert('error', data.detail || '智能招募失败');
                 }
             } catch (e) {
                 showAlert('error', '网络错误');
