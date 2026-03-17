@@ -911,6 +911,20 @@
                     <label>每 Agent 质押 (ATP)</label>
                     <input type="number" name="stake_per_agent" value="5" min="0">
                 </div>
+                <div class="sim-form-group">
+                    <label>模拟模式</label>
+                    <select name="simulation_mode" id="simMode" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
+                        <option value="standard">标准模式（Agent 直接回应）</option>
+                        <option value="monte_carlo">蒙特卡洛模式（少量采样 + 统计外推）</option>
+                    </select>
+                </div>
+                <div id="mcConfigGroup" style="display:none;">
+                    <div class="sim-form-group">
+                        <label>目标模拟人数</label>
+                        <input type="number" name="mc_population" value="100" min="10" max="10000">
+                        <small style="font-size:0.78em;color:var(--text-muted);">实际 LLM 调用约 15-25 次</small>
+                    </div>
+                </div>
                 <div style="border-top:1px solid var(--border-subtle);padding-top:var(--space-md);margin-top:var(--space-md);">
                     <h3 style="font-size:0.95em;color:var(--text-primary);margin-bottom:var(--space-md);">🤖 LLM 配置（可选）</h3>
                     <p style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-md);">配置后将使用 AI 智能招募 Agent 并生成模拟策略</p>
@@ -1482,6 +1496,7 @@
 
                 list.innerHTML = mySims.map(sim => {
                     const s = sim.status;
+                    const isMC = sim.simulation_mode === 'monte_carlo';
                     let actions = `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">查看</button>`;
 
                     if (s === 'draft') {
@@ -1489,38 +1504,54 @@
                         actions = `<button class="btn btn-danger btn-small" onclick="deleteSim('${sim.simulation_id}', '${esc(sim.title).replace(/'/g, "\\'")}')">删除</button>` + actions;
                     }
                     if (s === 'draft' || s === 'recruiting') {
-                        // 如果已有参与者，显示执行轮次按钮
                         const hasParticipants = (sim.participants && sim.participants.length > 0);
                         const nextRound = (sim.rounds || []).find(r => r.status !== 'closed');
-                        if (hasParticipants && nextRound) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
-                        }
-                        // 招募按钮（可以继续招募更多 Agent）
-                        if (sim.llm_base_url) {
-                            actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
+                        if (isMC) {
+                            // Monte Carlo: analyze archetypes + MC run
+                            if (hasParticipants && nextRound) {
+                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${nextRound.round_number})">🎲 执行第${nextRound.round_number}轮</button>` + actions;
+                            }
+                            actions = `<button class="btn btn-secondary btn-small" onclick="doMCAnalyze('${sim.simulation_id}')">分析原型</button>` + actions;
+                            if (sim.llm_base_url) {
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
+                            } else {
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
+                            }
                         } else {
-                            actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
+                            if (hasParticipants && nextRound) {
+                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${nextRound.round_number})">▶ 执行第${nextRound.round_number}轮</button>` + actions;
+                            }
+                            if (sim.llm_base_url) {
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doSmartRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '🤖 智能招募'}</button>` + actions;
+                            } else {
+                                actions = `<button class="btn btn-secondary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasParticipants ? '追加招募' : '招募'}</button>` + actions;
+                            }
                         }
                     } else if (s === 'active') {
                         const activeRound = (sim.rounds || []).find(r => r.status === 'active');
                         const pendingRound = (sim.rounds || []).find(r => r.status === 'pending');
                         if (activeRound) {
-                            // Round active with failures — show retry + close
                             actions = `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>` +
                                       `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>` + actions;
                         } else if (pendingRound) {
-                            actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>` + actions;
+                            if (isMC) {
+                                actions = `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>` + actions;
+                            } else {
+                                actions = `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>` + actions;
+                            }
                         }
                     } else if (s === 'closed') {
                         actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">判定结果</button>` + actions;
                     }
+
+                    const modeBadge = isMC ? ' <span style="background:rgba(156,39,176,0.15);color:#ce93d8;font-size:0.72em;padding:2px 6px;border-radius:4px;margin-left:4px;">🎲 蒙特卡洛</span>' : '';
 
                     return `
                     <div class="sim-manage-card">
                         <div class="sim-manage-card-info">
                             <h4>
                                 ${esc(sim.title)}
-                                <span class="sim-status-badge ${s}">${s}</span>
+                                <span class="sim-status-badge ${s}">${s}</span>${modeBadge}
                             </h4>
                             <div class="sim-meta">
                                 👥 ${(sim.participants || []).length}/${sim.max_agents} Agent &middot;
@@ -1550,6 +1581,7 @@
             editingSimId = null;
             document.getElementById('createSimForm').reset();
             document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
+            document.getElementById('mcConfigGroup').style.display = 'none';
             document.querySelector('#createSimModal h2').textContent = '创建 Simulation';
             document.querySelector('#createSimModal .btn-primary, #createSimModal button[type="submit"]').textContent = '创建';
             // Reset LLM preset state
@@ -1706,7 +1738,11 @@
                     : ['yes', 'no'],
                 llm_base_url: form.llm_base_url_hidden.value || (form.llm_base_url ? form.llm_base_url.value : null) || null,
                 llm_api_key: form.llm_api_key.value || null,
-                llm_model: form.llm_model_hidden.value || (form.llm_model ? form.llm_model.value : null) || null
+                llm_model: form.llm_model_hidden.value || (form.llm_model ? form.llm_model.value : null) || null,
+                simulation_mode: form.simulation_mode?.value || 'standard',
+                monte_carlo_config: form.simulation_mode?.value === 'monte_carlo' ? {
+                    target_population: parseInt(form.mc_population?.value) || 100
+                } : null
             };
 
             const isEdit = editingSimId !== null;
@@ -1813,11 +1849,13 @@
 
         let _pendingRunSimId = null;
         let _pendingRunRound = null;
+        let _pendingRunIsMC = false;
 
         async function doRunRoundSim(simId, roundNumber) {
             if (roundNumber > 1) {
                 _pendingRunSimId = simId;
                 _pendingRunRound = roundNumber;
+                _pendingRunIsMC = false;
                 document.getElementById('envRoundNum').textContent = roundNumber;
                 document.getElementById('envInjectionText').value = '';
                 document.getElementById('envInjectionModal').classList.add('active');
@@ -1828,7 +1866,12 @@
 
         async function executeRoundWithEnv(envText) {
             document.getElementById('envInjectionModal').classList.remove('active');
-            executeRoundDirect(_pendingRunSimId, _pendingRunRound, envText);
+            if (_pendingRunIsMC) {
+                _pendingRunIsMC = false;
+                executeMCRoundDirect(_pendingRunSimId, _pendingRunRound, envText);
+            } else {
+                executeRoundDirect(_pendingRunSimId, _pendingRunRound, envText);
+            }
         }
 
         async function executeRoundDirect(simId, roundNumber, envInjection) {
@@ -2062,6 +2105,7 @@
 
         function renderSimOverview(sim) {
             const s = sim.status;
+            const isMC = sim.simulation_mode === 'monte_carlo';
             const tags = Array.isArray(sim.tags) ? sim.tags : (() => { try { return JSON.parse(sim.tags || '[]'); } catch { return []; } })();
             const opts = Array.isArray(sim.outcome_options) ? sim.outcome_options : (() => { try { return JSON.parse(sim.outcome_options || '[]'); } catch { return ['yes','no']; } })();
 
@@ -2074,7 +2118,6 @@
                 if (s === 'draft') {
                     actionsHtml += `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}');hideSimDetail()">✏️ 编辑</button>`;
                 }
-                // Estimate react cost per round
                 let estimatedCost = 0;
                 (sim.participants || []).forEach(p => {
                     estimatedCost += (p.price_react || 0);
@@ -2086,8 +2129,15 @@
                     } else {
                         actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRecruitSim('${sim.simulation_id}')">${hasP ? '追加招募' : '招募'}</button>`;
                     }
+                    if (isMC) {
+                        actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doMCAnalyze('${sim.simulation_id}')">🎲 分析原型</button>`;
+                    }
                     if (hasP && pendingRound) {
-                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        if (isMC) {
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>`;
+                        } else {
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        }
                         if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
@@ -2096,7 +2146,11 @@
                         actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRetryRoundSim('${sim.simulation_id}', ${activeRound.round_number})">🔄 重试失败</button>`;
                         actionsHtml += `<button class="btn btn-secondary btn-small" onclick="doCloseRoundSim('${sim.simulation_id}', ${activeRound.round_number})">手动关闭轮次</button>`;
                     } else if (pendingRound) {
-                        actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        if (isMC) {
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doMCRunRound('${sim.simulation_id}', ${pendingRound.round_number})">🎲 执行第${pendingRound.round_number}轮</button>`;
+                        } else {
+                            actionsHtml += `<button class="btn btn-primary btn-small" onclick="doRunRoundSim('${sim.simulation_id}', ${pendingRound.round_number})">▶ 执行第${pendingRound.round_number}轮</button>`;
+                        }
                         if (estimatedCost > 0) actionsHtml += `<span style="font-size:0.78em;color:var(--text-muted);margin-left:8px;">预计费用: ${estimatedCost} ATP</span>`;
                     }
                 }
@@ -2104,6 +2158,16 @@
                     actionsHtml += `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">⚖ 判定结果</button>`;
                 }
             }
+
+            // MC archetypes section
+            let mcSection = '';
+            if (isMC) {
+                mcSection = `<div class="sdp-block" id="mcArchetypesBlock"><h4>🎲 认知原型</h4><div id="mcArchetypesList" style="color:var(--text-muted);font-size:0.85em;">点击「分析原型」以生成</div></div>`;
+                // Load archetypes async
+                loadMCArchetypes(sim.simulation_id);
+            }
+
+            const modeLabel = isMC ? '🎲 蒙特卡洛' : '标准';
 
             document.getElementById('tabOverview').innerHTML = `
                 <div class="sdp-grid">
@@ -2119,11 +2183,13 @@
                         </div>
                         ${sim.actual_outcome ? `<div class="sdp-block"><h4>最终结果</h4><p style="color:#66bb6a;font-weight:600;">✅ ${esc(sim.actual_outcome)}</p></div>` : ''}
                         ${tags.length ? `<div class="sdp-block"><h4>标签</h4><div style="display:flex;gap:var(--space-xs);flex-wrap:wrap;">${tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div></div>` : ''}
+                        ${mcSection}
                     </div>
                     <div>
                         <div class="sdp-block">
                             <h4>配置</h4>
                             <div class="sdp-configs">
+                                <div class="sdp-config"><div class="lbl">模式</div><div class="val">${modeLabel}</div></div>
                                 <div class="sdp-config"><div class="lbl">轮次</div><div class="val">${sim.total_rounds}</div></div>
                                 <div class="sdp-config"><div class="lbl">Agent</div><div class="val">${(sim.participants||[]).length}/${sim.max_agents}</div></div>
                                 <div class="sdp-config"><div class="lbl">质押</div><div class="val">${sim.stake_per_agent} ATP</div></div>
@@ -2169,6 +2235,7 @@
 
         function renderSimRounds(sim) {
             const rounds = sim.rounds || [];
+            const isMC = sim.simulation_mode === 'monte_carlo';
             if (rounds.length === 0) {
                 document.getElementById('tabRounds').innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:var(--space-xl);">尚未创建轮次</p>';
                 return;
@@ -2179,7 +2246,48 @@
                 let aggHtml = '';
                 if (rnd.aggregated_result) {
                     const agg = typeof rnd.aggregated_result === 'string' ? (() => { try { return JSON.parse(rnd.aggregated_result); } catch { return null; } })() : rnd.aggregated_result;
-                    if (agg && agg.prediction) {
+
+                    if (isMC && agg && agg.overall_distribution) {
+                        // Monte Carlo: show archetype breakdown
+                        const entries = Object.entries(agg.overall_distribution);
+                        const colors = ['#7c99b8', '#d4a054', '#4ecdc4', '#9d8bb8', '#6da89b'];
+                        aggHtml = `<div class="sdp-agg">
+                            <div style="font-size:0.82em;color:var(--text-muted);margin-bottom:var(--space-sm);">
+                                🎲 蒙特卡洛结果 (${agg.efficiency || ''})
+                            </div>` +
+                            entries.map(([k, v], i) => {
+                                const pct = (Number(v) * 100).toFixed(1);
+                                return `<div class="sdp-bar"><span class="sdp-bar-l">${esc(k)}</span><div class="sdp-bar-t"><div class="sdp-bar-f" style="width:${pct}%;background:${colors[i%colors.length]}">${pct}%</div></div></div>`;
+                            }).join('');
+
+                        // Per-archetype breakdown
+                        if (agg.archetype_results && agg.archetype_results.length) {
+                            aggHtml += `<div style="margin-top:var(--space-md);font-size:0.82em;color:var(--text-muted);">原型分布:</div>`;
+                            aggHtml += agg.archetype_results.map(ar => {
+                                const distStr = ar.stance_distribution ? Object.entries(ar.stance_distribution).map(([k,v]) => `${k}: ${(v*100).toFixed(0)}%`).join(', ') : '';
+                                return `<div style="margin:4px 0;padding:6px 10px;background:rgba(255,255,255,0.03);border-radius:4px;font-size:0.85em;">
+                                    <strong>${esc(ar.name)}</strong> <span style="color:var(--text-muted);">(权重 ${((ar.weight||0)*100).toFixed(0)}%, ${ar.sample_count} 样本, ${ar.population_count} 人)</span>
+                                    <div style="margin-top:2px;">${distStr} &middot; 置信度 ${((ar.confidence_mean||0)*100).toFixed(0)}% &middot; 方差 ${(ar.variance_score||0).toFixed(2)}</div>
+                                </div>`;
+                            }).join('');
+                        }
+
+                        // Divergence points
+                        if (agg.divergence_points && agg.divergence_points.length) {
+                            aggHtml += `<div style="margin-top:var(--space-sm);padding:6px 10px;background:rgba(212,160,84,0.08);border-radius:4px;font-size:0.82em;">
+                                <strong style="color:var(--accent-text);">分歧点:</strong>
+                                ${agg.divergence_points.map(dp => `<div>${esc(dp.archetype)} 认为 ${esc(dp.archetype_says)}（主流: ${esc(dp.majority_says)}）</div>`).join('')}
+                            </div>`;
+                        }
+
+                        // Edge voices
+                        if (agg.edge_voices && agg.edge_voices.length) {
+                            aggHtml += `<div style="margin-top:4px;font-size:0.78em;color:var(--text-muted);">边缘声音: ${agg.edge_voices.map(e => `${esc(e.archetype)} (方差 ${(e.variance||0).toFixed(2)})`).join(', ')}</div>`;
+                        }
+
+                        aggHtml += '</div>';
+                    } else if (agg && agg.prediction) {
+                        // Standard mode
                         const entries = Object.entries(agg.prediction);
                         const total = entries.reduce((s, [, v]) => s + (Number(v) || 0), 0);
                         const colors = ['#7c99b8', '#d4a054', '#4ecdc4', '#9d8bb8', '#6da89b'];
@@ -2253,6 +2361,96 @@
             } catch (e) {
                 container.innerHTML = '<p style="color:var(--color-danger);font-size:0.85em;">加载失败</p>';
                 container.classList.add('expanded');
+            }
+        }
+
+        // ==================== Monte Carlo Functions ====================
+
+        async function doMCAnalyze(simId) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', '🎲 正在分析认知原型...');
+            try {
+                const res = await fetch(`/api/simulations/${simId}/monte-carlo/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const count = (data.archetypes || []).length;
+                    showAlert('success', `原型分析完成: ${count} 个认知原型已生成`);
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
+                } else {
+                    showAlert('error', data.detail || '原型分析失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误');
+            }
+        }
+
+        async function doMCRunRound(simId, roundNumber) {
+            if (roundNumber > 1) {
+                _pendingRunSimId = simId;
+                _pendingRunRound = roundNumber;
+                _pendingRunIsMC = true;
+                document.getElementById('envRoundNum').textContent = roundNumber;
+                document.getElementById('envInjectionText').value = '';
+                document.getElementById('envInjectionModal').classList.add('active');
+                return;
+            }
+            executeMCRoundDirect(simId, roundNumber, '');
+        }
+
+        async function executeMCRoundDirect(simId, roundNumber, envInjection) {
+            const token = localStorage.getItem('cog_token');
+            showAlert('success', `🎲 正在执行第${roundNumber}轮蒙特卡洛模拟 (少量采样 + 统计外推)...`);
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/monte-carlo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ environment_injection: envInjection || '' })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    const sampling = data.sampling || {};
+                    const ext = data.extrapolation || {};
+                    let msg = `第${roundNumber}轮蒙特卡洛完成: ${sampling.collected || 0} 次采样`;
+                    if (ext.total_population) msg += ` → ${ext.total_population} 人模拟`;
+                    if (sampling.failed > 0) msg += ` (${sampling.failed} 个失败)`;
+                    showAlert(sampling.failed > 0 ? 'error' : 'success', msg);
+                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
+                } else {
+                    showAlert('error', data.detail || '蒙特卡洛执行失败');
+                }
+            } catch (e) {
+                showAlert('error', '网络错误或超时，请稍后重试');
+            }
+        }
+
+        async function loadMCArchetypes(simId) {
+            try {
+                const res = await fetch(`/api/simulations/${simId}/monte-carlo/archetypes`);
+                const data = await res.json();
+                const arcs = data.archetypes || [];
+                const container = document.getElementById('mcArchetypesList');
+                if (!container) return;
+                if (arcs.length === 0) {
+                    container.innerHTML = '<span style="color:var(--text-muted);font-size:0.85em;">尚未生成原型，请先招募 Agent 后点击「分析原型」</span>';
+                    return;
+                }
+                container.innerHTML = arcs.map(arc => {
+                    const dist = arc.stance_distribution || {};
+                    const distStr = Object.entries(dist).map(([k,v]) => `${k}: ${(v*100).toFixed(0)}%`).join(', ');
+                    return `<div style="margin:4px 0;padding:6px 10px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:4px;font-size:0.85em;">
+                        <strong>${esc(arc.name)}</strong>
+                        <span style="color:var(--text-muted);"> (权重 ${((arc.weight||0)*100).toFixed(0)}%, ${arc.sample_count} 样本 → ${arc.population_count} 人)</span>
+                        ${arc.mapped_agent_id ? `<br><span style="font-size:0.8em;color:var(--text-muted);">映射: ${esc(arc.mapped_agent_id)}</span>` : ''}
+                        ${arc.description ? `<br><span style="font-size:0.82em;color:var(--text-secondary);">${esc(arc.description)}</span>` : ''}
+                        ${distStr ? `<br><span style="font-size:0.8em;">${distStr}</span>` : ''}
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                const container = document.getElementById('mcArchetypesList');
+                if (container) container.innerHTML = '<span style="color:var(--color-danger);">加载原型失败</span>';
             }
         }
 

@@ -63,6 +63,8 @@ class SimulationCreate(BaseModel):
     llm_base_url: str = None
     llm_api_key: str = None  # 明文传入，后端加密存储
     llm_model: str = None
+    simulation_mode: str = "standard"  # "standard" | "monte_carlo"
+    monte_carlo_config: dict = None    # {target_population, ...}
 
 
 class SimulationUpdate(BaseModel):
@@ -152,6 +154,15 @@ async def api_create_simulation(
             'UPDATE simulations SET llm_base_url=?, llm_api_key_enc=?, llm_model=? WHERE simulation_id=?',
             (data.llm_base_url, encrypt_api_key(data.llm_api_key), data.llm_model, result['simulation_id'])
         )
+        conn.commit()
+        conn.close()
+
+    # Monte Carlo 模式配置
+    if data.simulation_mode == "monte_carlo":
+        from database import get_db
+        conn = get_db()
+        conn.execute("UPDATE simulations SET simulation_mode=?, monte_carlo_config=? WHERE simulation_id=?",
+            (data.simulation_mode, json.dumps(data.monte_carlo_config or {}), result["simulation_id"]))
         conn.commit()
         conn.close()
 
@@ -656,6 +667,86 @@ async def api_sim_leaderboard(simulation_id: str):
     # 按 reward_amount 排序
     ranked = sorted(participants, key=lambda p: p.get("reward_amount") or 0, reverse=True)
     return {"participants": ranked}
+
+
+# ==========================================
+# Monte Carlo
+# ==========================================
+
+@router.post("/{simulation_id}/monte-carlo/analyze")
+async def api_mc_analyze(simulation_id: str, user: dict = Depends(get_current_user)):
+    """蒙特卡洛: 任务分析 - 确定认知原型"""
+    from monte_carlo import analyze_task, save_archetypes
+    from simulation import _call_sim_llm
+    from crypto_utils import decrypt_api_key
+    from database import get_db
+
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id=?", (simulation_id,))
+    lr = cursor.fetchone()
+    conn.close()
+
+    async def llm_call(system, user_msg):
+        if lr and lr["llm_api_key_enc"]:
+            api_key = decrypt_api_key(lr["llm_api_key_enc"])
+            return await _call_sim_llm(lr["llm_base_url"], api_key, lr["llm_model"], system, user_msg)
+        return None
+
+    analysis = await analyze_task(simulation_id, llm_call)
+    archetypes = save_archetypes(simulation_id, analysis)
+    return {"analysis": analysis, "archetypes": archetypes}
+
+
+@router.get("/{simulation_id}/monte-carlo/archetypes")
+async def api_mc_archetypes(simulation_id: str):
+    """获取蒙特卡洛原型列表"""
+    from database import get_db
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM simulation_archetypes WHERE simulation_id = ?", (simulation_id,))
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    for r in rows:
+        if r.get("stance_distribution") and isinstance(r["stance_distribution"], str):
+            try:
+                r["stance_distribution"] = json.loads(r["stance_distribution"])
+            except Exception:
+                pass
+    return {"archetypes": rows}
+
+
+@router.post("/{simulation_id}/rounds/{round_number}/monte-carlo")
+async def api_mc_run_round(
+    simulation_id: str, round_number: int,
+    data: RunRoundRequest = RunRoundRequest(),
+    user: dict = Depends(get_current_user)
+):
+    """蒙特卡洛: 执行一轮模拟"""
+    from monte_carlo import run_monte_carlo_round
+
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+    if sim["created_by"] != user["user_id"]:
+        raise HTTPException(403, "无权操作")
+
+    rnd = get_round(simulation_id, round_number)
+    if not rnd:
+        raise HTTPException(404, "Round not found")
+    if rnd["status"] == "closed":
+        raise HTTPException(400, "该轮已关闭")
+
+    result = await run_monte_carlo_round(simulation_id, round_number, data.environment_injection)
+    if result.get("error"):
+        raise HTTPException(400, result["error"])
+    return result
 
 
 # ==========================================

@@ -282,6 +282,58 @@ def migrate():
         print('  ✅ simulation_rounds.environment_injection added')
 
     # ==========================================
+    # 11. Monte Carlo 字段 (simulations 表)
+    # ==========================================
+
+    cursor.execute("PRAGMA table_info(simulations)")
+    sim_cols = [row[1] for row in cursor.fetchall()]
+    for col, col_type in [
+        ('simulation_mode', 'TEXT DEFAULT "standard"'),  # "standard" | "monte_carlo"
+        ('monte_carlo_config', 'TEXT'),  # JSON config
+    ]:
+        if col not in sim_cols:
+            cursor.execute(f'ALTER TABLE simulations ADD COLUMN {col} {col_type}')
+            print(f'  ✅ simulations.{col} added')
+
+    # ==========================================
+    # 12. Monte Carlo 原型表
+    # ==========================================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS simulation_archetypes (
+            archetype_id TEXT PRIMARY KEY,
+            simulation_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            weight REAL DEFAULT 0.2,
+            population_count INTEGER,
+            mapped_agent_id TEXT,
+            sample_count INTEGER DEFAULT 3,
+
+            stance_distribution TEXT,
+            confidence_mean REAL,
+            confidence_std REAL,
+            variance_score REAL,
+
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (simulation_id) REFERENCES simulations(simulation_id),
+            FOREIGN KEY (mapped_agent_id) REFERENCES agents(agent_id)
+        )
+    """)
+    print("  ✅ simulation_archetypes table created")
+
+    # ==========================================
+    # 13. round_reactions Monte Carlo 字段
+    # ==========================================
+
+    cursor.execute("PRAGMA table_info(round_reactions)")
+    rxn_cols = [row[1] for row in cursor.fetchall()]
+    for col in ['archetype_id', 'perturbation_seed', 'is_monte_carlo']:
+        if col not in rxn_cols:
+            cursor.execute(f'ALTER TABLE round_reactions ADD COLUMN {col} TEXT')
+            print(f'  ✅ round_reactions.{col} added')
+
+    # ==========================================
     # 索引
     # ==========================================
 
