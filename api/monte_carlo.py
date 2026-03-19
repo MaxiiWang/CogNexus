@@ -19,6 +19,23 @@ def _now():
     return datetime.now().isoformat()
 
 
+def _get_brave_key():
+    """Try to load Brave Search API key from environment or OpenClaw config"""
+    import os
+    key = os.environ.get("BRAVE_API_KEY", "")
+    if key:
+        return key
+    try:
+        from pathlib import Path
+        config_path = Path.home() / ".openclaw/openclaw.json"
+        if config_path.exists():
+            config = json.loads(config_path.read_text())
+            return config.get("plugins", {}).get("brave", {}).get("apiKey", "")
+    except:
+        pass
+    return ""
+
+
 # =============================================
 # Phase 1: Task Analysis - LLM determines archetypes
 # =============================================
@@ -208,10 +225,47 @@ async def collect_monte_carlo_samples(
         perturbations = generate_perturbations(arc, sample_count)
         agent = agent_map.get(arc.get("mapped_agent_id"))
 
+        # Build time context
+        from datetime import datetime
+        now_str = datetime.now().strftime("%Y年%m月%d日")
+        env_text = rnd.get("environment_injection", "") or ""
+        desc_text = sim.get("description", "") or ""
+        context_block = f"当前日期: {now_str}"
+        if desc_text:
+            context_block += f"\n背景: {desc_text}"
+        if env_text:
+            context_block += f"\n最新环境信息: {env_text}"
+
+        # Pre-search injection if enabled
+        pre_search_text = ""
+        mc_config = sim.get("monte_carlo_config")
+        if isinstance(mc_config, str):
+            try: mc_config = json.loads(mc_config)
+            except: mc_config = {}
+        if mc_config and mc_config.get("pre_search"):
+            try:
+                import httpx as _httpx
+                search_res = _httpx.get(
+                    "https://api.search.brave.com/res/v1/web/search",
+                    params={"q": sim["question"], "count": 3},
+                    headers={"X-Subscription-Token": _get_brave_key()},
+                    timeout=10
+                )
+                if search_res.status_code == 200:
+                    results = search_res.json().get("web", {}).get("results", [])
+                    snippets = [f"- {r.get('title','')}: {r.get('description','')[:120]}" for r in results[:3]]
+                    if snippets:
+                        pre_search_text = "参考资讯:\n" + "\n".join(snippets)
+            except Exception:
+                pass
+
         for perturb in perturbations:
             prompt = f"""你现在代表「{arc['name']}」这个群体。{arc.get('description', '')}
 {perturb['sub_persona']}
 反应时机: {perturb['time_offset']}
+
+{context_block}
+{pre_search_text}
 
 关于「{sim['question']}」，请给出你的判断。
 

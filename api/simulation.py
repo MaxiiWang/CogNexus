@@ -1211,12 +1211,22 @@ JSON 输出:
         except Exception as e:
             pass  # Fall through to default
 
-    # 默认: 所有人用相同的 predictive 问题
+    # 默认: 所有人用相同的 predictive 问题（注入时间信息）
+    from datetime import datetime as _dt
+    now_str = _dt.now().strftime("%Y年%m月%d日")
+    desc_text = sim.get("description", "") or ""
+    env_text = rnd.get("environment_injection", "") or ""
+    ctx = f"当前日期: {now_str}"
+    if desc_text:
+        ctx += f"\n背景: {desc_text}"
+    if env_text:
+        ctx += f"\n最新环境信息: {env_text}"
+
     return [
         {
             "agent_id": p["agent_id"],
             "prompt_type": "predictive",
-            "prompt": f"关于「{sim['question']}」，基于你的知识和判断，你的预测是什么？"
+            "prompt": f"{ctx}\n\n关于「{sim['question']}」，基于你的知识和判断，你的预测是什么？"
         }
         for p in participants
     ]
