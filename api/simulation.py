@@ -1488,6 +1488,7 @@ async def run_round(
             update_reaction(task["reaction_id"], **update_kwargs)
 
             # React payment: charge simulation creator, credit agent owner
+            conn = None
             try:
                 conn = get_db()
                 cursor = conn.cursor()
@@ -1527,10 +1528,12 @@ async def run_round(
                                  f"Simulation React: {sim['title'][:50]}")
                             )
                 conn.commit()
-                conn.close()
             except Exception as e:
                 # Payment failure should not block reaction collection
                 pass
+            finally:
+                if conn:
+                    conn.close()
         else:
             update_reaction(task["reaction_id"], status="failed")
 
