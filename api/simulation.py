@@ -534,11 +534,13 @@ def get_round_reactions(round_id: str) -> List[Dict]:
     cursor = conn.cursor()
     cursor.execute("""
         SELECT rr.*, sp.role, sp.role_description,
-               a.name as agent_name, a.agent_type
+               a.name as agent_name, a.agent_type,
+               sa.name as archetype_name
         FROM round_reactions rr
-        JOIN simulation_participants sp
+        LEFT JOIN simulation_participants sp
             ON rr.simulation_id = sp.simulation_id AND rr.agent_id = sp.agent_id
-        JOIN agents a ON rr.agent_id = a.agent_id
+        LEFT JOIN agents a ON rr.agent_id = a.agent_id
+        LEFT JOIN simulation_archetypes sa ON rr.archetype_id = sa.archetype_id
         WHERE rr.round_id = ?
     """, (round_id,))
     rows = cursor.fetchall()

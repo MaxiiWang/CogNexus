@@ -41,9 +41,9 @@
     }
     </script>
 
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260319h">
-    <script src="/static/js/i18n.js?v=20260319h" defer></script>
-    <script src="/static/js/header.js?v=20260319h" defer></script>
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319i">
+    <script src="/static/js/i18n.js?v=20260319i" defer></script>
+    <script src="/static/js/header.js?v=20260319i" defer></script>
     <style>
         .sim-detail { padding: var(--space-xl) 0 var(--space-2xl); }
 
@@ -657,8 +657,9 @@
                             ${reactions.length === 0 ? '<div class="loading-state" style="padding:var(--space-lg)">No responses collected</div>' :
                             reactions.map(r => {
                                 const agent = agentMap2[r.agent_id] || {};
-                                const icon = agent.agent_type === 'character' ? '🎭' : '👤';
-                                const name = agent.name || r.agent_id;
+                                const isVirtual = (r.agent_id || '').startsWith('virtual_');
+                                const icon = isVirtual ? '🎲' : (agent.agent_type === 'character' ? '🎭' : '👤');
+                                const name = r.archetype_name || agent.name || (isVirtual ? r.agent_id.replace(/^virtual_arc_[a-f0-9]+_/, 'Sample #') : r.agent_id);
                                 const stanceClass = (r.stance || '').toLowerCase();
                                 const bodyHtml = mdToHtml(r.response_text || '');
                                 const isLong = (r.response_text || '').length > 500;
