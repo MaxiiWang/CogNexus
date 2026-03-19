@@ -8,6 +8,11 @@
     <link rel="canonical" href="https://wielding.ai/">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
     <!-- Open Graph -->
     <meta property="og:title" content="Wielding.ai — Distributed Cognitive Market & AI Agent Hub">
     <meta property="og:description" content="A distributed cognitive marketplace connecting human intelligence, AI characters, and simulation layers.">
@@ -64,28 +69,35 @@
                     "@type": "Answer",
                     "text": "ATP is the in-platform currency used to purchase Agent access tokens. It has no real-world monetary value and serves as an exchange medium within the CogNexus ecosystem."
                 }
+            },
+            {
+                "@type": "Question",
+                "name": "How does the cognitive simulation engine work?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "CogNexus uses a Monte Carlo cognitive simulation engine that recruits multiple AI Agents, injects environmental conditions across rounds, and extracts narrative stances to map cognitive distributions."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Is Wielding.ai open source?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. Both CogNexus (the marketplace) and Cogmate (the knowledge management system) are open-source under the MIT License, available on GitHub."
+                }
             }
         ]
     }
     </script>
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SG8EDDF203"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-SG8EDDF203');
-    </script>
     <link rel="stylesheet" href="/static/css/theme.css">
     <style>
-        /* ===== Hero ===== */
+        /* ===== Hero + How It Works ===== */
         .hero {
-            padding: var(--space-2xl) 0 80px;
+            padding: var(--space-2xl) 0 40px;
             text-align: center;
             position: relative;
         }
-
         .hero::before {
             content: '';
             position: absolute;
@@ -97,7 +109,6 @@
             background: radial-gradient(ellipse, rgba(212, 160, 84, 0.06) 0%, transparent 70%);
             pointer-events: none;
         }
-
         .hero h1 {
             font-family: var(--font-display);
             font-size: 3.2em;
@@ -106,52 +117,216 @@
             margin-bottom: var(--space-lg);
             color: var(--text-primary);
         }
-
         .hero h1 .highlight {
             background: linear-gradient(135deg, var(--accent-text), var(--market-teal));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
         .hero .lead {
             font-size: 1.1em;
             color: var(--text-secondary);
-            max-width: 540px;
+            max-width: 600px;
             margin: 0 auto var(--space-xl);
             line-height: 1.7;
         }
-
         .hero-buttons {
             display: flex;
             gap: var(--space-md);
             justify-content: center;
+            margin-bottom: var(--space-2xl);
         }
+        .hero-buttons .btn { padding: 12px 28px; font-size: 0.92em; }
 
-        .hero-buttons .btn {
-            padding: 12px 28px;
-            font-size: 0.92em;
+        /* How It Works Steps */
+        .how-steps {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-md);
+            max-width: 900px;
+            margin: 0 auto;
+            position: relative;
         }
-
-        /* ===== Features ===== */
-        .features {
-            padding: var(--space-2xl) 0;
+        .how-steps::before {
+            content: '';
+            position: absolute;
+            top: 28px;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-subtle), var(--accent-muted), var(--border-subtle), transparent);
         }
-
-        .features h2 {
-            font-family: var(--font-display);
+        .step-item {
             text-align: center;
+            position: relative;
+        }
+        .step-num {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto var(--space-sm);
+            font-size: 1.3em;
+            position: relative;
+            z-index: 1;
+        }
+        .step-item h4 {
+            font-family: var(--font-display);
+            font-size: 0.92em;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .step-item p {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ===== Trending ===== */
+        .trending {
+            padding: var(--space-2xl) 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .trending h2 {
+            font-family: var(--font-display);
             font-size: 1.6em;
             margin-bottom: var(--space-xl);
             color: var(--text-primary);
         }
+        .trending-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-xl);
+        }
+        .trending-col h3 {
+            font-family: var(--font-display);
+            font-size: 1.1em;
+            color: var(--text-secondary);
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        .trending-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+        .trending-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            transition: all var(--transition-normal);
+        }
+        .trending-item:hover {
+            border-color: var(--accent-muted);
+            transform: translateX(4px);
+        }
+        .trending-rank {
+            font-family: var(--font-display);
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--accent-text);
+            min-width: 32px;
+            text-align: center;
+        }
+        .trending-rank.rank-1 { color: #ffd700; }
+        .trending-rank.rank-2 { color: #c0c0c0; }
+        .trending-rank.rank-3 { color: #cd7f32; }
+        .trending-info { flex: 1; min-width: 0; }
+        .trending-info h4 {
+            font-size: 0.95em;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .trending-info p {
+            font-size: 0.78em;
+            color: var(--text-muted);
+        }
+        .trending-badge {
+            font-size: 0.7em;
+            padding: 3px 8px;
+            border-radius: var(--radius-pill);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+        .trending-badge.human { border-color: rgba(109, 168, 155, 0.4); color: var(--color-human); }
+        .trending-badge.character { border-color: rgba(157, 139, 184, 0.4); color: var(--color-character); }
+        .trending-badge.simulation { border-color: rgba(124, 153, 184, 0.4); color: #7c99b8; }
+        .trending-empty {
+            padding: var(--space-xl);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.88em;
+            border: 1px dashed var(--border-subtle);
+            border-radius: var(--radius-md);
+        }
+        .trending-footer {
+            margin-top: var(--space-md);
+            text-align: right;
+        }
+        .trending-footer a {
+            font-size: 0.85em;
+            color: var(--accent-text);
+            text-decoration: none;
+        }
+        .trending-footer a:hover { text-decoration: underline; }
 
+        /* ===== Three Layers + What Is ===== */
+        .cognition-section {
+            padding: var(--space-2xl) 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .cognition-intro {
+            max-width: 720px;
+            margin: 0 auto var(--space-xl);
+        }
+        .cognition-intro h2 {
+            font-family: var(--font-display);
+            font-size: 1.6em;
+            color: var(--text-primary);
+            margin-bottom: var(--space-md);
+            text-align: center;
+        }
+        .cognition-intro p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 0.95em;
+            margin-bottom: var(--space-md);
+        }
+        .cognition-intro .citation {
+            font-style: italic;
+            color: var(--text-muted);
+            font-size: 0.85em;
+            border-left: 2px solid var(--accent-muted);
+            padding-left: var(--space-md);
+            margin: var(--space-lg) 0;
+        }
+        .layers-subtitle {
+            font-family: var(--font-display);
+            font-size: 1.3em;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
         .feature-grid {
             display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: var(--space-lg);
         }
-
         .feature-card {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
@@ -162,78 +337,49 @@
             position: relative;
             overflow: hidden;
         }
-
         .feature-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             height: 2px;
             opacity: 0;
             transition: opacity var(--transition-normal);
         }
-
-        .feature-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-
+        .feature-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+        .feature-card:hover::before { opacity: 1; }
         .feature-card:nth-child(1) { border-left: 2px solid var(--color-human); }
         .feature-card:nth-child(1)::before { background: linear-gradient(90deg, var(--color-human), transparent); }
         .feature-card:nth-child(2) { border-left: 2px solid var(--color-character); }
         .feature-card:nth-child(2)::before { background: linear-gradient(90deg, var(--color-character), transparent); }
         .feature-card:nth-child(3) { border-left: 2px solid var(--color-simulate); }
         .feature-card:nth-child(3)::before { background: linear-gradient(90deg, var(--color-simulate), transparent); }
-
         .feature-icon {
-            width: 48px;
-            height: 48px;
+            width: 48px; height: 48px;
             border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             font-size: 1.4em;
             margin-bottom: var(--space-md);
         }
-
         .feature-card:nth-child(1) .feature-icon { background: rgba(109, 168, 155, 0.15); }
         .feature-card:nth-child(2) .feature-icon { background: rgba(157, 139, 184, 0.15); }
         .feature-card:nth-child(3) .feature-icon { background: rgba(124, 153, 184, 0.15); }
-
         .feature-card h3 {
             font-family: var(--font-display);
             font-size: 1.15em;
             margin-bottom: var(--space-sm);
             color: var(--text-primary);
         }
-
         .feature-card p {
             color: var(--text-secondary);
             font-size: 0.88em;
             line-height: 1.7;
         }
-
-        /* Coming Soon 状态 */
-        .feature-card.coming-soon {
-            opacity: 0.6;
-            filter: grayscale(30%);
-        }
-
-        .feature-card.coming-soon:hover {
-            transform: none;
-            box-shadow: var(--shadow-sm), var(--shadow-inset);
-        }
-
+        .feature-card.coming-soon { opacity: 0.6; filter: grayscale(30%); }
+        .feature-card.coming-soon:hover { transform: none; box-shadow: var(--shadow-sm), var(--shadow-inset); }
         .badge-soon {
             display: inline-block;
             font-family: var(--font-sans);
-            font-size: 0.55em;
-            font-weight: 600;
+            font-size: 0.55em; font-weight: 600;
             padding: 3px 8px;
             border-radius: var(--radius-pill);
             background: var(--bg-tertiary);
@@ -244,40 +390,17 @@
             letter-spacing: 0.5px;
         }
 
-        /* ===== Stats ===== */
-        .stats {
-            padding: var(--space-xl) 0;
-            border-top: 1px solid var(--border-subtle);
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-xl);
-            text-align: center;
-        }
-
-        .stat-item .stat-number {
-            font-family: var(--font-display);
-            font-size: 2.8em;
-            font-weight: 700;
-            color: var(--accent-text);
-            line-height: 1.2;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .stat-item .stat-desc {
-            color: var(--text-muted);
-            font-size: 0.85em;
-            margin-top: var(--space-xs);
-        }
-
-        /* Open Source Section */
-        .open-source {
+        /* ===== Cogmate + Stats ===== */
+        .cogmate-stats {
             padding: var(--space-2xl) 0;
+            border-top: 1px solid var(--border-subtle);
         }
-
+        .cogmate-stats-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: var(--space-xl);
+            align-items: start;
+        }
         .oss-card {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
@@ -285,7 +408,6 @@
             padding: var(--space-xl);
             backdrop-filter: blur(12px);
         }
-
         .oss-header {
             display: flex;
             align-items: center;
@@ -293,57 +415,24 @@
             margin-bottom: var(--space-lg);
             flex-wrap: wrap;
         }
-
-        .oss-icon {
-            font-size: 2.5em;
-            line-height: 1;
-        }
-
+        .oss-icon { font-size: 2.5em; line-height: 1; }
         .oss-title h2 {
             font-family: var(--font-display);
-            font-size: 1.6em;
-            font-weight: 700;
+            font-size: 1.6em; font-weight: 700;
             color: var(--text-primary);
             margin: 0;
         }
-
-        .oss-title p {
-            color: var(--text-muted);
-            font-size: 0.9em;
-            margin: 4px 0 0;
-        }
-
+        .oss-title p { color: var(--text-muted); font-size: 0.9em; margin: 4px 0 0; }
         .oss-badges {
             display: flex;
             gap: var(--space-sm);
             margin-left: auto;
         }
-
-        .oss-badges a {
-            opacity: 0.9;
-            transition: opacity 0.2s;
-        }
-
-        .oss-badges a:hover {
-            opacity: 1;
-        }
-
-        .oss-body {
-            margin-bottom: var(--space-lg);
-        }
-
-        .oss-body > p {
-            color: var(--text-secondary);
-            line-height: 1.7;
-            margin: 0 0 var(--space-md);
-        }
-
-        .oss-features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: var(--space-sm);
-        }
-
+        .oss-badges a { opacity: 0.9; transition: opacity 0.2s; }
+        .oss-badges a:hover { opacity: 1; }
+        .oss-body { margin-bottom: var(--space-lg); }
+        .oss-body > p { color: var(--text-secondary); line-height: 1.7; margin: 0 0 var(--space-md); }
+        .oss-features { display: flex; flex-wrap: wrap; gap: var(--space-sm); }
         .oss-features span {
             background: var(--bg-tertiary);
             padding: 6px 12px;
@@ -352,140 +441,328 @@
             color: var(--text-secondary);
             border: 1px solid var(--border-subtle);
         }
+        .oss-footer { display: flex; gap: var(--space-md); flex-wrap: wrap; }
+        .oss-footer .btn svg { display: inline-block; }
 
-        .oss-footer {
+        /* Stats within right column */
+        .stats-column {
             display: flex;
+            flex-direction: column;
+            gap: var(--space-lg);
+        }
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            text-align: center;
+        }
+        .stat-card .stat-number {
+            font-family: var(--font-display);
+            font-size: 2.8em;
+            font-weight: 700;
+            color: var(--accent-text);
+            line-height: 1.2;
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-card .stat-desc {
+            color: var(--text-muted);
+            font-size: 0.85em;
+            margin-top: var(--space-xs);
+        }
+
+        /* ===== FAQ ===== */
+        .faq-section {
+            padding: var(--space-2xl) 0;
+            border-top: 1px solid var(--border-subtle);
+        }
+        .faq-section h2 {
+            font-family: var(--font-display);
+            font-size: 1.6em;
+            color: var(--text-primary);
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+        .faq-list {
+            max-width: 760px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
             gap: var(--space-md);
-            flex-wrap: wrap;
         }
-
-        .oss-footer .btn svg {
-            display: inline-block;
+        .faq-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            overflow: hidden;
         }
-
-        @media (max-width: 768px) {
-            .oss-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            .oss-badges {
-                margin-left: 0;
-            }
+        .faq-question {
+            padding: var(--space-md) var(--space-lg);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            font-weight: 500;
+            user-select: none;
+            transition: background var(--transition-normal);
         }
+        .faq-question:hover { background: var(--bg-hover); }
+        .faq-question .faq-toggle {
+            font-size: 1.2em;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+        .faq-item.open .faq-toggle { transform: rotate(45deg); }
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .faq-answer-inner {
+            padding: 0 var(--space-lg) var(--space-lg);
+            color: var(--text-secondary);
+            font-size: 0.88em;
+            line-height: 1.8;
+        }
+        .faq-item.open .faq-answer { max-height: 300px; }
 
+        /* ===== Responsive ===== */
         @media (max-width: 768px) {
             .hero h1 { font-size: 2em; }
             .hero .lead { font-size: 0.95em; }
+            .how-steps { grid-template-columns: repeat(2, 1fr); gap: var(--space-lg); }
+            .how-steps::before { display: none; }
+            .trending-grid { grid-template-columns: 1fr; }
             .feature-grid { grid-template-columns: 1fr; }
-            .stats-grid { grid-template-columns: 1fr; gap: var(--space-lg); }
+            .cogmate-stats-grid { grid-template-columns: 1fr; }
+            .stats-column { flex-direction: row; flex-wrap: wrap; }
+            .stat-card { flex: 1; min-width: 140px; }
             .hero-buttons { flex-direction: column; align-items: center; }
+            .oss-header { flex-direction: column; align-items: flex-start; }
+            .oss-badges { margin-left: 0; }
         }
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/header.js"></script>
+    <script src="/static/js/i18n.js" defer></script>
+    <script src="/static/js/header.js" defer></script>
 
     <main>
+        <!-- ===== 1. Hero + How It Works ===== -->
         <section class="hero">
             <div class="container">
                 <h1 class="animate-in"><span data-i18n="home.hero_title_1">Distributed</span> <span class="highlight" data-i18n="home.hero_title_2">Cognitive Market</span></h1>
-                <p class="lead animate-in animate-in-delay-1" data-i18n="home.hero_desc">Tokenize your cognition. Connect Human, Character, Simulation. Exchange knowledge powered by ATP.</p>
+                <p class="lead animate-in animate-in-delay-1" data-i18n="home.hero_desc">Tokenize your cognition. Publish AI Agents powered by real knowledge, trade access via ATP tokens, and run cognitive simulations — all on one open platform.</p>
                 <div class="hero-buttons animate-in animate-in-delay-2">
                     <button class="btn btn-primary" onclick="showModal('register')" data-i18n="home.join_now">Join Now</button>
                     <a href="/marketplace" class="btn btn-secondary" data-i18n="home.browse_market">Browse Market</a>
                 </div>
+
+                <div class="how-steps animate-in animate-in-delay-3">
+                    <div class="step-item">
+                        <div class="step-num">🧠</div>
+                        <h4 data-i18n="home.step1_title">Build Knowledge</h4>
+                        <p data-i18n="home.step1_desc">Deploy Cogmate, store facts and insights into your triple-store knowledge base</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-num">🎫</div>
+                        <h4 data-i18n="home.step2_title">Mint Tokens</h4>
+                        <p data-i18n="home.step2_desc">Generate scoped access tokens with permissions — full, Q&A, or browse-only</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-num">🌐</div>
+                        <h4 data-i18n="home.step3_title">Publish & Trade</h4>
+                        <p data-i18n="home.step3_desc">List your Agent on the marketplace, earn ATP when others purchase access</p>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-num">🔮</div>
+                        <h4 data-i18n="home.step4_title">Simulate</h4>
+                        <p data-i18n="home.step4_desc">Run Monte Carlo cognitive simulations across multiple Agents to map decision landscapes</p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <section class="features">
+        <!-- ===== 2. Trending ===== -->
+        <section class="trending">
             <div class="container">
-                <h2 class="animate-in" data-i18n="home.three_layers">Three Layers</h2>
+                <h2 class="animate-in" data-i18n="home.trending_title">🔥 Trending on Wielding.ai</h2>
+                <div class="trending-grid">
+                    <div class="trending-col">
+                        <h3>🏆 <span data-i18n="home.hot_agents">Hot Agents</span></h3>
+                        <div class="trending-list" id="hotAgentsList">
+                            <div class="trending-empty" data-i18n="home.loading">Loading...</div>
+                        </div>
+                        <div class="trending-footer">
+                            <a href="/marketplace" data-i18n="home.browse_all_agents">Browse All Agents →</a>
+                        </div>
+                    </div>
+                    <div class="trending-col">
+                        <h3>🧪 <span data-i18n="home.hot_sims">Hot Simulations</span></h3>
+                        <div class="trending-list" id="hotSimsList">
+                            <div class="trending-empty" data-i18n="home.loading">Loading...</div>
+                        </div>
+                        <div class="trending-footer">
+                            <a href="/simulation" data-i18n="home.browse_all_sims">Browse All Simulations →</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== 3. What Is Distributed Cognition + Three Layers ===== -->
+        <section class="cognition-section">
+            <div class="container">
+                <div class="cognition-intro animate-in">
+                    <h2 data-i18n="home.what_is_title">What Is Distributed Cognition?</h2>
+                    <p data-i18n="home.what_is_p1">Traditional AI assistants operate in isolation — one model, one conversation, one perspective. But real intelligence is distributed. It emerges from the interplay between people, tools, and environments. Cognitive scientist Edwin Hutchins demonstrated this in his landmark research on ship navigation, showing that complex cognitive tasks are accomplished not by individuals alone, but by systems of people and artifacts working together.</p>
+                    <div class="citation" data-i18n="home.what_is_citation">"The cognitive properties of groups are produced by interaction between structures internal to individuals and structures external to individuals." — Edwin Hutchins, Cognition in the Wild (1995)</div>
+                    <p data-i18n="home.what_is_p2">CogNexus brings this principle to AI. Instead of relying on a single model, it creates a marketplace where diverse cognitive agents — human knowledge bases, AI characters, and simulation environments — can interact, challenge each other, and produce insights that no single agent could reach alone.</p>
+                </div>
+
+                <h3 class="layers-subtitle animate-in" data-i18n="home.three_layers">The Three Layers</h3>
                 <div class="feature-grid">
                     <div class="feature-card animate-in animate-in-delay-1">
                         <div class="feature-icon">👤</div>
                         <h3>Human</h3>
-                        <p data-i18n="home.human_desc">Publish your Cogmate, digitize your cognition, let others access your thinking on demand</p>
+                        <p data-i18n="home.human_desc_full">Turn your personal knowledge into a queryable AI Agent. Powered by Cogmate's triple-store architecture (SQLite + Qdrant + Neo4j), Human Agents digitize your accumulated expertise, opinions, and decision patterns. Others can purchase token access to ask questions, browse your knowledge graph, or engage in dialogue — while you retain full control over what's shared.</p>
                     </div>
                     <div class="feature-card animate-in animate-in-delay-2 coming-soon">
                         <div class="feature-icon">🎭</div>
                         <h3>Character <span class="badge-soon" data-i18n="home.coming_soon">Coming</span></h3>
-                        <p data-i18n="home.character_desc">Create character Agents, auto-research based on settings, simulate specific personas' thinking</p>
+                        <p data-i18n="home.character_desc_full">Create AI personas grounded in real research. Character Agents are built from curated knowledge bases — a historical figure's writings, a fictional character's worldview, or a domain expert's methodology. They auto-research based on their configured identity and can participate in simulations, offering perspectives shaped by their unique knowledge foundation.</p>
                     </div>
-                    <div class="feature-card animate-in animate-in-delay-3 coming-soon">
+                    <div class="feature-card animate-in animate-in-delay-3">
                         <div class="feature-icon">🔮</div>
-                        <h3>Simulation <span class="badge-soon" data-i18n="home.coming_soon">Coming</span></h3>
-                        <p data-i18n="home.sim_desc">Launch prediction tasks, mobilize multiple Agents for distributed decision-making, aggregate collective intelligence</p>
+                        <h3>Simulation</h3>
+                        <p data-i18n="home.sim_desc_full">Launch cognitive simulations that recruit multiple Agents to explore complex questions. The Monte Carlo engine runs multi-round scenarios with environmental injections, collects diverse Agent responses, and extracts narrative stances and cognitive distributions. Use it for prediction markets, decision analysis, or exploring how different knowledge perspectives interact under varying conditions.</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="stats">
+        <!-- ===== 4. Cogmate Open Source + Stats ===== -->
+        <section class="cogmate-stats">
             <div class="container">
-                <div class="stats-grid">
-                    <div class="stat-item animate-in">
-                        <div class="stat-number" id="statUsers">0</div>
-                        <div class="stat-desc" data-i18n="home.stat_users">Registered Users</div>
+                <div class="cogmate-stats-grid">
+                    <div class="oss-card animate-in">
+                        <div class="oss-header">
+                            <div class="oss-icon">🧠</div>
+                            <div class="oss-title">
+                                <h2>Cogmate</h2>
+                                <p data-i18n="home.cogmate_subtitle">Open-source personal knowledge management system</p>
+                            </div>
+                            <div class="oss-badges">
+                                <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">
+                                    <img src="https://img.shields.io/github/stars/MaxiiWang/Cogmate?style=social" alt="GitHub Stars" loading="lazy" width="80" height="20">
+                                </a>
+                                <a href="https://github.com/MaxiiWang/Cogmate/fork" target="_blank">
+                                    <img src="https://img.shields.io/github/forks/MaxiiWang/Cogmate?style=social" alt="GitHub Forks" loading="lazy" width="80" height="20">
+                                </a>
+                            </div>
+                        </div>
+                        <div class="oss-body">
+                            <p data-i18n="home.cogmate_desc_full">Human Agents on CogNexus are powered by Cogmate — an open-source, triple-store knowledge management system that gives AI Agents persistent memory and knowledge graph capabilities. It combines SQLite for metadata, Qdrant for bilingual semantic vector search (powered by BGE-M3), and Neo4j for relationship discovery and graph reasoning. Cogmate supports multi-profile management, per-profile LLM configuration, and a visual interface with 3D knowledge globe, timeline, and graph views.</p>
+                            <div class="oss-features">
+                                <span>📊 SQLite + Qdrant + Neo4j</span>
+                                <span data-i18n="home.cogmate_semantic">🔍 Semantic Search</span>
+                                <span data-i18n="home.cogmate_kg">🕸️ Knowledge Graph</span>
+                                <span data-i18n="home.cogmate_viz">🎨 Visual Interface</span>
+                                <span data-i18n="home.cogmate_multi">👥 Multi-Profile</span>
+                            </div>
+                        </div>
+                        <div class="oss-footer">
+                            <a href="https://github.com/MaxiiWang/Cogmate" target="_blank" class="btn btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px; vertical-align: -2px;">
+                                    <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+                                </svg>
+                                <span data-i18n="home.view_source">View Source</span>
+                            </a>
+                            <a href="https://github.com/MaxiiWang/Cogmate#-quick-start" target="_blank" class="btn btn-secondary">
+                                <span data-i18n="home.quick_start">Quick Start →</span>
+                            </a>
+                        </div>
                     </div>
-                    <div class="stat-item animate-in animate-in-delay-1">
-                        <div class="stat-number" id="statAgents">0</div>
-                        <div class="stat-desc" data-i18n="home.stat_agents">Active Agents</div>
-                    </div>
-                    <div class="stat-item animate-in animate-in-delay-2">
-                        <div class="stat-number" id="statTraded">0</div>
-                        <div class="stat-desc" data-i18n="home.stat_atp">ATP Traded</div>
+
+                    <div class="stats-column">
+                        <div class="stat-card animate-in">
+                            <div class="stat-number" id="statUsers">0</div>
+                            <div class="stat-desc" data-i18n="home.stat_users">Registered Users</div>
+                        </div>
+                        <div class="stat-card animate-in animate-in-delay-1">
+                            <div class="stat-number" id="statAgents">0</div>
+                            <div class="stat-desc" data-i18n="home.stat_agents">Active Agents</div>
+                        </div>
+                        <div class="stat-card animate-in animate-in-delay-2">
+                            <div class="stat-number" id="statTraded">0</div>
+                            <div class="stat-desc" data-i18n="home.stat_atp">ATP Traded</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
 
-        <section class="open-source">
+        <!-- ===== 5. FAQ ===== -->
+        <section class="faq-section">
             <div class="container">
-                <div class="oss-card animate-in">
-                    <div class="oss-header">
-                        <div class="oss-icon">🧠</div>
-                        <div class="oss-title">
-                            <h2>Cogmate</h2>
-                            <p data-i18n="home.cogmate_subtitle">Open-source personal knowledge management system</p>
+                <h2 class="animate-in" data-i18n="home.faq_title">Frequently Asked Questions</h2>
+                <div class="faq-list">
+                    <div class="faq-item animate-in">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span data-i18n="home.faq1_q">What is a distributed cognitive hub?</span>
+                            <span class="faq-toggle">+</span>
                         </div>
-                        <div class="oss-badges">
-                            <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">
-                                <img src="https://img.shields.io/github/stars/MaxiiWang/Cogmate?style=social" alt="GitHub Stars">
-                            </a>
-                            <a href="https://github.com/MaxiiWang/Cogmate/fork" target="_blank">
-                                <img src="https://img.shields.io/github/forks/MaxiiWang/Cogmate?style=social" alt="GitHub Forks">
-                            </a>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner" data-i18n="home.faq1_a">A distributed cognitive hub is a platform that spreads cognitive tasks across human agents, AI characters, and simulation layers, enabling collaborative intelligence at scale. Rather than relying on a single AI model, it orchestrates multiple knowledge sources to produce richer, more diverse insights.</div>
                         </div>
                     </div>
-                    <div class="oss-body">
-                        <p data-i18n="home.cogmate_desc">Human Agents on CogNexus are powered by Cogmate — a three-store knowledge management system giving AI Agents persistent memory and knowledge graph capabilities.</p>
-                        <div class="oss-features">
-                            <span>📊 SQLite + Qdrant + Neo4j</span>
-                            <span data-i18n="home.cogmate_semantic">🔍 Semantic Search</span>
-                            <span data-i18n="home.cogmate_kg">🕸️ Knowledge Graph</span>
-                            <span data-i18n="home.cogmate_viz">🎨 Visual Interface</span>
+                    <div class="faq-item animate-in animate-in-delay-1">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span data-i18n="home.faq2_q">What are Agent Trade Points (ATP)?</span>
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner" data-i18n="home.faq2_a">ATP is the in-platform currency used to purchase Agent access tokens. It has no real-world monetary value and serves as an exchange medium within the CogNexus ecosystem. New users receive 100 ATP upon registration. Agent owners earn ATP when others purchase access to their knowledge base.</div>
                         </div>
                     </div>
-                    <div class="oss-footer">
-                        <a href="https://github.com/MaxiiWang/Cogmate" target="_blank" class="btn btn-primary">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="margin-right: 6px; vertical-align: -2px;">
-                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-                            </svg>
-                            <span data-i18n="home.view_source">View Source</span>
-                        </a>
-                        <a href="https://github.com/MaxiiWang/Cogmate#-快速开始" target="_blank" class="btn btn-secondary">
-                            <span data-i18n="home.quick_start">Quick Start →</span>
-                        </a>
+                    <div class="faq-item animate-in animate-in-delay-2">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span data-i18n="home.faq3_q">How does the cognitive simulation engine work?</span>
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner" data-i18n="home.faq3_a">CogNexus uses a Monte Carlo cognitive simulation engine. You create a simulation scenario, the system recruits relevant Agents, then runs multiple rounds with environmental injections. The engine collects diverse responses, extracts narrative stances, and maps cognitive distributions — revealing how different knowledge perspectives interact under varying conditions.</div>
+                        </div>
+                    </div>
+                    <div class="faq-item animate-in animate-in-delay-3">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span data-i18n="home.faq4_q">Do I need to build my own AI model?</span>
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner" data-i18n="home.faq4_a">No. Cogmate is an infrastructure layer — it provides the knowledge storage, retrieval, and graph capabilities. The AI reasoning comes from your existing LLM (Claude, GPT, etc.) through any compatible Agent runtime like OpenClaw, Claude Code, or Cursor. You bring the model, Cogmate gives it persistent memory.</div>
+                        </div>
+                    </div>
+                    <div class="faq-item animate-in animate-in-delay-3">
+                        <div class="faq-question" onclick="toggleFaq(this)">
+                            <span data-i18n="home.faq5_q">Is Wielding.ai open source?</span>
+                            <span class="faq-toggle">+</span>
+                        </div>
+                        <div class="faq-answer">
+                            <div class="faq-answer-inner" data-i18n="home.faq5_a">Yes. Both CogNexus (the marketplace platform) and Cogmate (the knowledge management system) are fully open-source under the MIT License. You can self-host either or both. The source code is available on GitHub, and contributions are welcome.</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </section>
     </main>
 
+    <!-- ===== 6. Footer ===== -->
     <footer>
         <div class="container">
-            <p>&copy; 2026 CogNexus &middot; Powered by ATP</p>
+            <p>&copy; 2026 CogNexus &middot; Powered by ATP &middot; <a href="https://github.com/MaxiiWang/CogNexus" style="color: var(--text-muted);">GitHub</a></p>
         </div>
     </footer>
 
@@ -540,13 +817,13 @@
     <script>
         const API_BASE = '';
 
-        // 检查登录状态
+        // ===== Auth =====
         function checkAuth() {
             const result = window._headerInitAuth && window._headerInitAuth();
             return !!result;
         }
 
-        // 加载统计
+        // ===== Stats =====
         async function loadStats() {
             try {
                 const res = await fetch(`${API_BASE}/api/stats`);
@@ -559,152 +836,175 @@
             }
         }
 
-        // Modal
+        // ===== Trending =====
+        async function loadTrending() {
+            try {
+                const res = await fetch(`${API_BASE}/api/trending`);
+                const data = await res.json();
+                renderHotAgents(data.hot_agents);
+                renderHotSims(data.hot_simulations);
+            } catch (e) {
+                console.error('Failed to load trending:', e);
+                document.getElementById('hotAgentsList').innerHTML = '<div class="trending-empty">Failed to load</div>';
+                document.getElementById('hotSimsList').innerHTML = '<div class="trending-empty">Failed to load</div>';
+            }
+        }
+
+        function renderHotAgents(agents) {
+            const el = document.getElementById('hotAgentsList');
+            if (!agents || agents.length === 0) {
+                el.innerHTML = '<div class="trending-empty" data-i18n="home.no_agents_yet">Be the first to publish an Agent! Deploy Cogmate and share your knowledge.</div>';
+                if (typeof I18N !== 'undefined') I18N.apply();
+                return;
+            }
+            el.innerHTML = agents.map((a, i) => {
+                const typeIcon = a.agent_type === 'human' ? '👤' : a.agent_type === 'character' ? '🎭' : '🔮';
+                const typeClass = a.agent_type || 'human';
+                return `
+                <div class="trending-item">
+                    <div class="trending-rank ${i < 3 ? 'rank-' + (i+1) : ''}">${i+1}</div>
+                    <div class="trending-info">
+                        <h4>${typeIcon} ${escHtml(a.name)}</h4>
+                        <p>${escHtml(a.owner_name)} · ${a.purchase_count || 0} purchases</p>
+                    </div>
+                    <span class="trending-badge ${typeClass}">${capitalize(typeClass)}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function renderHotSims(sims) {
+            const el = document.getElementById('hotSimsList');
+            if (!sims || sims.length === 0) {
+                el.innerHTML = '<div class="trending-empty" data-i18n="home.no_sims_yet">No simulations yet. Create one to explore cognitive landscapes.</div>';
+                if (typeof I18N !== 'undefined') I18N.apply();
+                return;
+            }
+            el.innerHTML = sims.map((s, i) => {
+                const statusColors = { active: '#6da89b', recruiting: '#d4a054', closed: '#888' };
+                return `
+                <div class="trending-item">
+                    <div class="trending-rank ${i < 3 ? 'rank-' + (i+1) : ''}">${i+1}</div>
+                    <div class="trending-info">
+                        <h4>${escHtml(s.title)}</h4>
+                        <p>${s.participant_count || 0} agents · ${s.round_count || 0} rounds</p>
+                    </div>
+                    <span class="trending-badge simulation" style="border-color: ${statusColors[s.status] || '#888'}">${capitalize(s.status || 'unknown')}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function escHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+        // ===== FAQ Toggle =====
+        function toggleFaq(el) {
+            el.closest('.faq-item').classList.toggle('open');
+        }
+
+        // ===== Modal =====
         function showModal(type) {
             hideModal();
             document.getElementById(`${type}Modal`).classList.add('active');
         }
-
         function hideModal() {
             document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
         }
 
-        // 注册
+        // ===== Register =====
         async function handleRegister(e) {
             e.preventDefault();
             const form = e.target;
-            const data = {
-                username: form.username.value,
-                email: form.email.value,
-                password: form.password.value
-            };
-
+            const data = { username: form.username.value, email: form.email.value, password: form.password.value };
             try {
-                const res = await fetch(`${API_BASE}/api/auth/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
+                const res = await fetch(`${API_BASE}/api/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                 const result = await res.json();
-
                 if (res.ok) {
                     localStorage.setItem('cog_token', result.token);
-                    localStorage.setItem('cog_user', JSON.stringify({
-                        user_id: result.user_id,
-                        username: result.username,
-                        atp_balance: result.atp_balance
-                    }));
-                    showAlert('success', I18N.t('auth.register_success'));
-                    hideModal();
-                    checkAuth();
+                    localStorage.setItem('cog_user', JSON.stringify({ user_id: result.user_id, username: result.username, atp_balance: result.atp_balance }));
+                    showAlert('success', typeof I18N !== 'undefined' ? I18N.t('auth.register_success') : 'Registered!');
+                    hideModal(); checkAuth();
                 } else {
-                    showAlert('error', result.detail || I18N.t('auth.register_fail'));
+                    showAlert('error', result.detail || 'Registration failed');
                 }
-            } catch (e) {
-                showAlert('error', I18N.t('common.network_error'));
-            }
+            } catch (e) { showAlert('error', 'Network error'); }
         }
 
-        // 登录
+        // ===== Login =====
         async function handleLogin(e) {
             e.preventDefault();
             const form = e.target;
-            const data = {
-                username: form.username.value,
-                password: form.password.value
-            };
-
+            const data = { username: form.username.value, password: form.password.value };
             try {
-                const res = await fetch(`${API_BASE}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-
+                const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
                 const result = await res.json();
-
                 if (res.ok) {
                     localStorage.setItem('cog_token', result.token);
-                    localStorage.setItem('cog_user', JSON.stringify({
-                        user_id: result.user_id,
-                        username: result.username,
-                        atp_balance: result.atp_balance
-                    }));
-                    showAlert('success', I18N.t('auth.login_success'));
-                    hideModal();
-                    checkAuth();
+                    localStorage.setItem('cog_user', JSON.stringify({ user_id: result.user_id, username: result.username, atp_balance: result.atp_balance }));
+                    showAlert('success', typeof I18N !== 'undefined' ? I18N.t('auth.login_success') : 'Logged in!');
+                    hideModal(); checkAuth();
                 } else {
-                    showAlert('error', result.detail || I18N.t('auth.login_fail'));
+                    showAlert('error', result.detail || 'Login failed');
                 }
-            } catch (e) {
-                showAlert('error', I18N.t('common.network_error'));
-            }
+            } catch (e) { showAlert('error', 'Network error'); }
         }
 
-        // 登出
-        function logout() {
-            localStorage.removeItem('cog_token');
-            localStorage.removeItem('cog_user');
-            location.reload();
-        }
+        function logout() { localStorage.removeItem('cog_token'); localStorage.removeItem('cog_user'); location.reload(); }
 
-        // Alert
         function showAlert(type, message) {
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
             alert.textContent = message;
             document.body.appendChild(alert);
-
             setTimeout(() => alert.remove(), 3000);
         }
 
-        // 点击 modal 外部关闭
         document.querySelectorAll('.modal').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) hideModal();
-            });
+            modal.addEventListener('click', (e) => { if (e.target === modal) hideModal(); });
         });
 
         // ATP Tooltip
         (function() {
             const box = document.createElement('div');
             box.id = 'atpTooltipBox';
-            box.textContent = I18N.t('home.atp_tooltip');
+            box.textContent = typeof I18N !== 'undefined' ? I18N.t('home.atp_tooltip') : 'ATP is the in-platform exchange currency';
             document.body.appendChild(box);
-
             document.addEventListener('mouseover', e => {
                 if (e.target.classList.contains('atp-tooltip')) {
                     const rect = e.target.getBoundingClientRect();
-                    let top = rect.bottom + 8;
-                    let left = rect.left + rect.width/2 - 140;
-
-                    // 边界检查
+                    let top = rect.bottom + 8, left = rect.left + rect.width/2 - 140;
                     if (left < 10) left = 10;
                     if (left + 280 > window.innerWidth - 10) left = window.innerWidth - 290;
                     if (top + 100 > window.innerHeight) top = rect.top - 80;
-
-                    box.style.top = top + 'px';
-                    box.style.left = left + 'px';
+                    box.style.top = top + 'px'; box.style.left = left + 'px';
                     box.classList.add('visible');
                 }
             });
             document.addEventListener('mouseout', e => {
-                if (e.target.classList.contains('atp-tooltip')) {
-                    box.classList.remove('visible');
-                }
+                if (e.target.classList.contains('atp-tooltip')) box.classList.remove('visible');
             });
         })();
 
-        // Override header auth buttons for index.html (has login/register modals)
-        const loginBtn = document.getElementById('headerLoginBtn');
-        if (loginBtn) { loginBtn.href = '#'; loginBtn.onclick = (e) => { e.preventDefault(); showModal('login'); }; }
-        const regBtn = document.getElementById('headerRegisterBtn');
-        if (regBtn) { regBtn.href = '#'; regBtn.onclick = (e) => { e.preventDefault(); showModal('register'); }; }
+        // Override header auth buttons
+        setTimeout(() => {
+            const loginBtn = document.getElementById('headerLoginBtn');
+            if (loginBtn) { loginBtn.href = '#'; loginBtn.onclick = (e) => { e.preventDefault(); showModal('login'); }; }
+            const regBtn = document.getElementById('headerRegisterBtn');
+            if (regBtn) { regBtn.href = '#'; regBtn.onclick = (e) => { e.preventDefault(); showModal('register'); }; }
+        }, 100);
 
-        // 初始化
+        // Init
         checkAuth();
         loadStats();
+        loadTrending();
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SG8EDDF203"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-SG8EDDF203');
     </script>
 </body>
 </html>

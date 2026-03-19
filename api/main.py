@@ -1111,6 +1111,63 @@ async def get_stats():
     }
 
 
+# ==================== Trending API ====================
+
+@app.get("/api/trending")
+async def get_trending():
+    """获取热门 Agent 和 Simulation"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Hot Agents: by purchase count → available tokens → created_at
+    cursor.execute("""
+        SELECT a.agent_id, a.name, a.agent_type, a.description, a.avatar_url,
+               u.username as owner_name,
+               COALESCE(tx.purchase_count, 0) as purchase_count,
+               COALESCE(tk.available_tokens, 0) as available_tokens
+        FROM agents a
+        JOIN users u ON a.owner_id = u.user_id
+        LEFT JOIN (
+            SELECT JSON_EXTRACT(description, '$.agent_id') as agent_id, COUNT(*) as purchase_count
+            FROM transactions WHERE tx_type = 'purchase'
+            GROUP BY JSON_EXTRACT(description, '$.agent_id')
+        ) tx ON tx.agent_id = a.agent_id
+        LEFT JOIN (
+            SELECT agent_id, COUNT(*) as available_tokens
+            FROM agent_tokens WHERE is_sold = 0 AND validated = 1
+            GROUP BY agent_id
+        ) tk ON tk.agent_id = a.agent_id
+        WHERE a.status = 'active'
+        ORDER BY purchase_count DESC, available_tokens DESC, a.created_at DESC
+        LIMIT 5
+    """)
+    hot_agents = [dict(row) for row in cursor.fetchall()]
+
+    # Hot Simulations: by participant count → rounds → created_at
+    cursor.execute("""
+        SELECT s.simulation_id, s.title, s.description, s.status, s.category,
+               COALESCE(p.participant_count, 0) as participant_count,
+               COALESCE(r.round_count, 0) as round_count
+        FROM simulations s
+        LEFT JOIN (
+            SELECT simulation_id, COUNT(*) as participant_count
+            FROM simulation_participants
+            GROUP BY simulation_id
+        ) p ON p.simulation_id = s.simulation_id
+        LEFT JOIN (
+            SELECT simulation_id, COUNT(*) as round_count
+            FROM simulation_rounds
+            GROUP BY simulation_id
+        ) r ON r.simulation_id = s.simulation_id
+        ORDER BY participant_count DESC, round_count DESC, s.created_at DESC
+        LIMIT 5
+    """)
+    hot_simulations = [dict(row) for row in cursor.fetchall()]
+
+    conn.close()
+    return {"hot_agents": hot_agents, "hot_simulations": hot_simulations}
+
+
 # ==================== 前端路由 ====================
 
 @app.get("/")
@@ -1141,6 +1198,43 @@ async def simulation_page():
 async def guide_page():
     """文档页面"""
     return FileResponse(FRONTEND_PATH / "docs.html")
+
+
+@app.get("/robots.txt")
+async def robots_txt():
+    """robots.txt for search engines and AI bots"""
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse("""User-agent: *
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+Sitemap: https://wielding.ai/sitemap.xml
+""")
+
+
+@app.get("/sitemap.xml")
+async def sitemap_xml():
+    """XML Sitemap"""
+    from fastapi.responses import Response
+    xml = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://wielding.ai/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://wielding.ai/marketplace</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://wielding.ai/simulation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://wielding.ai/guide</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+</urlset>"""
+    return Response(content=xml, media_type="application/xml")
 
 
 # ==================== Simulation Routes ====================
