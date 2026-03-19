@@ -1123,15 +1123,15 @@ async def get_trending():
     cursor.execute("""
         SELECT a.agent_id, a.name, a.agent_type, a.description, a.avatar_url,
                u.username as owner_name,
-               COALESCE(tx.purchase_count, 0) as purchase_count,
+               COALESCE(pt.purchase_count, 0) as purchase_count,
                COALESCE(tk.available_tokens, 0) as available_tokens
         FROM agents a
         JOIN users u ON a.owner_id = u.user_id
         LEFT JOIN (
-            SELECT JSON_EXTRACT(description, '$.agent_id') as agent_id, COUNT(*) as purchase_count
-            FROM transactions WHERE tx_type = 'purchase'
-            GROUP BY JSON_EXTRACT(description, '$.agent_id')
-        ) tx ON tx.agent_id = a.agent_id
+            SELECT agent_id, COUNT(*) as purchase_count
+            FROM purchased_tokens
+            GROUP BY agent_id
+        ) pt ON pt.agent_id = a.agent_id
         LEFT JOIN (
             SELECT agent_id, COUNT(*) as available_tokens
             FROM agent_tokens WHERE is_sold = 0 AND validated = 1
