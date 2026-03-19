@@ -5,7 +5,7 @@ const I18N = {
     messages: {
         en: {
             // Nav
-            'nav.market': 'Market',
+            'nav.market': 'Agents',
             'nav.simulation': 'Simulation',
             'nav.docs': 'Docs',
             'nav.dashboard': 'Dashboard',
@@ -449,7 +449,7 @@ const I18N = {
             'docs.footer': '&copy; 2026 CogNexus &middot; Powered by ATP',
         },
         zh: {
-            'nav.market': '市场',
+            'nav.market': '智能体',
             'nav.simulation': '模拟',
             'nav.docs': '文档',
             'nav.dashboard': '仪表盘',
