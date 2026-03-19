@@ -503,7 +503,22 @@ async def run_monte_carlo_round(
         analysis = await analyze_task(simulation_id, llm_call)
         save_archetypes(simulation_id, analysis)
 
-    # Phase 2: Collect samples
+    # Phase 2: Clean stale reactions for this round before collecting
+    import time as _clean_time
+    for _clean_attempt in range(3):
+        _clean_conn = None
+        try:
+            _clean_conn = get_db()
+            _clean_conn.execute("DELETE FROM round_reactions WHERE round_id = ?", (rnd["round_id"],))
+            _clean_conn.commit()
+            _clean_conn.close()
+            break
+        except Exception:
+            if _clean_conn:
+                try: _clean_conn.close()
+                except: pass
+            _clean_time.sleep(0.5)
+
     update_simulation(simulation_id, status="active", current_round=round_number)
     sample_result = await collect_monte_carlo_samples(simulation_id, round_number, llm_call)
 
