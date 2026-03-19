@@ -1621,6 +1621,8 @@ async def run_round(
             )
 
         if round_number < sim["total_rounds"]:
+            # Non-final round done: set sim back to recruiting (waiting for next round trigger)
+            update_simulation(simulation_id, status="recruiting", current_round=round_number)
             all_summaries = _get_all_summaries(simulation_id)
             next_rnd = get_round(simulation_id, round_number + 1)
             if next_rnd:

@@ -550,9 +550,13 @@ async def run_monte_carlo_round(
         result_summary=summary if all_collected else summary + f"\n⚠️ {sample_result['failed']} 个采样失败"
     )
 
-    if status == "closed" and round_number == sim["total_rounds"]:
-        update_simulation(simulation_id, status="closed", closes_at=_now(),
-                          final_prediction=json.dumps(extrapolation.get("overall_distribution", {})))
+    if status == "closed":
+        if round_number == sim["total_rounds"]:
+            update_simulation(simulation_id, status="closed", closes_at=_now(),
+                              final_prediction=json.dumps(extrapolation.get("overall_distribution", {})))
+        else:
+            # Non-final round done: set sim back to recruiting (waiting for next round trigger)
+            update_simulation(simulation_id, status="recruiting", current_round=round_number)
 
     return {
         "round_number": round_number,
