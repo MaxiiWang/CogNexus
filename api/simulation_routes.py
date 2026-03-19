@@ -169,7 +169,7 @@ async def api_plan_simulation(data: SimulationPlanRequest):
 
     # Call user's LLM
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             res = await client.post(
                 f"{data.llm_base_url.rstrip('/')}/chat/completions",
                 headers={
@@ -246,7 +246,7 @@ async def api_plan_simulation(data: SimulationPlanRequest):
     except httpx.ConnectError:
         raise HTTPException(502, f"Cannot connect to LLM API: {data.llm_base_url}")
     except httpx.TimeoutException:
-        raise HTTPException(504, "LLM API request timed out (30s)")
+        raise HTTPException(504, "LLM API request timed out (60s)")
     except Exception as e:
         raise HTTPException(500, f"Plan generation failed: {str(e)[:200]}")
 
