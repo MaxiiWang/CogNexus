@@ -28,7 +28,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260319d">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319e">
     <style>
         /* ===== Dashboard Grid ===== */
         .dashboard-grid {
@@ -670,8 +670,8 @@
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js?v=20260319d"></script>
-    <script src="/static/js/header.js?v=20260319d"></script>
+    <script src="/static/js/i18n.js?v=20260319e"></script>
+    <script src="/static/js/header.js?v=20260319e"></script>
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
@@ -866,117 +866,140 @@
     <!-- Create Simulation Modal -->
     <div class="modal" id="createSimModal">
         <div class="modal-content" style="max-width:1100px;padding:0;overflow:hidden;">
-            <div style="padding:var(--space-xl) var(--space-xl) 0;">
-                <h2 id="createSimTitle" style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
-                <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);" data-i18n="sim.configure">配置多 Agent 推演参数</p>
+            <!-- Step 1: Title + LLM -->
+            <div id="simStep1">
+                <div style="padding:var(--space-xl) var(--space-xl) 0;">
+                    <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
+                    <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);">Step 1: 输入标题，AI 将自动规划模拟配置</p>
+                </div>
+                <div style="padding:var(--space-lg) var(--space-xl) var(--space-xl);">
+                    <div class="sim-form-group" style="margin-bottom:var(--space-lg);">
+                        <label data-i18n="sim.title">标题 *</label>
+                        <input type="text" id="planTitle" required placeholder="e.g., 美联储6月是否会降息？" style="width:100%;padding:10px 14px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-primary);font-size:1em;">
+                    </div>
+                    <div class="sim-config-section" style="margin-bottom:var(--space-lg);">
+                        <div class="sim-config-title">🤖 LLM</div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="llmPresetsStep1">
+                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPresetStep1(this)">🌋 Doubao Lite</button>
+                            <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPresetStep1(this)">🌋 Doubao Pro</button>
+                            <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectLLMPresetStep1(this)">⚙️ Custom</button>
+                        </div>
+                        <div id="llmCustomFieldsStep1" style="display:none;">
+                            <input type="url" id="planBaseUrl" placeholder="Base URL (OpenAI compatible)" class="sim-input-sm" style="margin-bottom:4px;">
+                            <input type="text" id="planModel" placeholder="Model name" class="sim-input-sm">
+                        </div>
+                        <div id="llmApiKeyGroupStep1" style="display:none;margin-top:6px;">
+                            <input type="password" id="planApiKey" placeholder="API Key" class="sim-input-sm">
+                        </div>
+                        <input type="hidden" id="planBaseUrlHidden" value="">
+                        <input type="hidden" id="planModelHidden" value="">
+                    </div>
+                    <div id="planError" style="display:none;padding:10px 14px;background:rgba(196,122,90,0.12);border:1px solid rgba(196,122,90,0.3);border-radius:var(--radius-md);color:#c47a5a;font-size:0.85em;margin-bottom:var(--space-md);"></div>
+                    <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                        <button type="button" class="btn btn-primary" id="planBtn" onclick="generatePlan()">
+                            <span id="planBtnText">✨ AI 规划</span>
+                            <span id="planBtnLoading" style="display:none;">⏳ 生成中...</span>
+                        </button>
+                    </div>
+                </div>
             </div>
-            <form class="create-sim-form" id="createSimForm" onsubmit="return handleCreateSim(event)" style="padding:var(--space-lg) var(--space-xl) var(--space-xl);">
-                <div class="sim-create-grid">
-                    <!-- Left Column: Core Config -->
-                    <div class="sim-create-main">
-                        <div class="sim-form-group">
-                            <label data-i18n="sim.title">标题 *</label>
-                            <input type="text" name="title" required placeholder="e.g., Will AI pass the Turing test by 2027?">
+
+            <!-- Step 2: Review & Edit -->
+            <div id="simStep2" style="display:none;">
+                <div style="padding:var(--space-xl) var(--space-xl) 0;display:flex;justify-content:space-between;align-items:center;">
+                    <div>
+                        <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
+                        <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);">Step 2: 审阅 AI 规划，修改后确认创建</p>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-small" onclick="backToStep1()">← 返回</button>
+                </div>
+                <div id="planReasoning" style="display:none;margin:var(--space-md) var(--space-xl) 0;padding:10px 14px;background:rgba(109,168,155,0.08);border:1px solid rgba(109,168,155,0.2);border-radius:var(--radius-md);font-size:0.82em;color:var(--text-secondary);"></div>
+                <form class="create-sim-form" id="createSimForm" onsubmit="return handleCreateSim(event)" style="padding:var(--space-lg) var(--space-xl) var(--space-xl);">
+                    <div class="sim-create-grid">
+                        <div class="sim-create-main">
+                            <div class="sim-form-group">
+                                <label data-i18n="sim.title">标题 *</label>
+                                <input type="text" name="title" required>
+                            </div>
+                            <div class="sim-form-group">
+                                <label data-i18n="sim.question">核心问题 *</label>
+                                <textarea name="question" required rows="3"></textarea>
+                            </div>
+                            <div class="sim-form-group">
+                                <label data-i18n="sim.description">描述</label>
+                                <textarea name="description" rows="2"></textarea>
+                            </div>
+                            <div class="sim-form-group">
+                                <label>⚠️ <span data-i18n="sim.resolution">判定标准</span> *</label>
+                                <textarea name="resolution_criteria" required rows="2"></textarea>
+                            </div>
+                            <!-- Round Plan -->
+                            <div class="sim-form-group" id="roundPlanGroup" style="display:none;">
+                                <label>📋 轮次计划</label>
+                                <div id="roundPlanList" style="font-size:0.85em;"></div>
+                            </div>
                         </div>
-                        <div class="sim-form-group">
-                            <label data-i18n="sim.question">核心问题 *</label>
-                            <textarea name="question" required rows="3" placeholder="Describe the question to simulate"></textarea>
-                        </div>
-                        <div class="sim-form-group">
-                            <label data-i18n="sim.description">描述</label>
-                            <textarea name="description" rows="2" placeholder="Background context"></textarea>
-                        </div>
-                        <div class="sim-form-group">
-                            <label data-i18n="sim.resolution">判定标准 *</label>
-                            <textarea name="resolution_criteria" required rows="2" placeholder="How will the outcome be determined?"></textarea>
+                        <div class="sim-create-side">
+                            <div class="sim-config-section">
+                                <div class="sim-config-title" data-i18n="sim.mode">模式</div>
+                                <select name="simulation_mode" id="simMode" class="sim-select" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
+                                    <option value="standard" data-i18n="sim.mode.standard">标准模式</option>
+                                    <option value="monte_carlo">🎲 Monte Carlo</option>
+                                </select>
+                                <div id="mcConfigGroup" style="display:none;margin-top:8px;">
+                                    <label style="font-size:0.78em;color:var(--text-muted);">目标模拟人数</label>
+                                    <input type="number" name="mc_population" value="100" min="10" max="10000" class="sim-input-sm">
+                                </div>
+                            </div>
+                            <div class="sim-config-section">
+                                <div class="sim-config-title" data-i18n="sim.classification">分类</div>
+                                <input type="text" name="category" required class="sim-input-sm" style="margin-bottom:6px;">
+                                <input type="text" name="tags" placeholder="Tags (comma separated)" class="sim-input-sm">
+                            </div>
+                            <div class="sim-config-section">
+                                <div class="sim-config-title" data-i18n="sim.outcome">结果类型</div>
+                                <select name="outcome_type" id="simOutcomeType" class="sim-select">
+                                    <option value="binary" data-i18n="sim.binary">二元 (Yes/No)</option>
+                                    <option value="multi" data-i18n="sim.multi">多选项</option>
+                                </select>
+                                <div id="simOutcomeOptionsGroup" style="display:none;margin-top:6px;">
+                                    <input type="text" name="outcome_options" placeholder="Option A, Option B, ..." class="sim-input-sm">
+                                </div>
+                            </div>
+                            <div class="sim-config-section">
+                                <div class="sim-config-title" data-i18n="sim.parameters">参数</div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                                    <div>
+                                        <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.rounds">轮次</label>
+                                        <input type="number" name="total_rounds" value="1" min="1" max="10" class="sim-input-sm">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.stake_agent">质押/Agent</label>
+                                        <input type="number" name="stake_per_agent" value="5" min="0" class="sim-input-sm">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.min_agents">最少 Agent</label>
+                                        <input type="number" name="min_agents" value="3" min="1" class="sim-input-sm">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.max_agents">最多 Agent</label>
+                                        <input type="number" name="max_agents" value="50" min="1" class="sim-input-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- LLM (carried from step 1, hidden) -->
+                            <input type="hidden" name="llm_base_url" id="simLlmBaseUrl">
+                            <input type="hidden" name="llm_api_key" id="simLlmApiKey">
+                            <input type="hidden" name="llm_model" id="simLlmModel">
                         </div>
                     </div>
-
-                    <!-- Right Column: Settings -->
-                    <div class="sim-create-side">
-                        <!-- Mode -->
-                        <div class="sim-config-section">
-                            <div class="sim-config-title" data-i18n="sim.mode">模式</div>
-                            <select name="simulation_mode" id="simMode" class="sim-select" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
-                                <option value="standard" data-i18n="sim.mode.standard">标准模式</option>
-                                <option value="monte_carlo">🎲 Monte Carlo</option>
-                            </select>
-                            <div id="mcConfigGroup" style="display:none;margin-top:8px;">
-                                <label style="font-size:0.78em;color:var(--text-muted);" data-i18n="sim.target_population">目标模拟人数</label>
-                                <input type="number" name="mc_population" value="100" min="10" max="10000" class="sim-input-sm">
-                                <small style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.llm_calls">实际 LLM 调用约 15-25 次</small>
-                            </div>
-                        </div>
-
-                        <!-- Category & Tags -->
-                        <div class="sim-config-section">
-                            <div class="sim-config-title" data-i18n="sim.classification">分类</div>
-                            <input type="text" name="category" required placeholder="Category" class="sim-input-sm" style="margin-bottom:6px;">
-                            <input type="text" name="tags" placeholder="Tags (comma separated)" class="sim-input-sm">
-                        </div>
-
-                        <!-- Outcome -->
-                        <div class="sim-config-section">
-                            <div class="sim-config-title" data-i18n="sim.outcome">结果类型</div>
-                            <select name="outcome_type" id="simOutcomeType" class="sim-select">
-                                <option value="binary" data-i18n="sim.binary">二元 (Yes/No)</option>
-                                <option value="multi" data-i18n="sim.multi">多选项</option>
-                            </select>
-                            <div id="simOutcomeOptionsGroup" style="display:none;margin-top:6px;">
-                                <input type="text" name="outcome_options" placeholder="Option A, Option B, ..." class="sim-input-sm">
-                            </div>
-                        </div>
-
-                        <!-- Rounds & Agents -->
-                        <div class="sim-config-section">
-                            <div class="sim-config-title" data-i18n="sim.parameters">参数</div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-                                <div>
-                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.rounds">轮次</label>
-                                    <input type="number" name="total_rounds" value="1" min="1" max="10" class="sim-input-sm">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.stake_agent">质押/Agent</label>
-                                    <input type="number" name="stake_per_agent" value="5" min="0" class="sim-input-sm">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.min_agents">最少 Agent</label>
-                                    <input type="number" name="min_agents" value="3" min="1" class="sim-input-sm">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.72em;color:var(--text-muted);" data-i18n="sim.max_agents">最多 Agent</label>
-                                    <input type="number" name="max_agents" value="50" min="1" class="sim-input-sm">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- LLM Config -->
-                        <div class="sim-config-section">
-                            <div class="sim-config-title">🤖 LLM</div>
-                            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="llmPresets">
-                                <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPreset(this)">🌋 Doubao Lite</button>
-                                <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPreset(this)">🌋 Doubao Pro</button>
-                                <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectLLMPreset(this)">⚙️ Custom</button>
-                            </div>
-                            <div id="llmCustomFields" style="display:none;">
-                                <input type="url" name="llm_base_url" placeholder="Base URL" class="sim-input-sm" style="margin-bottom:4px;">
-                                <input type="text" name="llm_model" placeholder="Model" class="sim-input-sm">
-                            </div>
-                            <div id="llmApiKeyGroup" style="display:none;margin-top:6px;">
-                                <input type="password" name="llm_api_key" placeholder="API Key" class="sim-input-sm">
-                            </div>
-                            <input type="hidden" name="llm_base_url_hidden" value="">
-                            <input type="hidden" name="llm_model_hidden" value="">
-                        </div>
+                    <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);margin-top:var(--space-lg);">
+                        <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                        <button type="submit" class="btn btn-primary" id="createSimSubmitBtn">✅ 创建模拟</button>
                     </div>
-                </div>
-
-                <!-- Bottom actions -->
-                <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);margin-top:var(--space-lg);">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">取消</button>
-                    <button type="submit" class="btn btn-primary" id="createSimSubmitBtn" data-i18n="common.create">创建</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -1579,17 +1602,22 @@
 
         function showCreateSim() {
             editingSimId = null;
+            currentPlan = null;
             document.getElementById('createSimForm').reset();
             document.getElementById('simOutcomeOptionsGroup').style.display = 'none';
             document.getElementById('mcConfigGroup').style.display = 'none';
-            document.getElementById('createSimTitle').textContent = I18N.t('sim.create');
-            document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.create');
+            // Reset to step 1
+            document.getElementById('simStep1').style.display = '';
+            document.getElementById('simStep2').style.display = 'none';
+            document.getElementById('planTitle').value = '';
+            document.getElementById('planError').style.display = 'none';
+            document.getElementById('planReasoning').style.display = 'none';
+            document.getElementById('roundPlanGroup').style.display = 'none';
             // Reset LLM preset state
-            document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('llmCustomFields').style.display = 'none';
-            document.getElementById('llmApiKeyGroup').style.display = 'none';
-            document.querySelector('input[name="llm_base_url_hidden"]').value = '';
-            document.querySelector('input[name="llm_model_hidden"]').value = '';
+            document.querySelectorAll('#llmPresetsStep1 .llm-preset-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('llmCustomFieldsStep1').style.display = 'none';
+            document.getElementById('llmApiKeyGroupStep1').style.display = 'none';
+            step1LlmConfig = { base_url: '', api_key: '', model: '' };
             document.getElementById('createSimModal').classList.add('active');
         }
 
@@ -1682,41 +1710,142 @@
             }
         }
 
-        function selectLLMPreset(btn) {
-            // Toggle: click again to deselect
-            const wasActive = btn.classList.contains('active');
-            document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
+        // ===== Step 1: LLM Preset Selection =====
+        let step1LlmConfig = { base_url: '', api_key: '', model: '' };
 
+        function selectLLMPresetStep1(btn) {
+            const wasActive = btn.classList.contains('active');
+            document.querySelectorAll('#llmPresetsStep1 .llm-preset-btn').forEach(b => b.classList.remove('active'));
             if (wasActive) {
-                // Deselect
-                document.getElementById('llmCustomFields').style.display = 'none';
-                document.getElementById('llmApiKeyGroup').style.display = 'none';
-                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
-                document.querySelector('input[name="llm_model_hidden"]').value = '';
+                document.getElementById('llmCustomFieldsStep1').style.display = 'none';
+                document.getElementById('llmApiKeyGroupStep1').style.display = 'none';
+                step1LlmConfig = { base_url: '', api_key: '', model: '' };
                 return;
             }
-
             btn.classList.add('active');
-            const provider = btn.dataset.provider;
-
-            if (provider === 'custom') {
-                document.getElementById('llmCustomFields').style.display = '';
-                document.getElementById('llmApiKeyGroup').style.display = '';
-                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
-                document.querySelector('input[name="llm_model_hidden"]').value = '';
+            if (btn.dataset.provider === 'custom') {
+                document.getElementById('llmCustomFieldsStep1').style.display = '';
+                document.getElementById('llmApiKeyGroupStep1').style.display = '';
+                step1LlmConfig.base_url = '';
+                step1LlmConfig.model = '';
             } else {
-                // Preset: fill hidden fields, hide custom inputs
-                document.getElementById('llmCustomFields').style.display = 'none';
-                document.getElementById('llmApiKeyGroup').style.display = '';
-                document.querySelector('input[name="llm_base_url_hidden"]').value = btn.dataset.base;
-                document.querySelector('input[name="llm_model_hidden"]').value = btn.dataset.model;
+                document.getElementById('llmCustomFieldsStep1').style.display = 'none';
+                document.getElementById('llmApiKeyGroupStep1').style.display = '';
+                step1LlmConfig.base_url = btn.dataset.base;
+                step1LlmConfig.model = btn.dataset.model;
             }
+        }
+
+        // ===== Generate Plan =====
+        let currentPlan = null;
+
+        async function generatePlan() {
+            const title = document.getElementById('planTitle').value.trim();
+            if (!title) { showAlert('error', '请输入模拟标题'); return; }
+
+            const base_url = step1LlmConfig.base_url || document.getElementById('planBaseUrl')?.value || '';
+            const api_key = document.getElementById('planApiKey')?.value || '';
+            const model = step1LlmConfig.model || document.getElementById('planModel')?.value || '';
+
+            if (!base_url || !api_key || !model) {
+                showAlert('error', '请选择 LLM 预设并填写 API Key'); return;
+            }
+
+            // Show loading
+            document.getElementById('planBtnText').style.display = 'none';
+            document.getElementById('planBtnLoading').style.display = '';
+            document.getElementById('planBtn').disabled = true;
+            document.getElementById('planError').style.display = 'none';
+
+            try {
+                const res = await fetch('/api/simulations/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title, llm_base_url: base_url, llm_api_key: api_key, llm_model: model })
+                });
+                const result = await res.json();
+
+                if (!res.ok) {
+                    const errMsg = result.detail || 'Plan generation failed';
+                    document.getElementById('planError').textContent = errMsg;
+                    document.getElementById('planError').style.display = '';
+                    return;
+                }
+
+                currentPlan = result.plan;
+
+                // Carry LLM config to step 2
+                document.getElementById('simLlmBaseUrl').value = base_url;
+                document.getElementById('simLlmApiKey').value = api_key;
+                document.getElementById('simLlmModel').value = model;
+
+                // Fill form fields
+                const form = document.getElementById('createSimForm');
+                form.title.value = title;
+                form.question.value = currentPlan.question || title;
+                form.description.value = currentPlan.description || '';
+                form.resolution_criteria.value = currentPlan.resolution_criteria || '';
+                form.category.value = currentPlan.category || '';
+                form.tags.value = (currentPlan.tags || []).join(', ');
+                form.total_rounds.value = currentPlan.total_rounds || 1;
+                form.min_agents.value = currentPlan.min_agents || 3;
+                form.max_agents.value = currentPlan.max_agents || 50;
+                form.stake_per_agent.value = currentPlan.stake_per_agent || 5;
+
+                // Outcome type
+                form.outcome_type.value = currentPlan.outcome_type || 'binary';
+                if (currentPlan.outcome_type === 'multi') {
+                    document.getElementById('simOutcomeOptionsGroup').style.display = '';
+                    form.outcome_options.value = (currentPlan.outcome_options || []).join(', ');
+                }
+
+                // Mode
+                form.simulation_mode.value = currentPlan.simulation_mode || 'standard';
+                if (currentPlan.simulation_mode === 'monte_carlo') {
+                    document.getElementById('mcConfigGroup').style.display = 'block';
+                }
+
+                // Reasoning
+                if (currentPlan.reasoning) {
+                    document.getElementById('planReasoning').textContent = '💡 ' + currentPlan.reasoning;
+                    document.getElementById('planReasoning').style.display = '';
+                }
+
+                // Round plan
+                if (currentPlan.round_plan && currentPlan.round_plan.length > 0) {
+                    document.getElementById('roundPlanGroup').style.display = '';
+                    document.getElementById('roundPlanList').innerHTML = currentPlan.round_plan.map((r, i) =>
+                        `<div style="padding:8px 12px;background:var(--bg-tertiary);border-radius:var(--radius-md);margin-bottom:6px;border-left:2px solid var(--accent-muted);">
+                            <div style="font-weight:500;color:var(--text-primary);font-size:0.9em;">Round ${i+1}: ${r.title || ''}</div>
+                            <div style="color:var(--text-muted);font-size:0.8em;margin-top:2px;">${r.env_hint || ''}</div>
+                        </div>`
+                    ).join('');
+                }
+
+                // Switch to step 2
+                document.getElementById('simStep1').style.display = 'none';
+                document.getElementById('simStep2').style.display = '';
+
+            } catch (e) {
+                document.getElementById('planError').textContent = 'Network error: ' + e.message;
+                document.getElementById('planError').style.display = '';
+            } finally {
+                document.getElementById('planBtnText').style.display = '';
+                document.getElementById('planBtnLoading').style.display = 'none';
+                document.getElementById('planBtn').disabled = false;
+            }
+        }
+
+        function backToStep1() {
+            document.getElementById('simStep1').style.display = '';
+            document.getElementById('simStep2').style.display = 'none';
         }
 
         document.getElementById('simOutcomeType').addEventListener('change', function() {
             document.getElementById('simOutcomeOptionsGroup').style.display = this.value === 'multi' ? '' : 'none';
         });
 
+        // ===== Create Simulation =====
         async function handleCreateSim(e) {
             e.preventDefault();
             const form = e.target;
@@ -1733,36 +1862,31 @@
                 max_agents: parseInt(form.max_agents.value) || 50,
                 stake_per_agent: parseInt(form.stake_per_agent.value) || 5,
                 tags: form.tags.value ? form.tags.value.split(',').map(s => s.trim()).filter(Boolean) : [],
-                outcome_options: form.outcome_type.value === 'multi' && form.outcome_options.value
+                outcome_options: form.outcome_type.value === 'multi' && form.outcome_options?.value
                     ? form.outcome_options.value.split(',').map(s => s.trim()).filter(Boolean)
                     : ['yes', 'no'],
-                llm_base_url: form.llm_base_url_hidden.value || (form.llm_base_url ? form.llm_base_url.value : null) || null,
-                llm_api_key: form.llm_api_key.value || null,
-                llm_model: form.llm_model_hidden.value || (form.llm_model ? form.llm_model.value : null) || null,
+                llm_base_url: document.getElementById('simLlmBaseUrl').value || null,
+                llm_api_key: document.getElementById('simLlmApiKey').value || null,
+                llm_model: document.getElementById('simLlmModel').value || null,
                 simulation_mode: form.simulation_mode?.value || 'standard',
                 monte_carlo_config: form.simulation_mode?.value === 'monte_carlo' ? {
                     target_population: parseInt(form.mc_population?.value) || 100
-                } : null
+                } : null,
+                round_titles: currentPlan?.round_plan ? currentPlan.round_plan.map(r => r.title || '') : []
             };
 
             const isEdit = editingSimId !== null;
             const url = isEdit ? `/api/simulations/${editingSimId}` : '/api/simulations';
             const method = isEdit ? 'PUT' : 'POST';
 
-            // For edit: also update LLM config if changed
             if (isEdit && (payload.llm_api_key || payload.llm_base_url)) {
-                // Send LLM update separately since PUT may not handle it
                 try {
                     await fetch(`/api/simulations/${editingSimId}/llm-config`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({
-                            llm_base_url: payload.llm_base_url,
-                            llm_api_key: payload.llm_api_key,
-                            llm_model: payload.llm_model
-                        })
+                        body: JSON.stringify({ llm_base_url: payload.llm_base_url, llm_api_key: payload.llm_api_key, llm_model: payload.llm_model })
                     });
-                } catch (e) { /* ignore, main update below */ }
+                } catch (e) {}
             }
 
             try {
@@ -1776,6 +1900,7 @@
                     showAlert('success', isEdit ? I18N.t('sim.update_success') : I18N.t('sim.create_success'));
                     hideModal();
                     editingSimId = null;
+                    currentPlan = null;
                     loadMySimulations(); if(currentSimDetail) refreshSimDetail();
                 } else {
                     showAlert('error', result.detail || (isEdit ? I18N.t('sim.update_fail') : I18N.t('sim.create_fail')));

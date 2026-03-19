@@ -116,6 +116,141 @@ class RunRoundRequest(BaseModel):
     environment_injection: str = ""
 
 
+class SimulationPlanRequest(BaseModel):
+    title: str
+    llm_base_url: str
+    llm_api_key: str
+    llm_model: str
+
+
+# ==========================================
+# AI Plan
+# ==========================================
+
+@router.post("/plan")
+async def api_plan_simulation(data: SimulationPlanRequest):
+    """
+    Step 1 of two-step creation: LLM generates simulation config from title.
+    Uses the user's own LLM key — no auth required for planning.
+    """
+    import httpx
+
+    system_prompt = """你是一个认知模拟任务规划专家。用户会给你一个模拟任务的标题，你需要生成完整的模拟配置。
+
+请严格按以下 JSON 格式返回（不要包含任何其他文字）：
+{
+  "question": "具体的核心问题描述（比标题更完整）",
+  "description": "模拟任务的背景简介（2-3句话）",
+  "category": "分类（如：经济、科技、政治、社会、文化）",
+  "outcome_type": "binary 或 multi",
+  "outcome_options": ["yes", "no"] 或多个选项,
+  "resolution_criteria": "明确的、可验证的判定标准（包含时间节点和判定条件）",
+  "total_rounds": 轮数（1-5之间的整数）,
+  "round_plan": [
+    {"title": "第N轮标题", "env_hint": "该轮环境注入提示"}
+  ],
+  "simulation_mode": "standard 或 monte_carlo",
+  "min_agents": 最少Agent数,
+  "max_agents": 最多Agent数,
+  "stake_per_agent": 每Agent质押ATP数,
+  "tags": ["标签1", "标签2"],
+  "reasoning": "为什么这样设计（简短说明）"
+}
+
+规则：
+- 轮数根据问题复杂度决定：简单二元问题1-2轮，复杂多因素问题3-5轮
+- 每轮的 env_hint 必须有差异化目的（如：基准分析、新数据冲击、极端情境）
+- 判定标准必须包含明确的时间节点和可验证的客观条件
+- 如果问题适合蒙特卡洛模拟（需要大量采样的不确定性问题），mode 设为 monte_carlo
+- 标签和分类用中文（如果标题是中文）或英文（如果标题是英文），保持语言一致
+- 只返回 JSON，不要有任何额外说明"""
+
+    user_prompt = f"模拟任务标题：{data.title}"
+
+    # Call user's LLM
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            res = await client.post(
+                f"{data.llm_base_url.rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {data.llm_api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": data.llm_model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.7,
+                },
+            )
+
+            if res.status_code == 401:
+                # Parse provider-specific error
+                try:
+                    err = res.json()
+                    msg = err.get("error", {}).get("message", "") or str(err)
+                except Exception:
+                    msg = res.text[:200]
+                raise HTTPException(401, f"LLM API key invalid: {msg}")
+
+            if res.status_code != 200:
+                try:
+                    err = res.json()
+                    msg = err.get("error", {}).get("message", "") or str(err)
+                except Exception:
+                    msg = res.text[:200]
+                raise HTTPException(502, f"LLM API error ({res.status_code}): {msg}")
+
+            response_data = res.json()
+            content = response_data["choices"][0]["message"]["content"]
+
+            # Parse JSON from response (handle markdown code blocks)
+            content = content.strip()
+            if content.startswith("```"):
+                # Remove ```json ... ```
+                lines = content.split("\n")
+                content = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+                content = content.strip()
+
+            plan = json.loads(content)
+
+            # Validate required fields, fill defaults
+            plan.setdefault("question", data.title)
+            plan.setdefault("description", "")
+            plan.setdefault("category", "其他")
+            plan.setdefault("outcome_type", "binary")
+            plan.setdefault("outcome_options", ["yes", "no"])
+            plan.setdefault("resolution_criteria", "")
+            plan.setdefault("total_rounds", 1)
+            plan.setdefault("round_plan", [])
+            plan.setdefault("simulation_mode", "standard")
+            plan.setdefault("min_agents", 3)
+            plan.setdefault("max_agents", 50)
+            plan.setdefault("stake_per_agent", 5)
+            plan.setdefault("tags", [])
+            plan.setdefault("reasoning", "")
+
+            # Clamp values
+            plan["total_rounds"] = max(1, min(10, plan["total_rounds"]))
+            plan["min_agents"] = max(1, plan["min_agents"])
+            plan["max_agents"] = max(plan["min_agents"], plan["max_agents"])
+
+            return {"plan": plan}
+
+    except HTTPException:
+        raise
+    except json.JSONDecodeError as e:
+        raise HTTPException(422, f"LLM returned invalid JSON: {str(e)[:100]}. Raw: {content[:200]}")
+    except httpx.ConnectError:
+        raise HTTPException(502, f"Cannot connect to LLM API: {data.llm_base_url}")
+    except httpx.TimeoutException:
+        raise HTTPException(504, "LLM API request timed out (30s)")
+    except Exception as e:
+        raise HTTPException(500, f"Plan generation failed: {str(e)[:200]}")
+
+
 # ==========================================
 # Simulation CRUD
 # ==========================================
