@@ -697,6 +697,136 @@ async def api_retry_round(
     return result
 
 
+@router.post("/{simulation_id}/rounds/{round_number}/generate-injection")
+async def api_generate_injection(
+    simulation_id: str,
+    round_number: int,
+    user: dict = Depends(get_current_user)
+):
+    """AI 生成环境注入：基于上轮结果 + 群体反馈"""
+    import httpx
+    from crypto_utils import decrypt_api_key
+
+    sim = get_simulation(simulation_id)
+    if not sim:
+        raise HTTPException(404, "Simulation not found")
+
+    rnd = get_round(simulation_id, round_number)
+    if not rnd:
+        raise HTTPException(404, "Round not found")
+
+    # Get LLM config
+    from database import get_db
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT llm_base_url, llm_api_key_enc, llm_model FROM simulations WHERE simulation_id=?", (simulation_id,))
+    lr = cursor.fetchone()
+    conn.close()
+
+    if not lr or not lr["llm_api_key_enc"]:
+        raise HTTPException(400, "No LLM configured for this simulation")
+
+    api_key = decrypt_api_key(lr["llm_api_key_enc"])
+
+    # Gather previous round results
+    prev_round = get_round(simulation_id, round_number - 1) if round_number > 1 else None
+    prev_summary = prev_round["result_summary"] if prev_round else ""
+    prev_aggregated = prev_round["aggregated_result"] if prev_round else ""
+
+    # Get archetype info
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, description, weight FROM simulation_archetypes WHERE simulation_id = ?", (simulation_id,))
+    archetypes = [dict(r) for r in cursor.fetchall()]
+
+    # Get previous reactions with stances
+    prev_reactions_text = ""
+    if prev_round:
+        cursor.execute("""
+            SELECT rr.agent_id, rr.stance, rr.confidence, rr.brief_reasoning, sa.name as archetype_name
+            FROM round_reactions rr
+            LEFT JOIN simulation_archetypes sa ON rr.archetype_id = sa.archetype_id
+            WHERE rr.round_id = ? AND rr.status = 'collected' AND rr.stance IS NOT NULL
+            ORDER BY rr.confidence DESC
+        """, (prev_round["round_id"],))
+        reactions = cursor.fetchall()
+        if reactions:
+            stance_counts = {}
+            reasoning_samples = []
+            for r in reactions:
+                s = r["stance"] or "unknown"
+                stance_counts[s] = stance_counts.get(s, 0) + 1
+                if r["brief_reasoning"] and len(reasoning_samples) < 5:
+                    arc_label = r["archetype_name"] or "Agent"
+                    reasoning_samples.append(f"- [{arc_label}] {r['stance']}({r['confidence']:.0%}): {r['brief_reasoning']}")
+
+            prev_reactions_text = f"立场分布: {stance_counts}\n代表性论证:\n" + "\n".join(reasoning_samples)
+    conn.close()
+
+    # Get round plan hints if available
+    round_title = rnd.get("title", "")
+
+    system_prompt = """你是一个认知模拟的环境设计师。你需要为下一轮模拟生成环境注入文本。
+
+环境注入的目的：
+1. 反馈上一轮的群体认知，让 Agent 了解其他人怎么想（但不暗示"正确答案"）
+2. 引入合理的新视角或边际变化，促使 Agent 更新判断
+3. 制造合理的认知张力，避免所有 Agent 简单趋同
+
+规则：
+- 客观呈现上轮群体判断，不评判对错
+- 语气中性，像一个信息播报员
+- 如果有轮次主题，围绕该主题展开
+- 200-400字，中文
+- 直接输出注入文本，不要加标题或解释"""
+
+    user_prompt = f"""模拟主题: {sim["title"]}
+核心问题: {sim["question"]}
+
+当前是第{round_number}轮{f'（主题: {round_title}）' if round_title else ''}。
+
+上一轮（第{round_number - 1}轮）结果:
+{prev_summary or '（首轮，无历史数据）'}
+
+上一轮群体认知:
+{prev_reactions_text or '（无数据）'}
+
+认知原型分布:
+{chr(10).join([f'- {a["name"]}（权重{a["weight"]:.0%}）: {a["description"][:80]}' for a in archetypes]) if archetypes else '（无原型数据）'}
+
+请生成第{round_number}轮的环境注入文本。"""
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            res = await client.post(
+                f"{lr['llm_base_url'].rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": lr["llm_model"],
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "temperature": 0.7,
+                },
+            )
+            if res.status_code != 200:
+                raise HTTPException(502, f"LLM error: {res.text[:200]}")
+
+            content = res.json()["choices"][0]["message"]["content"].strip()
+            return {"injection": content, "round_number": round_number}
+
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        raise HTTPException(504, "LLM request timed out")
+    except Exception as e:
+        raise HTTPException(500, f"Failed to generate injection: {str(e)[:200]}")
+
+
 @router.post("/{simulation_id}/rounds/{round_number}/close")
 async def api_close_round(
     simulation_id: str,

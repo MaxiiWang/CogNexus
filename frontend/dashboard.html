@@ -28,7 +28,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260319e">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319f">
     <style>
         /* ===== Dashboard Grid ===== */
         .dashboard-grid {
@@ -670,8 +670,8 @@
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js?v=20260319e"></script>
-    <script src="/static/js/header.js?v=20260319e"></script>
+    <script src="/static/js/i18n.js?v=20260319f"></script>
+    <script src="/static/js/header.js?v=20260319f"></script>
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
@@ -1018,18 +1018,25 @@
 
     <!-- Environment Injection Modal -->
     <div class="modal" id="envInjectionModal">
-        <div class="modal-content" style="max-width:560px;">
-            <h2>环境注入 - 第<span id="envRoundNum"></span>轮</h2>
-            <p style="font-size:0.88em;color:var(--text-secondary);margin-bottom:var(--space-md);" data-i18n="sim.env_desc">
-                Enter new environmental changes for this round (e.g. new events, new data). Agents will update their judgment based on this.
+        <div class="modal-content" style="max-width:620px;">
+            <h2>🌍 环境注入 - 第<span id="envRoundNum"></span>轮</h2>
+            <p style="font-size:0.88em;color:var(--text-secondary);margin-bottom:var(--space-md);">
+                AI 将基于上轮群体认知和认知原型自动生成环境注入。你可以审阅、编辑后执行。
             </p>
+            <div style="margin-bottom:var(--space-md);">
+                <button type="button" class="btn btn-secondary btn-small" id="genInjectionBtn" onclick="generateInjection()">
+                    <span id="genInjBtnText">✨ AI 生成环境注入</span>
+                    <span id="genInjBtnLoading" style="display:none;">⏳ 生成中...</span>
+                </button>
+            </div>
+            <div id="genInjError" style="display:none;padding:8px 12px;background:rgba(196,122,90,0.12);border:1px solid rgba(196,122,90,0.3);border-radius:var(--radius-md);color:#c47a5a;font-size:0.82em;margin-bottom:var(--space-md);"></div>
             <div class="form-group">
-                <label data-i18n="sim.env_label">Environmental Change Description</label>
-                <textarea id="envInjectionText" rows="5" placeholder="e.g., China announces counter-tariffs, US stock futures drop 3%..."></textarea>
+                <label>环境注入内容（可编辑）</label>
+                <textarea id="envInjectionText" rows="8" placeholder="点击上方按钮自动生成，或手动输入..." style="font-size:0.9em;line-height:1.7;"></textarea>
             </div>
             <div class="modal-buttons">
-                <button class="btn btn-secondary" onclick="executeRoundWithEnv('')" data-i18n="sim.env_skip">Skip (no changes)</button>
-                <button class="btn btn-primary" onclick="executeRoundWithEnv(document.getElementById('envInjectionText').value)" data-i18n="sim.env_inject">Inject & Execute</button>
+                <button class="btn btn-secondary" onclick="executeRoundWithEnv('')">跳过（无注入）</button>
+                <button class="btn btn-primary" onclick="executeRoundWithEnv(document.getElementById('envInjectionText').value)">注入并执行 →</button>
             </div>
         </div>
     </div>
@@ -2509,6 +2516,38 @@
                 }
             } catch (e) {
                 showAlert('error', I18N.t('common.network_error'));
+            }
+        }
+
+        async function generateInjection() {
+            const simId = _pendingRunSimId;
+            const roundNumber = _pendingRunRound;
+            const token = localStorage.getItem('cog_token');
+
+            document.getElementById('genInjBtnText').style.display = 'none';
+            document.getElementById('genInjBtnLoading').style.display = '';
+            document.getElementById('genInjectionBtn').disabled = true;
+            document.getElementById('genInjError').style.display = 'none';
+
+            try {
+                const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/generate-injection`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok && data.injection) {
+                    document.getElementById('envInjectionText').value = data.injection;
+                } else {
+                    document.getElementById('genInjError').textContent = data.detail || 'Failed to generate';
+                    document.getElementById('genInjError').style.display = '';
+                }
+            } catch (e) {
+                document.getElementById('genInjError').textContent = 'Network error: ' + e.message;
+                document.getElementById('genInjError').style.display = '';
+            } finally {
+                document.getElementById('genInjBtnText').style.display = '';
+                document.getElementById('genInjBtnLoading').style.display = 'none';
+                document.getElementById('genInjectionBtn').disabled = false;
             }
         }
 
