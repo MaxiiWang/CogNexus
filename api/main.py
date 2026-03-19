@@ -1194,6 +1194,55 @@ async def simulation_page():
     return FileResponse(FRONTEND_PATH / "simulation.html")
 
 
+@app.get("/simulation/{simulation_id}")
+async def simulation_detail_page(simulation_id: str):
+    """Simulation 详情页 — SSR meta tags for SEO"""
+    from fastapi.responses import HTMLResponse
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT s.*, u.username as creator_name
+        FROM simulations s
+        LEFT JOIN users u ON s.created_by = u.user_id
+        WHERE s.simulation_id = ?
+    """, (simulation_id,))
+    sim = cursor.fetchone()
+    conn.close()
+
+    if not sim:
+        return FileResponse(FRONTEND_PATH / "simulation.html")
+
+    sim = dict(sim)
+    title = sim.get("title", "Simulation")
+    question = sim.get("question", "")
+    category = sim.get("category", "")
+    status = sim.get("status", "")
+    description = question or sim.get("description", "")
+    if len(description) > 160:
+        description = description[:157] + "..."
+
+    page_title = f"{title} — Cognitive Simulation on Wielding.ai"
+    canonical = f"https://wielding.ai/simulation/{simulation_id}"
+
+    # Read the template
+    with open(FRONTEND_PATH / "simulation-detail.html", "r") as f:
+        html = f.read()
+
+    # Replace placeholders
+    import html as html_lib
+    html = html.replace("{{PAGE_TITLE}}", html_lib.escape(page_title))
+    html = html.replace("{{META_DESCRIPTION}}", html_lib.escape(description))
+    html = html.replace("{{CANONICAL_URL}}", canonical)
+    html = html.replace("{{OG_TITLE}}", html_lib.escape(title))
+    html = html.replace("{{SIMULATION_ID}}", html_lib.escape(simulation_id))
+    html = html.replace("{{SIM_TITLE}}", html_lib.escape(title))
+    html = html.replace("{{SIM_CATEGORY}}", html_lib.escape(category))
+    html = html.replace("{{SIM_STATUS}}", html_lib.escape(status))
+    html = html.replace("{{SIM_QUESTION}}", html_lib.escape(question))
+
+    return HTMLResponse(content=html)
+
+
 @app.get("/guide")
 async def guide_page():
     """文档页面"""
@@ -1232,8 +1281,17 @@ async def sitemap_xml():
   <url><loc>https://wielding.ai/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://wielding.ai/marketplace</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>https://wielding.ai/simulation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://wielding.ai/guide</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
-</urlset>"""
+  <url><loc>https://wielding.ai/guide</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>"""
+
+    # Dynamically add simulation detail pages
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT simulation_id FROM simulations ORDER BY created_at DESC LIMIT 50")
+    for row in cursor.fetchall():
+        xml += f'\n  <url><loc>https://wielding.ai/simulation/{row["simulation_id"]}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>'
+    conn.close()
+
+    xml += "\n</urlset>"
     return Response(content=xml, media_type="application/xml")
 
 

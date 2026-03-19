@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{PAGE_TITLE}}</title>
+    <meta name="description" content="{{META_DESCRIPTION}}">
+    <link rel="canonical" href="{{CANONICAL_URL}}">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{OG_TITLE}} — Cognitive Simulation">
+    <meta property="og:description" content="{{META_DESCRIPTION}}">
+    <meta property="og:image" content="https://wielding.ai/static/og-image.png">
+    <meta property="og:url" content="{{CANONICAL_URL}}">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Wielding.ai">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{OG_TITLE}} — Cognitive Simulation">
+    <meta name="twitter:description" content="{{META_DESCRIPTION}}">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "{{OG_TITLE}}",
+        "description": "{{META_DESCRIPTION}}",
+        "url": "{{CANONICAL_URL}}",
+        "publisher": {
+            "@type": "Organization",
+            "name": "Wielding.ai",
+            "url": "https://wielding.ai"
+        }
+    }
+    </script>
+
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319c">
+    <script src="/static/js/i18n.js?v=20260319c" defer></script>
+    <script src="/static/js/header.js?v=20260319c" defer></script>
+    <style>
+        .sim-detail { padding: var(--space-xl) 0 var(--space-2xl); }
+
+        /* Hero */
+        .sim-hero {
+            margin-bottom: var(--space-xl);
+            padding-bottom: var(--space-xl);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .sim-hero h1 {
+            font-family: var(--font-display);
+            font-size: 2.2em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-sm);
+            line-height: 1.3;
+        }
+        .sim-meta {
+            display: flex;
+            gap: var(--space-md);
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: var(--space-lg);
+        }
+        .sim-badge {
+            font-size: 0.78em;
+            padding: 4px 10px;
+            border-radius: var(--radius-pill);
+            font-weight: 500;
+        }
+        .sim-badge.category {
+            background: var(--accent-muted);
+            color: var(--accent-text);
+            border: 1px solid rgba(212, 160, 84, 0.3);
+        }
+        .sim-badge.status {
+            border: 1px solid var(--border-subtle);
+        }
+        .sim-badge.status-active { color: var(--color-human); border-color: rgba(109, 168, 155, 0.4); }
+        .sim-badge.status-recruiting { color: var(--accent-text); border-color: rgba(212, 160, 84, 0.4); }
+        .sim-badge.status-closed { color: var(--text-muted); }
+        .sim-badge.status-draft { color: var(--text-muted); }
+        .sim-meta-text { font-size: 0.85em; color: var(--text-muted); }
+
+        /* Question card */
+        .question-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-left: 3px solid var(--accent-primary);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+        .question-card h2 {
+            font-family: var(--font-display);
+            font-size: 1.2em;
+            color: var(--text-primary);
+            margin-bottom: var(--space-md);
+        }
+        .question-text {
+            font-size: 1.05em;
+            color: var(--text-primary);
+            line-height: 1.7;
+            margin-bottom: var(--space-lg);
+        }
+        .question-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--space-md);
+        }
+        .question-detail-item {
+            font-size: 0.85em;
+        }
+        .question-detail-item .label {
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .question-detail-item .value {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .prediction-bar-container {
+            margin-top: var(--space-lg);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--border-subtle);
+        }
+        .prediction-bar-label {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-sm);
+        }
+        .prediction-bar {
+            display: flex;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            height: 32px;
+        }
+        .prediction-bar .segment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78em;
+            font-weight: 600;
+            color: var(--bg-primary);
+            min-width: 40px;
+            transition: width 0.5s ease;
+        }
+        .prediction-bar .segment.yes { background: var(--color-human); }
+        .prediction-bar .segment.no { background: #c47a5a; }
+
+        /* Section */
+        .sim-section {
+            margin-bottom: var(--space-xl);
+        }
+        .sim-section h2 {
+            font-family: var(--font-display);
+            font-size: 1.3em;
+            color: var(--text-primary);
+            margin-bottom: var(--space-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        /* Participants */
+        .participant-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        .participant-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: var(--space-md);
+            align-items: start;
+            transition: border-color var(--transition-normal);
+        }
+        .participant-card:hover { border-color: var(--accent-muted); }
+        .participant-avatar {
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3em;
+        }
+        .participant-info h4 {
+            font-size: 0.95em;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+        .participant-info h4 a {
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+        .participant-info h4 a:hover { color: var(--accent-text); }
+        .participant-role {
+            font-size: 0.82em;
+            color: var(--accent-text);
+            margin-bottom: 4px;
+        }
+        .participant-role-desc {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+        .participant-stance {
+            text-align: right;
+            min-width: 90px;
+        }
+        .participant-stance .stance-value {
+            font-family: var(--font-display);
+            font-size: 1.1em;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .participant-stance .stance-value.yes { color: var(--color-human); }
+        .participant-stance .stance-value.no { color: #c47a5a; }
+        .participant-stance .confidence {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Round */
+        .round-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-lg);
+            overflow: hidden;
+        }
+        .round-header {
+            padding: var(--space-md) var(--space-lg);
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .round-header h3 {
+            font-family: var(--font-display);
+            font-size: 1em;
+            color: var(--text-primary);
+        }
+        .round-header .round-status {
+            font-size: 0.78em;
+            color: var(--text-muted);
+        }
+        .env-injection {
+            padding: var(--space-md) var(--space-lg);
+            background: rgba(212, 160, 84, 0.05);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+        .env-injection .env-label {
+            font-weight: 600;
+            color: var(--accent-text);
+            margin-bottom: 4px;
+        }
+
+        /* Reaction */
+        .reaction-card {
+            padding: var(--space-lg);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        .reaction-card:last-child { border-bottom: none; }
+        .reaction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-md);
+        }
+        .reaction-agent {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+        .reaction-agent-icon {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85em;
+        }
+        .reaction-agent-name {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 0.9em;
+        }
+        .reaction-stance {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 0.82em;
+        }
+        .reaction-stance .stance-tag {
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        .stance-tag.yes { background: rgba(109, 168, 155, 0.15); color: var(--color-human); }
+        .stance-tag.no { background: rgba(196, 122, 90, 0.15); color: #c47a5a; }
+        .reaction-body {
+            font-size: 0.88em;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            max-height: 300px;
+            overflow-y: auto;
+            padding-right: var(--space-sm);
+        }
+        .reaction-body p { margin-bottom: var(--space-sm); }
+        .reaction-body table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: var(--space-sm) 0;
+            font-size: 0.92em;
+        }
+        .reaction-body table th,
+        .reaction-body table td {
+            padding: 6px 10px;
+            border: 1px solid var(--border-subtle);
+            text-align: left;
+        }
+        .reaction-body table th {
+            background: var(--bg-tertiary);
+            font-weight: 600;
+        }
+        .reaction-body h3 {
+            font-size: 1em;
+            color: var(--text-primary);
+            margin: var(--space-md) 0 var(--space-sm);
+        }
+        .reaction-brief {
+            margin-top: var(--space-md);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 0.82em;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+        .reaction-expand {
+            display: inline-block;
+            margin-top: var(--space-sm);
+            font-size: 0.82em;
+            color: var(--accent-text);
+            cursor: pointer;
+            border: none;
+            background: none;
+            padding: 0;
+        }
+        .reaction-expand:hover { text-decoration: underline; }
+        .reaction-body.collapsed {
+            max-height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+        .reaction-body.collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, var(--bg-card));
+        }
+
+        /* Config */
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: var(--space-md);
+        }
+        .config-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: var(--space-md);
+        }
+        .config-item .config-label {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+        .config-item .config-value {
+            font-size: 0.92em;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Back link */
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85em;
+            margin-bottom: var(--space-lg);
+            transition: color var(--transition-normal);
+        }
+        .back-link:hover { color: var(--accent-text); }
+
+        /* Loading */
+        .loading-state {
+            text-align: center;
+            padding: var(--space-2xl);
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .sim-hero h1 { font-size: 1.6em; }
+            .participant-card { grid-template-columns: auto 1fr; }
+            .participant-stance { grid-column: 1 / -1; text-align: left; margin-top: var(--space-sm); }
+            .question-details { grid-template-columns: 1fr; }
+            .config-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <main class="sim-detail">
+        <div class="container">
+            <a href="/simulation" class="back-link">← Back to Simulations</a>
+
+            <!-- Hero (SSR) -->
+            <div class="sim-hero">
+                <h1>{{SIM_TITLE}}</h1>
+                <div class="sim-meta">
+                    <span class="sim-badge category">{{SIM_CATEGORY}}</span>
+                    <span class="sim-badge status status-{{SIM_STATUS}}">{{SIM_STATUS}}</span>
+                    <span class="sim-meta-text" id="simCreatedAt"></span>
+                </div>
+            </div>
+
+            <!-- Question -->
+            <div class="question-card" id="questionCard">
+                <h2>📋 Core Question</h2>
+                <div class="question-text">{{SIM_QUESTION}}</div>
+                <div class="question-details" id="questionDetails"></div>
+                <div class="prediction-bar-container" id="predictionContainer" style="display:none">
+                    <div class="prediction-bar-label">Current Prediction</div>
+                    <div class="prediction-bar" id="predictionBar"></div>
+                </div>
+            </div>
+
+            <!-- Participants -->
+            <div class="sim-section">
+                <h2>👥 Participants <span class="sim-meta-text" id="participantCount"></span></h2>
+                <div class="participant-list" id="participantList">
+                    <div class="loading-state">Loading participants...</div>
+                </div>
+            </div>
+
+            <!-- Rounds & Responses -->
+            <div class="sim-section" id="roundsSection">
+                <h2>📜 Rounds & Responses</h2>
+                <div id="roundsList">
+                    <div class="loading-state">Loading rounds...</div>
+                </div>
+            </div>
+
+            <!-- Config -->
+            <div class="sim-section">
+                <h2>⚙️ Configuration</h2>
+                <div class="config-grid" id="configGrid">
+                    <div class="loading-state">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 CogNexus &middot; Powered by ATP &middot; <a href="https://github.com/MaxiiWang/CogNexus" style="color: var(--text-muted);">GitHub</a></p>
+        </div>
+    </footer>
+
+    <script>
+        const SIM_ID = "{{SIMULATION_ID}}";
+        const API_BASE = '';
+
+        // Simple markdown-ish to HTML (tables, headers, bold, lists)
+        function mdToHtml(text) {
+            if (!text) return '';
+            let html = text
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/\n/g, '<br>');
+
+            // Tables
+            const lines = text.split('\n');
+            let inTable = false;
+            let tableHtml = '';
+            let result = [];
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('|') && line.endsWith('|')) {
+                    if (!inTable) {
+                        inTable = true;
+                        tableHtml = '<table>';
+                    }
+                    if (line.replace(/[\|\-\s]/g, '') === '') continue; // separator
+                    const cells = line.split('|').filter(c => c.trim());
+                    const tag = tableHtml === '<table>' ? 'th' : 'td';
+                    tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+                } else {
+                    if (inTable) {
+                        tableHtml += '</table>';
+                        result.push(tableHtml);
+                        tableHtml = '';
+                        inTable = false;
+                    }
+                    // Headers
+                    if (line.startsWith('### ')) {
+                        result.push(`<h3>${line.slice(4)}</h3>`);
+                    } else if (line.startsWith('## ')) {
+                        result.push(`<h3>${line.slice(3)}</h3>`);
+                    } else if (line === '') {
+                        result.push('<br>');
+                    } else {
+                        // Bold
+                        let processed = line
+                            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/`(.+?)`/g, '<code>$1</code>');
+                        result.push(`<p>${processed}</p>`);
+                    }
+                }
+            }
+            if (inTable) { tableHtml += '</table>'; result.push(tableHtml); }
+            return result.join('');
+        }
+
+        function escHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+        function capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+        function formatDate(d) { if (!d) return ''; return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
+
+        async function loadSimulation() {
+            try {
+                const res = await fetch(`${API_BASE}/api/simulations/${SIM_ID}`);
+                if (!res.ok) { document.querySelector('.sim-detail .container').innerHTML = '<div class="loading-state">Simulation not found</div>'; return; }
+                const sim = await res.json();
+
+                // Created at
+                document.getElementById('simCreatedAt').textContent = formatDate(sim.created_at);
+
+                // Question details
+                const details = [];
+                if (sim.outcome_type) details.push({ label: 'Outcome Type', value: capitalize(sim.outcome_type) });
+                if (sim.outcome_options) {
+                    try { details.push({ label: 'Options', value: JSON.parse(sim.outcome_options).join(' / ') }); } catch(e) {}
+                }
+                if (sim.resolution_criteria) details.push({ label: 'Resolution', value: sim.resolution_criteria });
+                if (sim.total_rounds) details.push({ label: 'Total Rounds', value: sim.total_rounds });
+
+                document.getElementById('questionDetails').innerHTML = details.map(d =>
+                    `<div class="question-detail-item"><div class="label">${d.label}</div><div class="value">${escHtml(d.value)}</div></div>`
+                ).join('');
+
+                // Prediction bar
+                if (sim.final_prediction) {
+                    try {
+                        const pred = typeof sim.final_prediction === 'string' ? JSON.parse(sim.final_prediction) : sim.final_prediction;
+                        const container = document.getElementById('predictionContainer');
+                        const bar = document.getElementById('predictionBar');
+                        container.style.display = 'block';
+                        let barHtml = '';
+                        for (const [key, val] of Object.entries(pred)) {
+                            const pct = Math.round(val * 100);
+                            if (pct > 0) {
+                                barHtml += `<div class="segment ${key}" style="width:${pct}%">${capitalize(key)} ${pct}%</div>`;
+                            }
+                        }
+                        bar.innerHTML = barHtml;
+                    } catch(e) {}
+                }
+
+                // Participants
+                const participants = sim.participants || [];
+                document.getElementById('participantCount').textContent = `(${participants.length} agents)`;
+
+                if (participants.length === 0) {
+                    document.getElementById('participantList').innerHTML = '<div class="loading-state">No participants yet</div>';
+                } else {
+                    // Fetch agent names
+                    const agentMap = {};
+                    try {
+                        const agentsRes = await fetch(`${API_BASE}/api/agents`);
+                        const agentsData = await agentsRes.json();
+                        (agentsData.agents || []).forEach(a => { agentMap[a.agent_id] = a; });
+                    } catch(e) {}
+
+                    document.getElementById('participantList').innerHTML = participants.map(p => {
+                        const agent = agentMap[p.agent_id] || {};
+                        const icon = agent.agent_type === 'character' ? '🎭' : agent.agent_type === 'simulation' ? '🔮' : '👤';
+                        const name = agent.name || p.agent_id;
+                        const stanceClass = (p.final_stance || '').toLowerCase();
+                        return `
+                        <div class="participant-card">
+                            <div class="participant-avatar">${icon}</div>
+                            <div class="participant-info">
+                                <h4><a href="/agent/${p.agent_id}">${escHtml(name)}</a></h4>
+                                ${p.role ? `<div class="participant-role">${escHtml(p.role)}</div>` : ''}
+                                ${p.role_description ? `<div class="participant-role-desc">${escHtml(p.role_description)}</div>` : ''}
+                            </div>
+                            <div class="participant-stance">
+                                ${p.final_stance ? `<div class="stance-value ${stanceClass}">${escHtml(p.final_stance)}</div>` : '<div class="stance-value" style="color:var(--text-muted)">—</div>'}
+                                ${p.final_confidence != null ? `<div class="confidence">${Math.round(p.final_confidence * 100)}% confidence</div>` : ''}
+                                ${p.influence_weight ? `<div class="confidence">Weight: ${p.influence_weight}</div>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+
+                // Rounds & Reactions
+                const rounds = sim.rounds || [];
+                if (rounds.length === 0) {
+                    document.getElementById('roundsList').innerHTML = '<div class="loading-state">No rounds yet</div>';
+                } else {
+                    let roundsHtml = '';
+                    for (const round of rounds) {
+                        // Fetch reactions for this round
+                        let reactions = [];
+                        try {
+                            const rRes = await fetch(`${API_BASE}/api/simulations/${SIM_ID}/rounds/${round.round_number}/reactions`);
+                            const rData = await rRes.json();
+                            reactions = rData.reactions || [];
+                        } catch(e) {}
+
+                        // Fetch agent names for reactions
+                        const agentMap2 = {};
+                        try {
+                            const agentsRes = await fetch(`${API_BASE}/api/agents`);
+                            const agentsData = await agentsRes.json();
+                            (agentsData.agents || []).forEach(a => { agentMap2[a.agent_id] = a; });
+                        } catch(e) {}
+
+                        roundsHtml += `
+                        <div class="round-card">
+                            <div class="round-header">
+                                <h3>Round ${round.round_number}${round.title ? ' — ' + escHtml(round.title) : ''}</h3>
+                                <span class="round-status">${capitalize(round.status || '')}</span>
+                            </div>
+                            ${round.environment_injection ? `
+                            <div class="env-injection">
+                                <div class="env-label">🌍 Environment Injection</div>
+                                ${escHtml(round.environment_injection)}
+                            </div>` : ''}
+                            ${reactions.length === 0 ? '<div class="loading-state" style="padding:var(--space-lg)">No responses collected</div>' :
+                            reactions.map(r => {
+                                const agent = agentMap2[r.agent_id] || {};
+                                const icon = agent.agent_type === 'character' ? '🎭' : '👤';
+                                const name = agent.name || r.agent_id;
+                                const stanceClass = (r.stance || '').toLowerCase();
+                                const bodyHtml = mdToHtml(r.response_text || '');
+                                const isLong = (r.response_text || '').length > 500;
+                                return `
+                                <div class="reaction-card">
+                                    <div class="reaction-header">
+                                        <div class="reaction-agent">
+                                            <div class="reaction-agent-icon">${icon}</div>
+                                            <span class="reaction-agent-name">${escHtml(name)}</span>
+                                        </div>
+                                        <div class="reaction-stance">
+                                            ${r.stance ? `<span class="stance-tag ${stanceClass}">${escHtml(r.stance).toUpperCase()}</span>` : ''}
+                                            ${r.confidence != null ? `<span style="color:var(--text-muted);font-size:0.82em">${Math.round(r.confidence * 100)}%</span>` : ''}
+                                        </div>
+                                    </div>
+                                    <div class="reaction-body ${isLong ? 'collapsed' : ''}" id="body-${r.reaction_id}">
+                                        ${bodyHtml}
+                                    </div>
+                                    ${isLong ? `<button class="reaction-expand" onclick="toggleExpand('${r.reaction_id}', this)">Show more ↓</button>` : ''}
+                                    ${r.brief_reasoning ? `<div class="reaction-brief">💡 ${escHtml(r.brief_reasoning)}</div>` : ''}
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    }
+                    document.getElementById('roundsList').innerHTML = roundsHtml;
+                }
+
+                // Config
+                const configs = [];
+                if (sim.min_agents || sim.max_agents) configs.push({ label: 'Agent Range', value: `${sim.min_agents || '?'} – ${sim.max_agents || '?'}` });
+                if (sim.stake_per_agent) configs.push({ label: 'Stake', value: `${sim.stake_per_agent} ATP / agent` });
+                if (sim.simulation_mode) configs.push({ label: 'Mode', value: capitalize(sim.simulation_mode) });
+                if (sim.llm_model) configs.push({ label: 'LLM Model', value: sim.llm_model });
+                if (sim.total_rounds) configs.push({ label: 'Rounds', value: `${sim.current_round || 0} / ${sim.total_rounds}` });
+                configs.push({ label: 'Created', value: formatDate(sim.created_at) });
+                if (sim.closes_at) configs.push({ label: 'Closed', value: formatDate(sim.closes_at) });
+
+                document.getElementById('configGrid').innerHTML = configs.map(c =>
+                    `<div class="config-item"><div class="config-label">${c.label}</div><div class="config-value">${escHtml(String(c.value))}</div></div>`
+                ).join('');
+
+            } catch(e) {
+                console.error('Failed to load simulation:', e);
+                document.querySelector('.sim-detail .container').innerHTML = '<div class="loading-state">Failed to load simulation</div>';
+            }
+        }
+
+        function toggleExpand(id, btn) {
+            const body = document.getElementById('body-' + id);
+            if (body.classList.contains('collapsed')) {
+                body.classList.remove('collapsed');
+                btn.textContent = 'Show less ↑';
+            } else {
+                body.classList.add('collapsed');
+                btn.textContent = 'Show more ↓';
+            }
+        }
+
+        loadSimulation();
+    </script>
+
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SG8EDDF203"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-SG8EDDF203');
+    </script>
+</body>
+</html>

@@ -888,14 +888,14 @@
             el.innerHTML = sims.map((s, i) => {
                 const statusColors = { active: '#6da89b', recruiting: '#d4a054', closed: '#888' };
                 return `
-                <div class="trending-item">
+                <a href="/simulation/${s.simulation_id}" class="trending-item" style="text-decoration:none;color:inherit">
                     <div class="trending-rank ${i < 3 ? 'rank-' + (i+1) : ''}">${i+1}</div>
                     <div class="trending-info">
                         <h4>${escHtml(s.title)}</h4>
                         <p>${s.participant_count || 0} agents · ${s.round_count || 0} rounds</p>
                     </div>
                     <span class="trending-badge simulation" style="border-color: ${statusColors[s.status] || '#888'}">${capitalize(s.status || 'unknown')}</span>
-                </div>`;
+                </a>`;
             }).join('');
         }
 
