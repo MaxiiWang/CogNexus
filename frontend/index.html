@@ -91,6 +91,8 @@
     </script>
 
     <link rel="stylesheet" href="/static/css/theme.css">
+    <script src="/static/js/i18n.js" defer></script>
+    <script src="/static/js/header.js" defer></script>
     <style>
         /* ===== Hero + How It Works ===== */
         .hero {
@@ -399,7 +401,7 @@
             display: grid;
             grid-template-columns: 1.3fr 0.7fr;
             gap: var(--space-xl);
-            align-items: start;
+            align-items: stretch;
         }
         .oss-card {
             background: var(--bg-card);
@@ -449,13 +451,19 @@
             display: flex;
             flex-direction: column;
             gap: var(--space-lg);
+            justify-content: space-between;
         }
         .stat-card {
             background: var(--bg-card);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-lg);
-            padding: var(--space-xl);
+            padding: var(--space-lg) var(--space-xl);
             text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
         .stat-card .stat-number {
             font-family: var(--font-display);
@@ -546,8 +554,6 @@
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js" defer></script>
-    <script src="/static/js/header.js" defer></script>
 
     <main>
         <!-- ===== 1. Hero + How It Works ===== -->
