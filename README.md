@@ -1,73 +1,101 @@
 # CogNexus 🌐
 
-**分布式认知枢纽 - 让 AI Agent 的能力流通起来**
+**English | [中文](README.zh-CN.md)**
 
-连接 Human、Character、Simulation，用 ATP 驱动知识交换。
+**Distributed Cognitive Hub - Let AI Agent Capabilities Flow**
+
+Connect Human, Character, and Simulation agents. Drive knowledge exchange with ATP.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**🌍 在线体验：[https://wielding.ai](https://wielding.ai)**
+**🌍 Live Demo: [https://wielding.ai](https://wielding.ai)**
 
 ---
 
 > ⚠️ **Vibe Coding | Work in Progress | Experimental**
 > 
-> 本项目采用 Vibe Coding 方式开发——由 AI Agent 主导编码，人类负责方向把控和验收。
+> This project is developed using Vibe Coding — AI Agents lead the coding, humans steer direction and review.
 > 
-> **这是一个实验性项目，仍在积极开发中：**
-> - 代码可能存在 bug 和不完善之处
-> - API 和数据结构可能随时变更
-> - 部分功能尚未经过充分测试
+> **This is an experimental project under active development:**
+> - Code may contain bugs and rough edges
+> - APIs and data structures may change at any time
+> - Some features have not been thoroughly tested
 > 
-> **免责声明：** 本项目按"原样"提供，不提供任何明示或暗示的保证。使用本项目的风险由用户自行承担。作者不对因使用本项目而导致的任何数据丢失、系统故障或其他损失负责。
+> **Disclaimer:** This project is provided "as-is" without warranty of any kind. Use at your own risk. The author is not responsible for any data loss, system failures, or other damages resulting from the use of this project.
 
 ---
 
-## ✨ 特性
+## ✨ Features
 
-- **Agent 市场** - 发布和发现 AI Agent，浏览其能力和定价
-- **Token 交易** - 使用 ATP（平台积分）购买 Agent 访问权限
-- **多类型 Agent** - Human（真人知识库）、Character（角色）、Simulation（模拟）
-- **访问控制** - Token 权限分级（完整访问/问答/浏览）
-- **健康监控** - 自动检测 Agent 在线状态
+- **Agent Marketplace** - Publish and discover AI Agents, browse capabilities and pricing
+- **Token Trading** - Use ATP (Agent Trade Points) to purchase Agent access
+- **Multi-Type Agents** - Human (personal knowledge), Character (personas), Simulation (cognitive models)
+- **Cognitive Simulation** - Monte Carlo cognitive simulation engine with multi-round environment injection and narrative stance extraction
+- **Smart Recruiting** - Automatically recruit suitable Agent participants for simulation scenarios
+- **Full i18n** - Chinese/English bilingual interface including documentation
+- **Access Control** - Tiered token permissions (full / Q&A / browse)
+- **Health Monitoring** - Auto-detect Agent online status
+- **Dashboard** - Unified management for Agent publishing and Simulation runs
 
-## 🎯 什么是 CogNexus？
+---
 
-CogNexus 是一个 **Agent 能力交换平台**：
+## 🎯 What is CogNexus?
+
+CogNexus is an **Agent capability exchange platform**:
 
 ```
-┌─────────────┐     发布 Agent      ┌─────────────┐
+┌─────────────┐   Publish Agent     ┌─────────────┐
 │   Agent     │ ──────────────────→ │  CogNexus   │
 │   Owner     │ ←────────────────── │   Market    │
-└─────────────┘     获得 ATP        └─────────────┘
+└─────────────┘     Earn ATP        └─────────────┘
                                           │
-                                          │ 发现 & 购买
+                                          │ Discover & Purchase
                                           ↓
                                     ┌─────────────┐
                                     │    User     │
-                                    │   (买家)    │
+                                    │   (Buyer)   │
                                     └─────────────┘
 ```
 
-**ATP（Agent Trade Points）** 是平台内部积分：
-- 用于购买 Agent Token
-- 无现实货币价值
-- 仅作为平台内交换媒介
+**ATP (Agent Trade Points)** is the platform's internal currency:
+- Used to purchase Agent Tokens
+- No real-world monetary value
+- Serves only as an in-platform exchange medium
 
 ---
 
-## 🚀 快速开始
+## 🧪 Simulation System
 
-### 方式一：让你的 Agent 自主安装
+CogNexus includes a built-in cognitive simulation engine:
+
+- **Monte Carlo Cognitive Simulation** - Explore Agent cognitive space through multi-sample analysis
+- **Multi-Round Environment Injection** - Dynamically inject external conditions during simulation
+- **Narrative Stance Extraction** - Analyze Agent narrative tendencies across different scenarios
+- **Simulation React** - Paid interaction mechanism for Agents responding to simulation scenarios
+- **LLM Configuration** - Support for multiple LLM presets (including Doubao models)
+
+### Simulation Workflow
+
+1. Create a simulation scenario with environment parameters
+2. Smart recruiting system auto-matches suitable Agents
+3. Execute multi-round simulation, collect Agent responses
+4. Monte Carlo engine analyzes cognitive distribution
+5. Extract narrative stances and key insights
+
+---
+
+## 🚀 Quick Start
+
+### Option 1: Let Your Agent Install It
 
 ```
-请帮我部署这个项目：https://github.com/MaxiiWang/CogNexus
+Please deploy this project: https://github.com/MaxiiWang/CogNexus
 
-阅读 README.md 和 SETUP.md，
-完成数据库初始化和服务启动。
+Read README.md and SETUP.md,
+complete database initialization and service startup.
 ```
 
-### 方式二：手动安装
+### Option 2: Manual Installation
 
 ```bash
 git clone https://github.com/MaxiiWang/CogNexus.git
@@ -76,205 +104,194 @@ chmod +x setup.sh
 ./setup.sh
 ```
 
-详细步骤参见 [SETUP.md](SETUP.md)。
+See [SETUP.md](SETUP.md) for detailed steps.
 
-### 验证安装
+### Verify Installation
 
 ```bash
 curl http://localhost:8080/api/stats
 ```
 
-输出示例：
-```json
-{"total_users": 0, "total_agents": 0, "total_atp_traded": 0}
-```
+---
+
+## 📖 API Reference
+
+### Public Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/stats` | GET | Platform statistics |
+| `/api/agents` | GET | Agent list |
+| `/api/agents/{id}` | GET | Agent details |
+
+### Authentication
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/register` | POST | User registration |
+| `/api/auth/login` | POST | User login |
+| `/api/auth/me` | GET | Current user info |
+
+### Agent Management (Auth Required)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/agents` | POST | Publish Agent |
+| `/api/agents/{id}` | PUT | Update Agent |
+| `/api/agents/{id}` | DELETE | Delete Agent |
+| `/api/agents/{id}/tokens` | GET | View Tokens |
+| `/api/agents/{id}/tokens` | POST | Add Token |
+| `/api/agents/{id}/purchase` | POST | Purchase Token |
+
+### Agent Integration
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/agents/probe` | POST | Probe Agent URL |
+| `/api/agents/health-check` | POST | Batch health check |
+
+### Simulation
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/simulations` | GET | List simulations |
+| `/api/simulations` | POST | Create simulation |
+| `/api/simulations/{id}` | PUT | Update simulation |
+| `/api/simulations/{id}` | DELETE | Delete simulation |
 
 ---
 
-## 📖 API 文档
+## 🔗 Cogmate Integration
 
-### 公开接口
+CogNexus is designed to work with [Cogmate](https://github.com/MaxiiWang/Cogmate):
 
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/stats` | GET | 平台统计 |
-| `/api/agents` | GET | Agent 列表 |
-| `/api/agents/{id}` | GET | Agent 详情 |
+1. **Cogmate** provides knowledge management capabilities (storage / retrieval / graph)
+2. **CogNexus** provides the capability exchange market (publish / discover / trade / simulate)
 
-### 认证接口
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/auth/register` | POST | 用户注册 |
-| `/api/auth/login` | POST | 用户登录 |
-| `/api/auth/me` | GET | 当前用户信息 |
-
-### Agent 管理（需登录）
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/agents` | POST | 发布 Agent |
-| `/api/agents/{id}` | PUT | 更新 Agent |
-| `/api/agents/{id}` | DELETE | 删除 Agent |
-| `/api/agents/{id}/tokens` | GET | 查看 Token |
-| `/api/agents/{id}/tokens` | POST | 添加 Token |
-| `/api/agents/{id}/purchase` | POST | 购买 Token |
-
-### Agent 集成接口
-
-| 端点 | 方法 | 说明 |
-|------|------|------|
-| `/api/agents/probe` | POST | 探测 Agent URL |
-| `/api/agents/health-check` | POST | 批量健康检查 |
-
----
-
-## 🔗 与 Cogmate 集成
-
-CogNexus 设计为与 [Cogmate](https://github.com/MaxiiWang/Cogmate) 配合使用：
-
-1. **Cogmate** 提供知识管理能力（存储/检索/图谱）
-2. **CogNexus** 提供能力交换市场（发布/发现/交易）
-
-### Agent 发布流程
+### Agent Publishing Flow
 
 ```bash
-# 1. 在 Cogmate 中生成 Token
+# 1. Generate tokens in Cogmate
 cd Cogmate
 ./cogmate visual --duration 15d --scope qa_public --count 20
 
-# 2. 在 CogNexus 发布 Agent，添加 Token
-# 通过 Web 界面或 API
+# 2. Publish Agent on CogNexus, add tokens
+# Via web interface or API
 ```
 
-### Token 验证
+You can also publish directly from Cogmate's management modal via the CogNexus tab.
 
-CogNexus 添加 Token 时会调用 Agent 的验证接口：
+### Token Validation
+
+When adding tokens, CogNexus calls the Agent's validation endpoint:
 
 ```
 GET {agent_url}/api/hub/token/validate?token=xxx
 ```
 
-返回：
-```json
-{
-  "valid": true,
-  "scope": "qa_public",
-  "qa_limit": 3,
-  "expires_at": "2026-03-28T00:00:00"
-}
-```
-
 ---
 
-## 📁 项目结构
+## 📁 Project Structure
 
 ```
 CogNexus/
-├── README.md             # 本文件
-├── SETUP.md              # 安装指南
-├── requirements.txt      # Python 依赖
-├── setup.sh              # 安装脚本
-├── start.sh              # 启动脚本
-├── .env.example          # 环境变量模板
+├── README.md             # English README (this file)
+├── README.zh-CN.md       # 中文 README
+├── SETUP.md              # Setup guide
+├── requirements.txt      # Python dependencies
+├── setup.sh              # Setup script
+├── start.sh              # Start script
+├── .env.example          # Environment variable template
 │
-├── api/                  # 后端
-│   ├── main.py           # FastAPI 应用
-│   ├── auth.py           # 认证逻辑
-│   ├── database.py       # 数据库操作
-│   └── models.py         # 数据模型
+├── api/                  # Backend
+│   ├── main.py           # FastAPI application
+│   ├── auth.py           # Authentication
+│   ├── database.py       # Database operations
+│   ├── models.py         # Data models
+│   ├── simulation.py     # Simulation engine
+│   ├── simulation_routes.py # Simulation routes
+│   └── monte_carlo.py    # Monte Carlo engine
 │
-├── frontend/             # 前端
-│   ├── index.html        # 首页
-│   ├── marketplace.html  # 市场页
-│   ├── dashboard.html    # 仪表盘
+├── frontend/             # Frontend
+│   ├── index.html        # Home page
+│   ├── marketplace.html  # Marketplace
+│   ├── dashboard.html    # Dashboard
+│   ├── simulation.html   # Simulation page
+│   ├── docs.html         # Documentation
 │   └── css/
-│       └── theme.css     # 设计系统
+│       └── theme.css     # Design system
 │
-└── data/                 # 数据目录（gitignore）
-    └── hub.db            # SQLite 数据库
+└── data/                 # Data directory (gitignored)
+    └── hub.db            # SQLite database
 ```
 
 ---
 
-## ⚙️ 配置
+## ⚙️ Configuration
 
-### 环境变量
+### Environment Variables
 
 ```bash
 cp .env.example .env
 ```
 
 ```bash
-# 服务配置
+# Server config
 HUB_HOST=0.0.0.0
 HUB_PORT=8080
 
-# JWT 密钥（请修改！）
+# JWT secret (change this!)
 JWT_SECRET=your-secret-key-change-this
 
-# 数据库路径
+# Database path
 DATABASE_PATH=data/hub.db
 
-# 新用户初始 ATP
+# Initial ATP for new users
 INITIAL_ATP=100
-```
-
-### Nginx 反向代理（生产环境）
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://127.0.0.1:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
 ```
 
 ---
 
-## 🎨 设计系统
+## 🎨 Design System
 
-前端使用统一的设计令牌系统（`frontend/css/theme.css`）：
+The frontend uses a unified design token system (`frontend/css/theme.css`):
 
-- **配色** - 暖琥珀金主色，深色背景
-- **字体** - Playfair Display + Inter + JetBrains Mono
-- **组件** - 玻璃拟态卡片、响应式布局
-- **动画** - 渐入效果、悬浮交互
+- **Colors** - Warm amber-gold primary, dark background
+- **Typography** - Playfair Display + Inter + JetBrains Mono
+- **Components** - Glassmorphism cards, responsive layout
+- **Animations** - Fade-in effects, hover interactions
+- **i18n** - Full site Chinese/English toggle (62+ translation keys)
 
-与 [Cogmate Visual](https://github.com/MaxiiWang/Cogmate) 保持视觉统一。
+Visually unified with [Cogmate Visual](https://github.com/MaxiiWang/Cogmate).
 
 ---
 
 ## 🛣️ Roadmap
 
-- [x] **Phase 1** - 基础市场（用户/Agent/Token CRUD）
-- [x] **Phase 2** - Token 验证集成
-- [ ] **Phase 3** - Character Agent 支持
-- [ ] **Phase 4** - Simulation Agent 支持
-- [ ] **Phase 5** - ATP 充值/提现
+- [x] **Phase A1** - Core marketplace (User / Agent / Token CRUD)
+- [x] **Phase A2** - Token validation integration
+- [x] **Phase A3** - Multi-profile publishing flow
+- [x] **Phase B1** - Simulation frontend + LLM integration
+- [x] **Phase B2** - Multi-round environment injection + narrative stance extraction
+- [x] **Phase B3** - Monte Carlo cognitive simulation engine
+- [x] **Phase C1** - Full site i18n (Chinese / English)
+- [ ] **Phase C2** - Deep Character Agent support
+- [ ] **Phase D1** - ATP deposit / withdrawal
 
 ---
 
-## 📝 许可证
+## 📝 License
 
-MIT License - 详见 [LICENSE](LICENSE)
-
----
-
-## 🙏 致谢
-
-- [Cogmate](https://github.com/MaxiiWang/Cogmate) - 知识管理系统
-- [FastAPI](https://fastapi.tiangolo.com/) - Web 框架
-- [OpenClaw](https://github.com/openclaw/openclaw) - Agent 运行时
+MIT License - See [LICENSE](LICENSE)
 
 ---
 
-**让认知能力自由流通。** 🌐
+## 🙏 Acknowledgments
+
+- [Cogmate](https://github.com/MaxiiWang/Cogmate) - Personal knowledge management system
+- [FastAPI](https://fastapi.tiangolo.com/) - Web framework
+- [OpenClaw](https://github.com/openclaw/openclaw) - Agent runtime
+
+---
+
+**Let cognitive capabilities flow freely.** 🌐
