@@ -229,16 +229,29 @@ async def collect_monte_carlo_samples(
 
             # Insert reaction directly (bypassing insert_reaction to use virtual agent_id)
             reaction_id = _gen_id("rxn")
-            conn2 = get_db()
-            conn2.execute("""
-                INSERT INTO round_reactions
-                (reaction_id, round_id, simulation_id, agent_id,
-                 prompt, prompt_type, status, archetype_id, perturbation_seed, is_monte_carlo)
-                VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'true')
-            """, (reaction_id, rnd["round_id"], simulation_id, virtual_agent_id,
-                  prompt, "predictive", arc["archetype_id"], json.dumps(perturb)))
-            conn2.commit()
-            conn2.close()
+            import time as _time
+            for _attempt in range(5):
+                _conn = None
+                try:
+                    _conn = get_db()
+                    _conn.execute("""
+                        INSERT INTO round_reactions
+                        (reaction_id, round_id, simulation_id, agent_id,
+                         prompt, prompt_type, status, archetype_id, perturbation_seed, is_monte_carlo)
+                        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, 'true')
+                    """, (reaction_id, rnd["round_id"], simulation_id, virtual_agent_id,
+                          prompt, "predictive", arc["archetype_id"], json.dumps(perturb)))
+                    _conn.commit()
+                    _conn.close()
+                    break
+                except Exception as _e:
+                    if _conn:
+                        try: _conn.close()
+                        except: pass
+                    if "locked" in str(_e) and _attempt < 4:
+                        _time.sleep(0.5 * (_attempt + 1))
+                        continue
+                    raise
 
             # Collect: try real agent first, then LLM
             result = None

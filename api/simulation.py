@@ -463,27 +463,39 @@ def insert_reaction(
     prompt: str,
     prompt_type: str = "predictive"
 ) -> str:
-    conn = get_db()
-    cursor = conn.cursor()
+    import time
     reaction_id = _gen_id("rxn")
-    cursor.execute("""
-        INSERT INTO round_reactions (
-            reaction_id, round_id, simulation_id, agent_id,
-            prompt, prompt_type, status
-        ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
-    """, (reaction_id, round_id, simulation_id, agent_id, prompt, prompt_type))
-    conn.commit()
-    conn.close()
+    for attempt in range(5):
+        conn = None
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO round_reactions (
+                    reaction_id, round_id, simulation_id, agent_id,
+                    prompt, prompt_type, status
+                ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
+            """, (reaction_id, round_id, simulation_id, agent_id, prompt, prompt_type))
+            conn.commit()
+            conn.close()
+            return reaction_id
+        except Exception as e:
+            if conn:
+                try: conn.close()
+                except: pass
+            if "locked" in str(e) and attempt < 4:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
     return reaction_id
 
 
 def update_reaction(reaction_id: str, **kwargs) -> bool:
-    conn = get_db()
-    cursor = conn.cursor()
     allowed = {"response_text", "key_points", "sentiment",
                "stance", "confidence", "brief_reasoning",
                "knowledge_depth", "status", "collected_at",
-               "owner_disputed", "owner_correction", "disputed_at"}
+               "owner_disputed", "owner_correction", "disputed_at",
+               "archetype_id", "perturbation_seed", "is_monte_carlo"}
     sets = []
     vals = []
     for k, v in kwargs.items():
@@ -493,13 +505,28 @@ def update_reaction(reaction_id: str, **kwargs) -> bool:
                 v = json.dumps(v)
             vals.append(v)
     if not sets:
-        conn.close()
         return False
     vals.append(reaction_id)
-    cursor.execute(f"UPDATE round_reactions SET {', '.join(sets)} WHERE reaction_id = ?", vals)
-    conn.commit()
-    conn.close()
-    return True
+
+    import time
+    for attempt in range(5):
+        conn = None
+        try:
+            conn = get_db()
+            cursor = conn.cursor()
+            cursor.execute(f"UPDATE round_reactions SET {', '.join(sets)} WHERE reaction_id = ?", vals)
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            if conn:
+                try: conn.close()
+                except: pass
+            if "locked" in str(e) and attempt < 4:
+                time.sleep(0.5 * (attempt + 1))
+                continue
+            raise
+    return False
 
 
 def get_round_reactions(round_id: str) -> List[Dict]:
