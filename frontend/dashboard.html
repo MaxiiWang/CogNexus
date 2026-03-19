@@ -28,7 +28,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260319m">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319n">
     <style>
         /* ===== Dashboard Grid ===== */
         .dashboard-grid {
@@ -671,8 +671,8 @@
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js?v=20260319m"></script>
-    <script src="/static/js/header.js?v=20260319m"></script>
+    <script src="/static/js/i18n.js?v=20260319n"></script>
+    <script src="/static/js/header.js?v=20260319n"></script>
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
@@ -870,8 +870,8 @@
             <!-- Step 1: Title + LLM -->
             <div id="simStep1">
                 <div style="padding:var(--space-xl) var(--space-xl) 0;">
-                    <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
-                    <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);">Step 1: 输入标题，AI 将自动规划模拟配置</p>
+                    <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建模拟</h2>
+                    <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);" data-i18n="sim.step1_desc">输入标题和 LLM 配置（用于模拟执行时的 AI 调用）</p>
                 </div>
                 <div style="padding:var(--space-lg) var(--space-xl) var(--space-xl);">
                     <div class="sim-form-group" style="margin-bottom:var(--space-lg);">
@@ -879,7 +879,7 @@
                         <input type="text" id="planTitle" required placeholder="e.g., 美联储6月是否会降息？" style="width:100%;padding:10px 14px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-md);color:var(--text-primary);font-size:1em;">
                     </div>
                     <div class="sim-config-section" style="margin-bottom:var(--space-lg);">
-                        <div class="sim-config-title">🤖 LLM</div>
+                        <div class="sim-config-title">🤖 LLM（模拟执行时使用）</div>
                         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;" id="llmPresetsStep1">
                             <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectLLMPresetStep1(this)">🌋 Doubao Lite</button>
                             <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectLLMPresetStep1(this)">🌋 Doubao Pro</button>
@@ -898,6 +898,7 @@
                     <div id="planError" style="display:none;padding:10px 14px;background:rgba(196,122,90,0.12);border:1px solid rgba(196,122,90,0.3);border-radius:var(--radius-md);color:#c47a5a;font-size:0.85em;margin-bottom:var(--space-md);"></div>
                     <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);">
                         <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                        <button type="button" class="btn btn-secondary" onclick="goToStep2Manual()">📝 手动配置</button>
                         <button type="button" class="btn btn-primary" id="planBtn" onclick="generatePlan()">
                             <span id="planBtnText">✨ AI 规划</span>
                             <span id="planBtnLoading" style="display:none;">⏳ 生成中...</span>
@@ -910,8 +911,8 @@
             <div id="simStep2" style="display:none;">
                 <div style="padding:var(--space-xl) var(--space-xl) 0;display:flex;justify-content:space-between;align-items:center;">
                     <div>
-                        <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建 Simulation</h2>
-                        <p style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);">Step 2: 审阅 AI 规划，修改后确认创建</p>
+                        <h2 style="font-family:var(--font-display);font-size:1.4em;" data-i18n="sim.create">创建模拟</h2>
+                        <p id="step2Subtitle" style="font-size:0.85em;color:var(--text-muted);margin-top:var(--space-xs);">审阅配置，修改后确认创建</p>
                     </div>
                     <button type="button" class="btn btn-secondary btn-small" onclick="backToStep1()">← 返回</button>
                 </div>
@@ -946,7 +947,7 @@
                                 <div class="sim-config-title" data-i18n="sim.mode">模式</div>
                                 <select name="simulation_mode" id="simMode" class="sim-select" onchange="document.getElementById('mcConfigGroup').style.display=this.value==='monte_carlo'?'block':'none'">
                                     <option value="standard" data-i18n="sim.mode.standard">标准模式</option>
-                                    <option value="monte_carlo">🎲 Monte Carlo</option>
+                                    <option value="monte_carlo" data-i18n="sim.mode.monte_carlo">🎲 多元采样</option>
                                 </select>
                                 <div id="mcConfigGroup" style="display:none;margin-top:8px;">
                                     <label style="font-size:0.78em;color:var(--text-muted);">目标模拟人数</label>
@@ -1580,7 +1581,7 @@
                         actions = `<button class="btn btn-primary btn-small" onclick="showResolveSim('${sim.simulation_id}')">${I18N.t('action.resolve')}</button>` + actions;
                     }
 
-                    const modeBadge = isMC ? ' <span style="background:rgba(156,39,176,0.15);color:#ce93d8;font-size:0.72em;padding:2px 6px;border-radius:4px;margin-left:4px;">🎲 Monte Carlo</span>' : '';
+                    const modeBadge = isMC ? ' <span style="background:rgba(156,39,176,0.15);color:#ce93d8;font-size:0.72em;padding:2px 6px;border-radius:4px;margin-left:4px;">🎲 多元采样</span>' : '';
 
                     return `
                     <div class="sim-manage-card">
@@ -1701,7 +1702,7 @@
                     }
                 }
 
-                document.getElementById('createSimTitle').textContent = I18N.t('common.edit') + ' Simulation';
+                document.getElementById('createSimTitle').textContent = I18N.t('sim.edit_title');
                 document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.save');
                 document.getElementById('createSimModal').classList.add('active');
             } catch (e) {
@@ -1710,7 +1711,7 @@
         }
 
         async function deleteSim(simId, title) {
-            if (!confirm(`确定要删除 Simulation「${title}」吗？此操作不可恢复。`)) return;
+            if (!confirm(I18N.t('sim.delete_confirm').replace('%s', title))) return;
             const token = localStorage.getItem('cog_token');
             try {
                 const res = await fetch(`/api/simulations/${simId}`, {
@@ -1842,6 +1843,7 @@
                 }
 
                 // Switch to step 2
+                document.getElementById('step2Subtitle').textContent = '审阅 AI 规划，修改后确认创建';
                 document.getElementById('simStep1').style.display = 'none';
                 document.getElementById('simStep2').style.display = '';
 
@@ -1853,6 +1855,38 @@
                 document.getElementById('planBtnLoading').style.display = 'none';
                 document.getElementById('planBtn').disabled = false;
             }
+        }
+
+        function goToStep2Manual() {
+            const title = document.getElementById('planTitle').value.trim();
+            if (!title) { showAlert('error', '请输入标题'); return; }
+
+            // Carry LLM config (required for execution later)
+            const base_url = step1LlmConfig.base_url || document.getElementById('planBaseUrl')?.value || '';
+            const api_key = document.getElementById('planApiKey')?.value || '';
+            const model = step1LlmConfig.model || document.getElementById('planModel')?.value || '';
+
+            if (!base_url || !api_key || !model) {
+                showAlert('error', '请选择 LLM 并填写 API Key（模拟执行时需要）');
+                return;
+            }
+
+            document.getElementById('simLlmBaseUrl').value = base_url;
+            document.getElementById('simLlmApiKey').value = api_key;
+            document.getElementById('simLlmModel').value = model;
+
+            // Fill title only, leave rest blank for manual input
+            const form = document.getElementById('createSimForm');
+            form.reset();
+            form.title.value = title;
+            currentPlan = null;
+
+            document.getElementById('planReasoning').style.display = 'none';
+            document.getElementById('roundPlanGroup').style.display = 'none';
+            document.getElementById('step2Subtitle').textContent = '手动填写模拟配置';
+
+            document.getElementById('simStep1').style.display = 'none';
+            document.getElementById('simStep2').style.display = '';
         }
 
         function backToStep1() {
@@ -2302,7 +2336,7 @@
                 loadMCArchetypes(sim.simulation_id);
             }
 
-            const modeLabel = isMC ? '🎲 Monte Carlo' : I18N.t('sim.mode.standard');
+            const modeLabel = isMC ? '🎲 多元采样' : I18N.t('sim.mode.standard');
 
             document.getElementById('tabOverview').innerHTML = `
                 <div class="sdp-grid">
