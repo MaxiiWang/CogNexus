@@ -92,6 +92,9 @@
         };
     }
 
+    // Auto-init auth state in header
+    window._headerInitAuth && window._headerInitAuth();
+
     // Re-apply i18n to header if I18N is loaded
     if (typeof I18N !== 'undefined' && I18N.apply) {
         I18N.apply();
