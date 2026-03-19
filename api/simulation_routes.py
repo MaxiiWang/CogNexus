@@ -629,12 +629,24 @@ async def api_run_round(
             raise HTTPException(400, f"ATP 余额不足。本轮预计费用 {total_cost} ATP，当前余额 {balance} ATP")
     conn.close()
 
-    result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+    # Mark as active, run in background
+    update_round(rnd["round_id"], status="active")
+    update_simulation(simulation_id, status="active", current_round=round_number)
 
-    if "error" in result:
-        raise HTTPException(400, result["error"])
+    import asyncio as _asyncio2
+    async def _bg_standard():
+        try:
+            result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+            if result.get("error"):
+                update_round(rnd["round_id"], status="pending",
+                             result_summary=f"❌ 执行失败: {result['error']}")
+        except Exception as e:
+            update_round(rnd["round_id"], status="pending",
+                         result_summary=f"❌ 执行异常: {str(e)[:200]}")
 
-    return result
+    _asyncio2.create_task(_bg_standard())
+
+    return {"status": "started", "message": f"第{round_number}轮模拟已启动，请稍候..."}
 
 
 @router.post("/{simulation_id}/rounds/{round_number}/retry")
@@ -684,17 +696,27 @@ async def api_retry_round(
             import asyncio
             await asyncio.sleep(2)
 
-    # Use monte carlo path if that was the mode
-    if sim.get("simulation_mode") == "monte_carlo":
-        from monte_carlo import run_monte_carlo_round
-        result = await run_monte_carlo_round(simulation_id, round_number)
-    else:
-        result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+    # Mark as active, run in background
+    update_round(rnd["round_id"], status="active")
 
-    if "error" in result:
-        raise HTTPException(400, result["error"])
+    import asyncio as _asyncio
+    async def _bg_retry():
+        try:
+            if is_mc:
+                from monte_carlo import run_monte_carlo_round
+                result = await run_monte_carlo_round(simulation_id, round_number)
+            else:
+                result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+            if result.get("error"):
+                update_round(rnd["round_id"], status="pending",
+                             result_summary=f"❌ 重试失败: {result['error']}")
+        except Exception as e:
+            update_round(rnd["round_id"], status="pending",
+                         result_summary=f"❌ 重试异常: {str(e)[:200]}")
 
-    return result
+    _asyncio.create_task(_bg_retry())
+
+    return {"status": "started", "message": "重试已启动，请稍候..."}
 
 
 @router.post("/{simulation_id}/rounds/{round_number}/generate-injection")
@@ -1030,11 +1052,27 @@ async def api_mc_run_round(
         raise HTTPException(404, "Round not found")
     if rnd["status"] == "closed":
         raise HTTPException(400, "该轮已关闭")
+    if rnd["status"] == "active":
+        raise HTTPException(400, "该轮正在执行中，请等待完成")
 
-    result = await run_monte_carlo_round(simulation_id, round_number, data.environment_injection)
-    if result.get("error"):
-        raise HTTPException(400, result["error"])
-    return result
+    # Mark round as active immediately, then run in background
+    update_round(rnd["round_id"], status="active")
+    update_simulation(simulation_id, status="active", current_round=round_number)
+
+    import asyncio
+    async def _bg_run():
+        try:
+            result = await run_monte_carlo_round(simulation_id, round_number, data.environment_injection)
+            if result.get("error"):
+                update_round(rnd["round_id"], status="pending",
+                             result_summary=f"❌ 执行失败: {result['error']}")
+        except Exception as e:
+            update_round(rnd["round_id"], status="pending",
+                         result_summary=f"❌ 执行异常: {str(e)[:200]}")
+
+    asyncio.create_task(_bg_run())
+
+    return {"status": "started", "message": f"第{round_number}轮蒙特卡洛模拟已启动，请稍候..."}
 
 
 # ==========================================

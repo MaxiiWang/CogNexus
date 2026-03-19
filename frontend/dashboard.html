@@ -28,7 +28,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260319f">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260319g">
     <style>
         /* ===== Dashboard Grid ===== */
         .dashboard-grid {
@@ -398,7 +398,8 @@
 
         .sim-status-badge.draft { background: rgba(107, 102, 94, 0.2); color: var(--text-muted); }
         .sim-status-badge.recruiting { background: rgba(212, 160, 84, 0.15); color: var(--accent-text); }
-        .sim-status-badge.active { background: rgba(78, 205, 196, 0.15); color: var(--market-teal); }
+        .sim-status-badge.active { background: rgba(78, 205, 196, 0.15); color: var(--market-teal); animation: pulse-active 1.5s infinite; }
+        @keyframes pulse-active { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
         .sim-status-badge.closed { background: rgba(124, 153, 184, 0.15); color: #7c99b8; }
         .sim-status-badge.resolved { background: rgba(76, 175, 80, 0.15); color: #66bb6a; }
         .sim-status-badge.settled { background: rgba(76, 175, 80, 0.25); color: #81c784; }
@@ -670,8 +671,8 @@
     </style>
 </head>
 <body>
-    <script src="/static/js/i18n.js?v=20260319f"></script>
-    <script src="/static/js/header.js?v=20260319f"></script>
+    <script src="/static/js/i18n.js?v=20260319g"></script>
+    <script src="/static/js/header.js?v=20260319g"></script>
 
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
@@ -1581,7 +1582,7 @@
                         <div class="sim-manage-card-info">
                             <h4>
                                 ${esc(sim.title)}
-                                <span class="sim-status-badge ${s}">${s}</span>${modeBadge}
+                                <span class="sim-status-badge ${s}">${s === 'active' ? '⏳ 执行中...' : s}</span>${modeBadge}
                             </h4>
                             <div class="sim-meta">
                                 👥 ${(sim.participants || []).length}/${sim.max_agents} Agent &middot;
@@ -1593,6 +1594,11 @@
                         </div>
                     </div>`;
                 }).join('');
+
+                // Auto-start polling for any active simulations
+                mySims.filter(s => s.status === 'active').forEach(s => {
+                    startPollingSimStatus(s.simulation_id);
+                });
             } catch (e) {
                 console.error('Failed to load simulations:', e);
             }
@@ -2008,7 +2014,7 @@
 
         async function executeRoundDirect(simId, roundNumber, envInjection) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', `正在执行第${roundNumber}轮，Agent 回应可能需要 30-60 秒...`);
+            showAlert('success', `🚀 第${roundNumber}轮模拟启动中...`);
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/run`, {
                     method: 'POST',
@@ -2017,24 +2023,19 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    const failed = data.failed || 0;
-                    if (failed > 0) {
-                        showAlert('error', `第${roundNumber}轮：${data.collected || 0} 个成功，${failed} 个失败，可重试`);
-                    } else {
-                        showAlert('success', `第${roundNumber}轮执行完成 ✅`);
-                    }
-                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
+                    showAlert('success', '🚀 ' + (data.message || '模拟已启动，正在后台执行...'));
+                    startPollingSimStatus(simId);
                 } else {
                     showAlert('error', data.detail || '执行失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误或超时，请稍后重试');
+                showAlert('error', '网络错误: ' + e.message);
             }
         }
 
         async function doRetryRoundSim(simId, roundNumber) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', `正在重试第${roundNumber}轮失败的 Agent...`);
+            showAlert('success', `正在启动第${roundNumber}轮重试...`);
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/retry`, {
                     method: 'POST',
@@ -2042,13 +2043,8 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    const failed = data.failed || 0;
-                    if (failed > 0) {
-                        showAlert('error', `重试后仍有 ${failed} 个失败`);
-                    } else {
-                        showAlert('success', `重试成功，第${roundNumber}轮全部完成 ✅`);
-                    }
-                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
+                    showAlert('success', data.message || '重试已启动，正在后台执行...');
+                    startPollingSimStatus(simId);
                 } else {
                     showAlert('error', data.detail || '重试失败');
                 }
@@ -2519,6 +2515,58 @@
             }
         }
 
+        // ===== Simulation Status Polling =====
+        let _pollingTimers = {};
+
+        function startPollingSimStatus(simId) {
+            // Don't start duplicate pollers
+            if (_pollingTimers[simId]) return;
+
+            loadMySimulations();
+            if (currentSimDetail) refreshSimDetail();
+
+            let pollCount = 0;
+            const maxPolls = 60; // 5 min max (5s interval)
+
+            _pollingTimers[simId] = setInterval(async () => {
+                pollCount++;
+                try {
+                    const res = await fetch(`/api/simulations/${simId}`);
+                    const sim = await res.json();
+
+                    // Check if any round is still active
+                    const rounds = sim.rounds || [];
+                    const hasActive = rounds.some(r => r.status === 'active');
+
+                    loadMySimulations();
+                    if (currentSimDetail) refreshSimDetail();
+
+                    if (!hasActive || pollCount >= maxPolls) {
+                        clearInterval(_pollingTimers[simId]);
+                        delete _pollingTimers[simId];
+
+                        if (!hasActive) {
+                            // Find the latest closed round
+                            const closedRounds = rounds.filter(r => r.status === 'closed');
+                            if (closedRounds.length > 0) {
+                                showAlert('success', `✅ 模拟执行完成！`);
+                            } else {
+                                // Check if failed (round went back to pending with error)
+                                const pendingWithError = rounds.find(r => r.result_summary && r.result_summary.includes('❌'));
+                                if (pendingWithError) {
+                                    showAlert('error', pendingWithError.result_summary.substring(0, 100));
+                                }
+                            }
+                        } else {
+                            showAlert('error', '轮询超时，请手动刷新查看状态');
+                        }
+                    }
+                } catch (e) {
+                    // Silently continue polling
+                }
+            }, 5000);
+        }
+
         async function generateInjection() {
             const simId = _pendingRunSimId;
             const roundNumber = _pendingRunRound;
@@ -2566,7 +2614,7 @@
 
         async function executeMCRoundDirect(simId, roundNumber, envInjection) {
             const token = localStorage.getItem('cog_token');
-            showAlert('success', `🎲 正在执行第${roundNumber}轮蒙特卡洛模拟 (少量采样 + 统计外推)...`);
+            showAlert('success', `🎲 第${roundNumber}轮蒙特卡洛模拟启动中...`);
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/monte-carlo`, {
                     method: 'POST',
@@ -2575,18 +2623,13 @@
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    const sampling = data.sampling || {};
-                    const ext = data.extrapolation || {};
-                    let msg = `第${roundNumber}轮蒙特卡洛完成: ${sampling.collected || 0} 次采样`;
-                    if (ext.total_population) msg += ` → ${ext.total_population} 人模拟`;
-                    if (sampling.failed > 0) msg += ` (${sampling.failed} 个失败)`;
-                    showAlert(sampling.failed > 0 ? 'error' : 'success', msg);
-                    loadMySimulations(); if(currentSimDetail) refreshSimDetail();
+                    showAlert('success', '🎲 ' + (data.message || '模拟已启动，正在后台执行...'));
+                    startPollingSimStatus(simId);
                 } else {
-                    showAlert('error', data.detail || '蒙特卡洛执行失败');
+                    showAlert('error', data.detail || '蒙特卡洛启动失败');
                 }
             } catch (e) {
-                showAlert('error', '网络错误或超时，请稍后重试');
+                showAlert('error', '网络错误: ' + e.message);
             }
         }
 
