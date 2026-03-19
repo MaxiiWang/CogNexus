@@ -656,17 +656,33 @@ async def api_retry_round(
     if rnd["status"] == "closed":
         raise HTTPException(400, "该轮已关闭，无法重试")
 
-    # 删除失败的 reactions，重新执行
+    # 删除失败和 pending 的 reactions，重新执行
     from database import get_db
-    conn = get_db()
-    conn.execute(
-        "DELETE FROM round_reactions WHERE round_id = ? AND status = 'failed'",
-        (rnd["round_id"],)
-    )
-    conn.commit()
-    conn.close()
+    retry_count = 0
+    while retry_count < 3:
+        try:
+            conn = get_db()
+            conn.execute(
+                "DELETE FROM round_reactions WHERE round_id = ? AND status IN ('failed', 'pending')",
+                (rnd["round_id"],)
+            )
+            conn.commit()
+            conn.close()
+            break
+        except Exception as e:
+            retry_count += 1
+            conn.close() if conn else None
+            if retry_count >= 3:
+                raise HTTPException(503, f"Database busy, please try again in a moment: {str(e)[:100]}")
+            import asyncio
+            await asyncio.sleep(2)
 
-    result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
+    # Use monte carlo path if that was the mode
+    if sim.get("simulation_mode") == "monte_carlo":
+        from monte_carlo import run_monte_carlo_round
+        result = await run_monte_carlo_round(simulation_id, round_number)
+    else:
+        result = await run_round(simulation_id, round_number, llm_call=llm_call if LLM_ENABLED else None)
 
     if "error" in result:
         raise HTTPException(400, result["error"])
