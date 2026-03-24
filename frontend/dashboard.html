@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — Wielding.ai | Manage Your AI Agents</title>
-    <meta name="description" content="Manage your published AI Agents, tokens, and simulations on Wielding.ai. Track ATP earnings and monitor agent health.">
+    <meta name="description" content="Manage your published AI Agents and simulations on Wielding.ai. Track ATP earnings and monitor agent health.">
     <link rel="canonical" href="https://wielding.ai/dashboard">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <meta name="robots" content="noindex">
@@ -677,14 +677,14 @@
     <main class="container">
         <div id="loginPrompt" class="login-prompt" style="display: none;">
             <h2 data-i18n="auth.please_login">Please Login</h2>
-            <p data-i18n="auth.login_prompt">Login to manage your Agents and view purchased Tokens</p>
+            <p data-i18n="auth.login_prompt">Login to manage your Agents and Simulations</p>
             <a href="/" class="btn btn-primary" data-i18n="auth.go_login">Go to Login</a>
         </div>
 
         <div id="dashboardContent">
             <section class="page-header animate-in">
                 <h1 data-i18n="dash.title">Dashboard</h1>
-                <p data-i18n="dash.subtitle">Manage your Agents and Tokens</p>
+                <p data-i18n="dash.subtitle">Manage your Agents and Simulations</p>
             </section>
 
             <div class="dashboard-grid">
@@ -697,10 +697,6 @@
                     <div class="stat-label" data-i18n="dash.my_agents">My Agents</div>
                 </div>
                 <div class="stat-card animate-in animate-in-delay-3">
-                    <div class="stat-value" id="myTokens">0</div>
-                    <div class="stat-label" data-i18n="dash.tokens_purchased">Tokens Purchased</div>
-                </div>
-                <div class="stat-card animate-in animate-in-delay-4">
                     <div class="stat-value" id="mySimCount">0</div>
                     <div class="stat-label" data-i18n="dash.my_sims">My Simulations</div>
                 </div>
@@ -717,15 +713,6 @@
             </section>
 
             <section class="section animate-in animate-in-delay-4">
-                <div class="section-header">
-                    <h2 data-i18n="dash.section_tokens">Tokens Purchased</h2>
-                </div>
-                <div class="card-list" id="tokensList">
-                    <div class="empty" data-i18n="dash.no_tokens">No purchase records</div>
-                </div>
-            </section>
-
-            <section class="section animate-in animate-in-delay-5">
                 <div class="section-header">
                     <h2 data-i18n="dash.section_sims">My Simulations</h2>
                     <button class="btn btn-primary btn-small" onclick="showCreateSim()" data-i18n="dash.create_sim">+ Create Simulation</button>
@@ -2663,7 +2650,6 @@
         // Init
         if (checkAuth()) {
             loadMyAgents();
-            loadMyTokens();
             loadMySimulations();
         }
     </script>

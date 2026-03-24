@@ -315,7 +315,7 @@
         <section class="page-header centered">
             <div class="container">
                 <h1 class="animate-in" data-i18n="market.title">Agent Market</h1>
-                <p class="animate-in animate-in-delay-1" data-i18n="market.desc">Browse and purchase Agent Tokens for cognitive services</p>
+                <p class="animate-in animate-in-delay-1" data-i18n="market.desc">Browse AI Agents and start conversations</p>
             </div>
         </section>
 
@@ -393,39 +393,8 @@
                 empty.style.display = 'none';
                 grid.innerHTML = agents.map((agent, idx) => {
                     const tags = JSON.parse(agent.tags || '[]');
-                    const tokenTypes = agent.token_types || [];
-                    const totalAvailable = agent.total_available || 0;
                     const typeClass = agent.agent_type === 'human' ? 'type-human' : 'type-character';
                     const delayClass = `animate-in animate-in-delay-${Math.min(idx + 1, 4)}`;
-
-                    // 渲染 Token 类型
-                    let tokenHtml = '';
-                    if (tokenTypes.length > 0) {
-                        tokenHtml = tokenTypes.map(t => {
-                            const priceText = t.unit_price > 0 ? `${t.unit_price} ATP` : I18N.t('market.tbd_price');
-                            const expiry = t.expires_at ? new Date(t.expires_at).toLocaleDateString() : '';
-                            const availColor = t.available > 0 ? 'var(--color-success)' : 'var(--color-danger)';
-                            return `
-                                <div class="token-type-item">
-                                    <div>
-                                        <span class="type-name">${t.scope_label}</span>
-                                        <span class="type-detail">
-                                            ${t.qa_limit > 0 ? t.qa_limit + ' ' + I18N.t('market.conversations') : I18N.t('market.unlimited')}
-                                            ${expiry ? ' &middot; ' + I18N.t('market.until') + expiry : ''}
-                                        </span>
-                                    </div>
-                                    <div class="type-right">
-                                        <span class="availability" style="color: ${availColor};">
-                                            ${I18N.t('market.remaining')} ${t.available}
-                                        </span>
-                                        <span class="price">${priceText}</span>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
-                    } else {
-                        tokenHtml = `<div style="color: var(--text-muted); padding: var(--space-sm) 0; font-size: 0.85em;">${I18N.t('market.no_tokens')}</div>`;
-                    }
 
                     const agentUrl = '/agent/' + agent.agent_id;
                     return `
@@ -449,17 +418,17 @@
                                 <div class="agent-tags">
                                     ${tags.map(t => `<span class="tag">${t}</span>`).join('')}
                                 </div>
-                                <div class="token-section">
-                                    <div class="token-section-label">${I18N.t('market.available_tokens')}</div>
-                                    ${tokenHtml}
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;">
+                                    <span style="color:#e2b96a;font-size:0.85em;font-weight:600;">
+                                        ${agent.price_per_chat ? agent.price_per_chat + ' ATP/次' : '免费对话'}
+                                    </span>
+                                    <a href="/agent-detail?id=${agent.agent_id}&tab=chat" 
+                                       style="padding:8px 16px;border-radius:8px;background:rgba(109,168,155,0.15);color:#6da89b;text-decoration:none;font-size:0.82em;font-weight:600;border:1px solid rgba(109,168,155,0.2);transition:all 0.15s;"
+                                       onmouseover="this.style.background='rgba(109,168,155,0.25)'" 
+                                       onmouseout="this.style.background='rgba(109,168,155,0.15)'">
+                                        💬 开始对话
+                                    </a>
                                 </div>
-                            </div>
-                            <div class="agent-footer">
-                                <button class="btn ${totalAvailable > 0 ? 'btn-teal' : 'btn-secondary'} btn-small"
-                                        onclick="showPurchase('${agent.agent_id}', '${agent.name}')"
-                                        ${totalAvailable === 0 ? 'disabled' : ''}>
-                                    ${totalAvailable > 0 ? I18N.t('market.purchase_token') : I18N.t('market.out_of_stock')}
-                                </button>
                             </div>
                         </div>
                     `;
