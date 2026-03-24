@@ -302,7 +302,15 @@
 
         @media (max-width: 768px) {
             .agents-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: 1fr !important;
+            }
+            .marketplace-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .filter-bar {
+                flex-direction: column;
+                gap: 8px;
             }
         }
     </style>

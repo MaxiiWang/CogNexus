@@ -613,7 +613,23 @@
             }
 
             .agent-card-actions {
-                margin-top: var(--space-sm);
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-top: 8px;
+            }
+
+            /* Stats grid */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            /* Simulation cards */
+            .sim-item .sim-actions {
+                flex-wrap: wrap;
+            }
+            .sim-item .sim-actions .btn {
+                font-size: 0.75em;
+                padding: 5px 10px;
             }
 
             .sim-manage-card {
@@ -631,6 +647,27 @@
 
             .sim-create-grid {
                 grid-template-columns: 1fr;
+            }
+
+            /* Modal */
+            .modal-content {
+                width: 95vw !important;
+                max-width: none !important;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            /* Section headers */
+            .section-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr !important;
             }
         }
 

@@ -50,6 +50,23 @@ const AgentDetail = (function() {
         });
     }
 
+    let _mobileAvatarVisible = false;
+    function toggleMobileAvatar() {
+        const panel = document.getElementById('avatarPanel');
+        const btn = document.getElementById('mobileChatToggle');
+        if (!panel || !btn) return;
+        _mobileAvatarVisible = !_mobileAvatarVisible;
+        if (_mobileAvatarVisible) {
+            panel.classList.add('mobile-show');
+            btn.textContent = '💬';
+            btn.title = '返回对话';
+        } else {
+            panel.classList.remove('mobile-show');
+            btn.textContent = '🎭';
+            btn.title = '查看虚拟形象';
+        }
+    }
+
     function closeModal() {
         document.getElementById('globalModal').classList.remove('show');
         if (_modalResolve) { _modalResolve(null); _modalResolve = null; }
@@ -680,10 +697,14 @@ const AgentDetail = (function() {
 
         // Show avatar panel if model available
         const avatarPanel = document.getElementById('avatarPanel');
+        const mobileToggle = document.getElementById('mobileChatToggle');
         if (avatarPanel && agentData && agentData.avatar_model_url) {
             avatarPanel.style.display = 'flex';
             const nameEl = document.getElementById('avatarNameText');
             if (nameEl) nameEl.textContent = agentData.name || '';
+        } else {
+            // No avatar — hide mobile toggle button
+            if (mobileToggle) mobileToggle.style.display = 'none';
         }
 
         box.style.display = 'flex';
@@ -1783,5 +1804,5 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar };
 })();
