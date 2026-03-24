@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent — CogNexus</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #17181c;
+            --bg-s: #1e2025;
+            --bg-t: #26282e;
+            --accent: #d4a054;
+            --accent-s: #c48d3f;
+            --accent-text: #e2b96a;
+            --accent-muted: rgba(212, 160, 84, 0.12);
+            --text-1: #e8e4dc;
+            --text-2: #a8a299;
+            --text-3: #6b665e;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-m: rgba(255, 255, 255, 0.1);
+            --teal: #6da89b;
+            --blue: #7c99b8;
+            --purple: #9d8bb8;
+            --rose: #b8868a;
+            --gold: #b8a66e;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Noto Sans SC', sans-serif;
+            background: var(--bg);
+            color: var(--text-1);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 70% 50% at 15% 5%, rgba(212, 160, 84, 0.04) 0%, transparent 60%),
+                radial-gradient(ellipse 50% 70% at 85% 95%, rgba(109, 168, 155, 0.03) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(30, 32, 37, 0.85);
+            backdrop-filter: blur(16px) saturate(1.2);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 36px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--accent-text);
+            text-decoration: none;
+        }
+        .logo span { color: var(--text-1); font-weight: 500; }
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .scope-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+        .scope-badge.none { background: rgba(255,255,255,0.05); color: var(--text-3); }
+        .scope-badge.qa_public { background: rgba(124,153,184,0.15); color: var(--blue); }
+        .scope-badge.browse_public { background: rgba(157,139,184,0.15); color: var(--purple); }
+        .scope-badge.full { background: rgba(109,168,155,0.15); color: var(--teal); }
+        .expires-info {
+            font-size: 0.78em;
+            color: var(--text-3);
+        }
+        .logout-btn {
+            background: rgba(184,134,138,0.12);
+            color: var(--rose);
+            border: 1px solid rgba(184,134,138,0.2);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: rgba(184,134,138,0.2); }
+
+        /* Main */
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 36px 60px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-muted);
+            border: 2px solid var(--border-m);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .profile-info { flex: 1; }
+        .profile-name {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--text-1);
+            margin-bottom: 4px;
+        }
+        .profile-title {
+            font-size: 0.95em;
+            color: var(--accent-text);
+            margin-bottom: 8px;
+        }
+        .profile-bio {
+            font-size: 0.9em;
+            color: var(--text-2);
+            line-height: 1.6;
+        }
+        .profile-edit-btn {
+            background: transparent;
+            border: 1px solid var(--border-m);
+            color: var(--text-3);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.78em;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+        .profile-edit-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent-text);
+        }
+
+        /* Edit Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: var(--bg-s);
+            border: 1px solid var(--border-m);
+            border-radius: 14px;
+            padding: 28px;
+            width: 90%;
+            max-width: 440px;
+            transform: translateY(20px);
+            transition: transform 0.25s;
+        }
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .modal-header h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.2em;
+            color: var(--text-1);
+        }
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-3);
+            font-size: 1.4em;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .modal-close:hover { color: var(--text-1); }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.78em;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+        }
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border-m);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: var(--text-1);
+            font-size: 0.9em;
+            font-family: inherit;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid var(--border-m);
+            color: var(--text-2);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .btn-save {
+            background: var(--accent);
+            border: none;
+            color: var(--bg);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .btn-save:hover { background: var(--accent-s); }
+
+        /* Hero */
+        .welcome-section {
+            padding: 80px 0 48px;
+            max-width: 640px;
+        }
+
+        /* Features */
+        .features-list {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-muted);
+            border: 1px solid rgba(212,160,84,0.1);
+            border-radius: 6px;
+            transition: all 0.25s;
+        }
+        .feature-item:hover {
+            border-color: rgba(212,160,84,0.25);
+            transform: translateY(-1px);
+        }
+        .feature-item .icon { font-size: 1em; }
+        .feature-item .text {
+            color: var(--text-2);
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, var(--border-m), transparent 80%);
+            margin: 40px 0;
+        }
+
+        /* Token Input */
+        .token-section {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 28px;
+            max-width: 480px;
+            margin-bottom: 40px;
+        }
+        .token-section h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            color: var(--text-1);
+            font-size: 1.05em;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+        .token-input-group {
+            display: flex;
+            gap: 8px;
+        }
+        .token-input {
+            flex: 1;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border-m);
+            border-radius: 6px;
+            padding: 10px 14px;
+            color: var(--text-1);
+            font-size: 0.9em;
+            font-family: 'JetBrains Mono', monospace;
+            transition: border-color 0.2s;
+        }
+        .token-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .token-input::placeholder { color: var(--text-3); }
+        .token-btn {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 6px;
+            padding: 10px 22px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .token-btn:hover {
+            background: var(--accent-s);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(212,160,84,0.2);
+        }
+        .token-btn:disabled {
+            background: var(--bg-t);
+            color: var(--text-3);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .token-error {
+            color: var(--rose);
+            font-size: 0.85em;
+            margin-top: 12px;
+            display: none;
+        }
+        .token-error.show { display: block; }
+
+        /* Permission Grid */
+        .section-label {
+            font-size: 0.72em;
+            font-weight: 600;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+        }
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+        .permission-item {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.25s;
+        }
+        .permission-item.unlocked {
+            border-color: rgba(109,168,155,0.25);
+            background: rgba(109,168,155,0.04);
+        }
+        .permission-icon { font-size: 1.3em; width: 36px; text-align: center; flex-shrink: 0; }
+        .permission-info h4 { color: var(--text-2); font-size: 0.9em; margin-bottom: 3px; }
+        .permission-info p { color: var(--text-3); font-size: 0.8em; }
+        .permission-item.unlocked .permission-info h4 { color: var(--teal); }
+        .permission-status { margin-left: auto; font-size: 1em; }
+
+        /* View Cards — asymmetric grid */
+        .view-cards {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 40px;
+        }
+        .view-card {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .view-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(212,160,84,0.04) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .view-card:not(.locked):hover::before { opacity: 1; }
+        .view-card.locked {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .view-card:not(.locked):hover {
+            border-color: var(--border-m);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+        .view-card .icon {
+            font-size: 1.6em;
+            margin-bottom: 14px;
+        }
+        .view-card h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            color: var(--text-1);
+            font-size: 1.05em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .view-card p {
+            color: var(--text-3);
+            font-size: 0.82em;
+            line-height: 1.5;
+            flex: 1;
+        }
+        .view-card .lock-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            font-size: 0.9em;
+        }
+        .view-card .scope-required {
+            font-size: 0.7em;
+            color: var(--text-3);
+            margin-top: 10px;
+        }
+
+        /* Chat Card */
+        .chat-card {
+            grid-column: span 3;
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+            background: linear-gradient(135deg, var(--bg-s) 0%, rgba(124,153,184,0.04) 100%);
+            border-color: rgba(124,153,184,0.12);
+        }
+        .chat-card:not(.locked):hover {
+            border-color: rgba(124,153,184,0.3);
+        }
+        .chat-card .icon { margin-bottom: 0; }
+        .chat-card .card-text { flex: 1; }
+        .chat-card h3 { color: var(--blue); }
+        .qa-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 0.8em;
+            color: var(--text-3);
+        }
+        .qa-stats span { color: var(--blue); font-weight: 500; }
+
+        /* Dashboard */
+        .dashboard-content { display: none; }
+        .dashboard-content.show { display: block; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 40px;
+        }
+        .stat-card {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent), transparent);
+            opacity: 0.3;
+        }
+        .stat-card h4 {
+            color: var(--text-3);
+            font-size: 0.72em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+        .stat-card .value {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--accent-text);
+        }
+
+        /* Loading */
+        .loading { text-align: center; padding: 20px; color: var(--text-3); }
+        .spinner {
+            width: 28px; height: 28px;
+            border: 2px solid var(--border-m);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Token Management */
+        .token-management { display: none; margin-top: 20px; }
+        .token-management.show { display: block; }
+
+        .token-create-form {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .form-row .form-group {
+            flex: 1;
+            min-width: 140px;
+        }
+        .form-row .form-group label {
+            display: block;
+            color: var(--text-3);
+            font-size: 0.72em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+        .form-row .form-group select,
+        .form-row .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-m);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.25);
+            color: var(--text-1);
+            font-size: 0.85em;
+            font-family: inherit;
+        }
+        .form-row .form-group select:focus,
+        .form-row .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        .create-btn {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .create-btn:hover {
+            background: var(--accent-s);
+            transform: translateY(-1px);
+        }
+
+        .token-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .token-item {
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .token-item.full { border-left: 2px solid var(--teal); }
+        .token-item.qa_public { border-left: 2px solid var(--blue); }
+        .token-item.browse_public { border-left: 2px solid var(--purple); }
+        .token-info { flex: 1; }
+        .token-info .token-id {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-text);
+            font-size: 0.85em;
+        }
+        .token-info .token-meta { font-size: 0.78em; color: var(--text-3); margin-top: 3px; }
+        .token-info .token-note { font-size: 0.82em; color: var(--text-2); margin-top: 3px; }
+        .token-actions { display: flex; gap: 6px; }
+        .token-actions button {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-2);
+            cursor: pointer;
+            font-size: 0.78em;
+            transition: all 0.2s;
+        }
+        .token-actions button:hover {
+            background: var(--bg-t);
+            color: var(--text-1);
+        }
+        .token-actions .revoke-btn:hover {
+            background: rgba(184,134,138,0.12);
+            border-color: rgba(184,134,138,0.3);
+            color: var(--rose);
+        }
+
+        /* Inline View Container */
+        .inline-view-container {
+            display: none;
+            background: var(--bg-s);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            margin-bottom: 40px;
+            overflow: hidden;
+        }
+        .inline-view-container.show { display: block; }
+        .inline-view-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .inline-view-header h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            color: var(--accent-text);
+            font-size: 1em;
+            font-weight: 700;
+        }
+        .inline-view-close {
+            background: transparent;
+            border: 1px solid var(--border-m);
+            color: var(--text-3);
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.2s;
+        }
+        .inline-view-close:hover { color: var(--text-1); border-color: var(--text-3); }
+        .inline-view-body {
+            position: relative;
+            min-height: 200px;
+        }
+        .inline-view-loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-3);
+        }
+
+        /* Animations */
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .delay-1 { animation-delay: 0.08s; }
+        .delay-2 { animation-delay: 0.16s; }
+        .delay-3 { animation-delay: 0.24s; }
+        .delay-4 { animation-delay: 0.32s; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main { padding: 0 20px 40px; }
+            .profile-section { flex-direction: column; align-items: center; text-align: center; }
+            .view-cards { grid-template-columns: 1fr; }
+            .chat-card { grid-column: span 1; flex-direction: column; }
+            .chat-card .card-text { width: 100%; }
+            .permission-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .features-list { flex-direction: column; align-items: center; }
+            .form-row { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a class="logo" href="/marketplace">🧠 <span>Cog</span>Nexus</a>
+        <div class="auth-status" id="authStatus">
+            <span class="scope-badge none" id="scopeBadge">访客</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <!-- Hero -->
+        <div class="welcome-section animate-in" id="welcomeSection">
+            <!-- Profile -->
+            <div class="profile-section" id="profileSection">
+                <div class="profile-avatar" id="profileAvatar">🧠</div>
+                <div class="profile-info">
+                    <div class="profile-name" id="profileName">加载中...</div>
+                    <div class="profile-title" id="profileTitle"></div>
+                    <div class="profile-bio" id="profileBio"></div>
+                    <button class="profile-edit-btn" id="profileEditBtn" style="display:none" onclick="PageApp.openEditModal()">✏️ 编辑资料</button>
+                </div>
+            </div>
+
+            <div class="features-list" id="featuresList">
+                <div class="feature-item">
+                    <div class="icon">📝</div>
+                    <div class="text">事实层</div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">🕸️</div>
+                    <div class="text">关联层</div>
+                </div>
+                <div class="feature-item">
+                    <div class="icon">📐</div>
+                    <div class="text">抽象层</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div class="modal-overlay" id="editModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>编辑 Agent 资料</h3>
+                    <button class="modal-close" onclick="PageApp.closeEditModal()">×</button>
+                </div>
+                <div class="form-group">
+                    <label>名称</label>
+                    <input type="text" id="editName" placeholder="Agent 名称">
+                </div>
+                <div class="form-group">
+                    <label>描述</label>
+                    <textarea id="editBio" placeholder="描述这个 Agent..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>头像 URL（留空使用默认）</label>
+                    <input type="text" id="editAvatar" placeholder="https://...">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-cancel" onclick="PageApp.closeEditModal()">取消</button>
+                    <button class="btn-save" onclick="PageApp.saveProfile()">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Input -->
+        <div class="token-section animate-in delay-1" id="tokenSection">
+            <h3>输入访问 Token</h3>
+            <div class="token-input-group">
+                <input type="text" class="token-input" id="tokenInput"
+                       placeholder="粘贴你的 Token..." autocomplete="off">
+                <button class="token-btn" id="tokenBtn" onclick="PageApp.verifyToken()">验证</button>
+            </div>
+            <div class="token-error" id="tokenError"></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Permissions -->
+        <div class="animate-in delay-2">
+            <div class="section-label">当前权限</div>
+            <div class="permission-grid" id="permissionGrid">
+                <div class="permission-item" id="permChat">
+                    <div class="permission-icon">💬</div>
+                    <div class="permission-info">
+                        <h4>Chat 问答</h4>
+                        <p>向知识库提问</p>
+                    </div>
+                    <div class="permission-status">🔒</div>
+                </div>
+                <div class="permission-item" id="permBrowse">
+                    <div class="permission-icon">👁️</div>
+                    <div class="permission-info">
+                        <h4>浏览图谱</h4>
+                        <p>查看知识结构</p>
+                    </div>
+                    <div class="permission-status">🔒</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Cards -->
+        <div class="animate-in delay-3">
+            <div class="section-label">功能入口</div>
+            <div class="view-cards">
+                <div class="view-card locked" id="graphCard" onclick="PageApp.openView('graph')">
+                    <div class="lock-badge">🔒</div>
+                    <div class="icon">🕸️</div>
+                    <h3>Graph View</h3>
+                    <p>力导向图，探索知识关联</p>
+                    <div class="scope-required">需要浏览权限</div>
+                </div>
+                <div class="view-card locked" id="treeCard" onclick="PageApp.openView('tree')">
+                    <div class="lock-badge">🔒</div>
+                    <div class="icon">🌳</div>
+                    <h3>Tree View</h3>
+                    <p>抽象层树形，理解规律结构</p>
+                    <div class="scope-required">需要浏览权限</div>
+                </div>
+                <div class="view-card locked" id="timelineCard" onclick="PageApp.openView('timeline')">
+                    <div class="lock-badge">🔒</div>
+                    <div class="icon">📅</div>
+                    <h3>Timeline</h3>
+                    <p>时间轴，回顾知识演变</p>
+                    <div class="scope-required">需要浏览权限</div>
+                </div>
+                <div class="view-card chat-card locked" id="chatCard" onclick="PageApp.openView('chat')">
+                    <div class="lock-badge">🔒</div>
+                    <div class="icon">💬</div>
+                    <div class="card-text">
+                        <h3>Chat</h3>
+                        <p>向知识库提问，获取基于存储知识的回答</p>
+                        <div class="qa-stats" id="qaStats" style="display:none">
+                            <div>剩余: <span id="qaRemaining">-</span></div>
+                            <div>已用: <span id="qaUsed">-</span></div>
+                        </div>
+                    </div>
+                    <div class="scope-required">需要问答或全量权限</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inline View -->
+        <div class="inline-view-container" id="inlineView">
+            <div class="inline-view-header">
+                <h3 id="inlineViewTitle">—</h3>
+                <button class="inline-view-close" onclick="PageApp.closeView()">关闭</button>
+            </div>
+            <div class="inline-view-body" id="inlineViewBody">
+                <div class="inline-view-loading"><div class="spinner"></div>加载中...</div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="dashboard-content animate-in delay-4" id="dashboardContent">
+            <div class="section-label">知识库概览</div>
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <h4>知识节点</h4>
+                    <div class="value" id="totalFacts">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>关联边</h4>
+                    <div class="value" id="totalEdges">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>抽象规律</h4>
+                    <div class="value" id="totalAbstracts">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>数据范围</h4>
+                    <div class="value" id="dataScope">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Management (full access only) -->
+        <div class="token-management" id="tokenManagement">
+            <div class="section-label">Token 管理</div>
+            <div class="token-create-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>权限类型</label>
+                        <select id="newTokenScope">
+                            <option value="qa_public">💬 问答服务</option>
+                            <option value="browse_public">👁️ 公开浏览</option>
+                            <option value="full">🔓 全量访问</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>有效期</label>
+                        <select id="newTokenDuration">
+                            <option value="1d">1 天</option>
+                            <option value="7d" selected>7 天</option>
+                            <option value="30d">30 天</option>
+                            <option value="90d">90 天</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>问答次数</label>
+                        <input type="number" id="newTokenQaLimit" placeholder="默认20" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>备注</label>
+                        <input type="text" id="newTokenNote" placeholder="如：给朋友A">
+                    </div>
+                </div>
+                <button class="create-btn" onclick="PageApp.createToken()">创建 Token</button>
+            </div>
+            <div class="token-list" id="tokenList">
+                <div class="loading"><div class="spinner"></div>加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    const PageApp = (function() {
+        const API = window.location.origin;
+        // Extract agent_id from URL: /agent/{agent_id}
+        const pathParts = window.location.pathname.split('/');
+        const agentId = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+        let agentData = null;
+        let authInfo = null;
+        let currentInlineView = null;
+
+        const TM = {
+            KEY: 'agent_token_' + agentId,
+            INFO_KEY: 'agent_token_info_' + agentId,
+            get() { return sessionStorage.getItem(this.KEY); },
+            getInfo() { const i = sessionStorage.getItem(this.INFO_KEY); return i ? JSON.parse(i) : null; },
+            set(token, info) { sessionStorage.setItem(this.KEY, token); sessionStorage.setItem(this.INFO_KEY, JSON.stringify(info)); },
+            clear() { sessionStorage.removeItem(this.KEY); sessionStorage.removeItem(this.INFO_KEY); },
+            getScope() { return this.getInfo()?.scope || 'none'; },
+            canChat() { return ['full', 'qa_public'].includes(this.getScope()); },
+            canBrowse() { return ['full', 'browse_public'].includes(this.getScope()); },
+        };
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+        function getNs() { return (agentData && agentData.namespace) || 'default'; }
+
+        // ===== Init =====
+        async function init() {
+            await loadAgent();
+            const urlToken = new URLSearchParams(location.search).get('token');
+            if (urlToken) {
+                document.getElementById('tokenInput').value = urlToken;
+                await verifyToken();
+                return;
+            }
+            const saved = TM.get();
+            if (saved) {
+                try {
+                    const r = await fetch(API + '/api/knowledge/token/verify?token=' + encodeURIComponent(saved));
+                    const data = await r.json();
+                    if (data.valid) { TM.set(saved, data); updateUI(data); }
+                    else { TM.clear(); }
+                } catch {}
+            }
+        }
+
+        async function loadAgent() {
+            try {
+                const r = await fetch(API + '/api/agents/' + agentId);
+                if (!r.ok) throw new Error();
+                agentData = await r.json();
+                document.title = (agentData.name || agentId) + ' — CogNexus';
+                renderProfile();
+            } catch {
+                document.getElementById('profileName').textContent = 'Agent Not Found';
+            }
+        }
+
+        function renderProfile() {
+            const a = agentData;
+            document.getElementById('profileName').textContent = a.name || a.agent_id || agentId;
+            document.getElementById('profileTitle').textContent = a.agent_type === 'character' ? 'Character Agent' : 'Human Agent';
+            document.getElementById('profileBio').textContent = a.description || '';
+
+            const avatarEl = document.getElementById('profileAvatar');
+            if (a.avatar_url) {
+                avatarEl.innerHTML = '<img src="' + esc(a.avatar_url) + '" alt="avatar" onerror="this.parentElement.textContent=\'🧠\'">';
+            } else {
+                avatarEl.textContent = a.agent_type === 'character' ? '🎭' : '🧠';
+            }
+
+            // Update header logo to agent name
+            document.querySelector('.logo').innerHTML = (a.avatar_url ? '' : (a.agent_type === 'character' ? '🎭 ' : '🧠 ')) + '<span>' + esc(a.name || agentId) + '</span>';
+        }
+
+        // ===== Token Verify =====
+        async function verifyToken() {
+            const input = document.getElementById('tokenInput');
+            const btn = document.getElementById('tokenBtn');
+            const error = document.getElementById('tokenError');
+            const token = input.value.trim();
+            if (!token) { showError('请输入 Token'); return; }
+
+            btn.disabled = true;
+            btn.textContent = '验证中...';
+            error.classList.remove('show');
+
+            try {
+                const r = await fetch(API + '/api/knowledge/token/verify?token=' + encodeURIComponent(token));
+                const data = await r.json();
+                if (data.valid) {
+                    // Verify this token belongs to this agent
+                    if (data.agent_id !== agentId) {
+                        showError('此 Token 不属于当前 Agent');
+                    } else {
+                        TM.set(token, data);
+                        authInfo = data;
+                        updateUI(data);
+                        if (location.search.includes('token=')) history.replaceState({}, '', location.pathname);
+                    }
+                } else {
+                    const msgs = { 'token_expired': 'Token 已过期', 'token_revoked': 'Token 已被撤销', 'token_not_found': 'Token 无效' };
+                    showError(msgs[data.error] || 'Token 验证失败');
+                }
+            } catch { showError('网络错误，请重试'); }
+
+            btn.disabled = false;
+            btn.textContent = '验证';
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('tokenError');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        function updateUI(info) {
+            authInfo = info;
+            const scope = info.scope || 'none';
+            const perms = info.permissions || {};
+            const scopeLabels = { 'none': '访客', 'qa_public': '💬 问答服务', 'browse_public': '👁️ 公开浏览', 'full': '🔓 全量访问' };
+
+            const scopeBadge = document.getElementById('scopeBadge');
+            const authStatus = document.getElementById('authStatus');
+            scopeBadge.textContent = scopeLabels[scope] || scope;
+            scopeBadge.className = 'scope-badge ' + scope;
+
+            if (info.valid && info.expires_at) {
+                const expiresStr = new Date(info.expires_at).toLocaleString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                authStatus.innerHTML =
+                    '<span class="scope-badge ' + scope + '">' + esc(scopeLabels[scope] || scope) + '</span>' +
+                    '<span class="expires-info">有效期至 ' + expiresStr + '</span>' +
+                    '<button class="logout-btn" onclick="PageApp.logout()">退出</button>';
+            }
+
+            // Permission items
+            updatePermItem('permChat', perms.chat);
+            updatePermItem('permBrowse', perms.browse);
+
+            // View cards
+            if (perms.chat) {
+                const cc = document.getElementById('chatCard');
+                cc.classList.remove('locked');
+                cc.querySelector('.lock-badge').textContent = '✅';
+                const qs = info.qa_stats;
+                if (qs && !qs.unlimited) {
+                    document.getElementById('qaStats').style.display = 'flex';
+                    document.getElementById('qaRemaining').textContent = qs.remaining;
+                    document.getElementById('qaUsed').textContent = qs.used;
+                } else if (qs?.unlimited) {
+                    document.getElementById('qaStats').style.display = 'flex';
+                    document.getElementById('qaRemaining').textContent = '无限';
+                    document.getElementById('qaUsed').textContent = qs.used;
+                }
+            }
+
+            ['graphCard', 'treeCard', 'timelineCard'].forEach(id => {
+                const card = document.getElementById(id);
+                if (perms.browse) {
+                    card.classList.remove('locked');
+                    card.querySelector('.lock-badge').textContent = '✅';
+                }
+            });
+
+            if (perms.browse) {
+                document.getElementById('dashboardContent').classList.add('show');
+                loadDashboard();
+            }
+            if (perms.full_access) {
+                document.getElementById('tokenManagement').classList.add('show');
+                document.getElementById('profileEditBtn').style.display = 'inline-block';
+                loadTokenList();
+            }
+            if (info.valid) document.getElementById('tokenSection').style.display = 'none';
+        }
+
+        function updatePermItem(id, unlocked) {
+            const item = document.getElementById(id);
+            const status = item.querySelector('.permission-status');
+            if (unlocked) { item.classList.add('unlocked'); status.textContent = '✅'; }
+            else { item.classList.remove('unlocked'); status.textContent = '🔒'; }
+        }
+
+        async function loadDashboard() {
+            const token = TM.get();
+            const ns = getNs();
+            try {
+                const [statsR, treeR] = await Promise.all([
+                    fetch(API + '/api/knowledge/public/' + ns + '/stats?token=' + encodeURIComponent(token)),
+                    fetch(API + '/api/knowledge/public/' + ns + '/tree?token=' + encodeURIComponent(token)).catch(() => null)
+                ]);
+                const stats = await statsR.json();
+                document.getElementById('totalFacts').textContent = stats.total_facts || stats.graph_nodes || 0;
+                document.getElementById('totalEdges').textContent = stats.graph_edges || 0;
+                if (treeR && treeR.ok) {
+                    const tree = await treeR.json();
+                    document.getElementById('totalAbstracts').textContent = (tree.abstracts || []).length || 0;
+                }
+                const scope = TM.getScope();
+                document.getElementById('dataScope').textContent = scope === 'full' ? '全量' : '公开';
+            } catch {}
+        }
+
+        function logout() { TM.clear(); location.reload(); }
+
+        // ===== Inline Views =====
+        function openView(view) {
+            const container = document.getElementById('inlineView');
+            const body = document.getElementById('inlineViewBody');
+            const title = document.getElementById('inlineViewTitle');
+            const titles = { graph: '🕸️ Graph View', tree: '🌳 Tree View', timeline: '📅 Timeline', chat: '💬 知识问答' };
+
+            title.textContent = titles[view] || view;
+            body.innerHTML = '<div class="inline-view-loading"><div class="spinner"></div>加载中...</div>';
+            container.classList.add('show');
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            currentInlineView = view;
+
+            if (view === 'graph') renderGraph(body);
+            else if (view === 'tree') renderTree(body);
+            else if (view === 'timeline') renderTimeline(body);
+            else if (view === 'chat') renderChat(body);
+        }
+
+        function closeView() {
+            document.getElementById('inlineView').classList.remove('show');
+            document.getElementById('inlineViewBody').innerHTML = '';
+            currentInlineView = null;
+        }
+
+        // ===== Graph =====
+        async function renderGraph(box) {
+            const token = TM.get();
+            const ns = getNs();
+            try {
+                const r = await fetch(API + '/api/knowledge/public/' + ns + '/graph?limit=300&token=' + encodeURIComponent(token));
+                if (!r.ok) throw new Error();
+                const data = await r.json();
+                const nodes = data.nodes || [];
+                const edges = data.edges || [];
+                if (!nodes.length) { box.innerHTML = '<div class="inline-view-loading">暂无知识图谱数据</div>'; return; }
+
+                if (!window.d3) {
+                    await new Promise((res, rej) => {
+                        const s = document.createElement('script');
+                        s.src = 'https://cdn.jsdelivr.net/npm/d3@7';
+                        s.onload = res; s.onerror = rej;
+                        document.head.appendChild(s);
+                    });
+                }
+
+                box.innerHTML = '';
+                const w = box.clientWidth, h = 600;
+                const svg = d3.select(box).append('svg').attr('width', w).attr('height', h)
+                    .style('background', 'transparent');
+                const g = svg.append('g');
+
+                const zoom = d3.zoom().scaleExtent([0.2, 5]).on('zoom', e => g.attr('transform', e.transform));
+                svg.call(zoom);
+
+                svg.append('defs').append('marker')
+                    .attr('id', 'arrow').attr('viewBox', '0 -5 10 10')
+                    .attr('refX', 20).attr('refY', 0)
+                    .attr('markerWidth', 6).attr('markerHeight', 6)
+                    .attr('orient', 'auto')
+                    .append('path').attr('d', 'M0,-5L10,0L0,5')
+                    .attr('fill', 'rgba(109,168,155,0.4)');
+
+                const colorMap = { '观点':'#6da89b','事件':'#d4a574','资讯':'#7eb8d4','决策':'#b8868a','情绪':'#c4956a' };
+
+                const nodeById = {};
+                nodes.forEach(n => nodeById[n.id] = n);
+                const links = edges.filter(e => nodeById[e.source] && nodeById[e.target])
+                    .map(e => ({ source: e.source, target: e.target, label: e.type || '' }));
+
+                const simulation = d3.forceSimulation(nodes)
+                    .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+                    .force('charge', d3.forceManyBody().strength(-200))
+                    .force('center', d3.forceCenter(w / 2, h / 2))
+                    .force('collision', d3.forceCollide().radius(20));
+
+                const link = g.append('g').selectAll('line').data(links).join('line')
+                    .attr('stroke', 'rgba(109,168,155,0.2)').attr('stroke-width', 1)
+                    .attr('marker-end', 'url(#arrow)');
+
+                const edgeLabel = g.append('g').selectAll('text').data(links).join('text')
+                    .text(d => d.label).attr('font-size', '8px')
+                    .attr('fill', 'rgba(255,255,255,0.25)').attr('text-anchor', 'middle');
+
+                const node = g.append('g').selectAll('circle').data(nodes).join('circle')
+                    .attr('r', d => 5 + Math.min((d.degree || 0) * 0.8, 6))
+                    .attr('fill', d => colorMap[d.type] || '#6da89b')
+                    .attr('stroke', 'rgba(255,255,255,0.1)').attr('stroke-width', 1)
+                    .attr('cursor', 'pointer')
+                    .call(d3.drag()
+                        .on('start', (e, d) => { if (!e.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+                        .on('drag', (e, d) => { d.fx = e.x; d.fy = e.y; })
+                        .on('end', (e, d) => { if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; })
+                    );
+
+                const labels = g.append('g').selectAll('text').data(nodes).join('text')
+                    .text(d => (d.label || d.id || '').slice(0, 16))
+                    .attr('font-size', '9px').attr('fill', 'rgba(232,228,223,0.6)')
+                    .attr('dx', 10).attr('dy', 4);
+
+                const tip = document.createElement('div');
+                tip.style.cssText = 'position:absolute;display:none;background:rgba(15,15,25,0.95);color:#e8e4df;padding:12px 16px;border-radius:8px;font-size:0.82em;max-width:340px;pointer-events:none;border:1px solid rgba(109,168,155,0.3);z-index:10;line-height:1.6;';
+                box.style.position = 'relative';
+                box.appendChild(tip);
+
+                node.on('mouseover', function(e, d) {
+                    d3.select(this).attr('stroke', '#fff').attr('stroke-width', 2);
+                    tip.style.display = 'block';
+                    tip.innerHTML = '<div style="color:' + (colorMap[d.type] || '#6da89b') + ';font-weight:600;margin-bottom:4px;">' + esc(d.type || '') + '</div>' +
+                        '<div>' + esc((d.full_content || d.label || d.id).slice(0, 250)) + '</div>';
+                }).on('mousemove', function(e) {
+                    const rect = box.getBoundingClientRect();
+                    tip.style.left = (e.clientX - rect.left + 15) + 'px';
+                    tip.style.top = (e.clientY - rect.top + 15) + 'px';
+                }).on('mouseout', function() {
+                    d3.select(this).attr('stroke', 'rgba(255,255,255,0.1)').attr('stroke-width', 1);
+                    tip.style.display = 'none';
+                });
+
+                simulation.on('tick', () => {
+                    link.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+                        .attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+                    edgeLabel.attr('x', d => (d.source.x + d.target.x) / 2)
+                        .attr('y', d => (d.source.y + d.target.y) / 2);
+                    node.attr('cx', d => d.x).attr('cy', d => d.y);
+                    labels.attr('x', d => d.x).attr('y', d => d.y);
+                });
+
+                // Legend
+                const legend = document.createElement('div');
+                legend.style.cssText = 'position:absolute;bottom:12px;left:12px;display:flex;gap:12px;flex-wrap:wrap;';
+                Object.entries(colorMap).forEach(([t, c]) => {
+                    legend.innerHTML += '<div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:' + c + ';"></div><span style="color:rgba(232,228,223,0.5);font-size:0.72em;">' + t + '</span></div>';
+                });
+                box.appendChild(legend);
+            } catch (e) {
+                console.error('Graph error:', e);
+                box.innerHTML = '<div class="inline-view-loading">图谱加载失败</div>';
+            }
+        }
+
+        // ===== Tree =====
+        async function renderTree(box) {
+            const token = TM.get();
+            const ns = getNs();
+            try {
+                const [treeR, graphR] = await Promise.all([
+                    fetch(API + '/api/knowledge/public/' + ns + '/tree?token=' + encodeURIComponent(token)),
+                    fetch(API + '/api/knowledge/public/' + ns + '/graph?limit=300&token=' + encodeURIComponent(token))
+                ]);
+                if (!treeR.ok || !graphR.ok) throw new Error();
+                const treeData = await treeR.json();
+                const graphData = await graphR.json();
+                const abstracts = treeData.abstracts || [];
+                const graphNodes = {};
+                (graphData.nodes || []).forEach(n => graphNodes[n.id] = n);
+
+                if (!abstracts.length) { box.innerHTML = '<div class="inline-view-loading">暂无抽象层数据</div>'; return; }
+
+                const totalFacts = (graphData.nodes || []).length;
+                box.innerHTML = '<div style="padding:20px;">' +
+                    '<div style="display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap;">' +
+                    statBox(abstracts.length, '抽象层') + statBox(totalFacts, '事实') +
+                    statBox((graphData.edges || []).length, '关联') + '</div>' +
+                    '<div id="treeRoot">' + abstracts.map((ab, i) => renderAbstractCard(ab, graphNodes, i)).join('') + '</div></div>';
+
+                box.querySelectorAll('.abstract-card').forEach(card => {
+                    card.querySelector('.abstract-header').addEventListener('click', () => {
+                        card.classList.toggle('expanded');
+                        const facts = card.querySelector('.source-facts');
+                        facts.style.display = card.classList.contains('expanded') ? 'block' : 'none';
+                    });
+                });
+            } catch (e) {
+                console.error('Tree error:', e);
+                box.innerHTML = '<div class="inline-view-loading">树状图加载失败</div>';
+            }
+        }
+
+        function statBox(val, label) {
+            return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:16px 22px;text-align:center;min-width:100px;">' +
+                '<div style="font-family:Playfair Display,Georgia,serif;font-size:1.8em;font-weight:700;color:#e2b96a;">' + val + '</div>' +
+                '<div style="font-size:0.72em;color:#6b665e;margin-top:4px;text-transform:uppercase;letter-spacing:0.04em;">' + label + '</div></div>';
+        }
+
+        function renderAbstractCard(ab, graphNodes, idx) {
+            const statusClass = ab.status === 'confirmed' ? 'confirmed' : 'draft';
+            const statusLabel = ab.status === 'confirmed' ? '✅ 已确认' : '📝 草稿';
+            const facts = (ab.source_facts || []).map(fid => graphNodes[fid]).filter(Boolean);
+            const typeColors = { '观点':'#6da89b','事件':'#7c99b8','情绪':'#9d8bb8','资讯':'#b8a66e','决策':'#b8868a' };
+
+            return '<div class="abstract-card" style="background:#1e2025;border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:12px;overflow:hidden;animation:fade-up 0.4s ease both;animation-delay:' + (idx * 0.05) + 's;">' +
+                '<div class="abstract-header" style="padding:18px 20px;cursor:pointer;display:flex;justify-content:space-between;align-items:flex-start;">' +
+                '<div><div style="font-family:Playfair Display,Georgia,serif;color:#e2b96a;font-size:1em;font-weight:700;">' + esc(ab.name) + '</div>' +
+                '<div style="display:flex;gap:8px;margin-top:6px;font-size:0.72em;">' +
+                '<span style="background:rgba(' + (statusClass === 'confirmed' ? '109,168,155' : '184,166,110') + ',0.15);color:' + (statusClass === 'confirmed' ? '#6da89b' : '#b8a66e') + ';padding:2px 8px;border-radius:4px;">' + statusLabel + '</span>' +
+                '<span style="color:#6b665e;">来源: ' + (ab.source_count || facts.length) + ' 条事实</span></div>' +
+                (ab.description ? '<div style="margin-top:10px;color:#a8a299;font-size:0.88em;line-height:1.6;">' + esc(ab.description.slice(0, 200)) + '</div>' : '') +
+                '</div><div style="color:#6b665e;font-size:1.2em;flex-shrink:0;margin-left:12px;">▸</div></div>' +
+                '<div class="source-facts" style="border-top:1px solid rgba(255,255,255,0.06);padding:14px 20px;background:rgba(0,0,0,0.15);display:none;">' +
+                '<div style="font-size:0.72em;color:#6b665e;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">来源事实</div>' +
+                facts.map(f => {
+                    const c = typeColors[f.type] || '#6da89b';
+                    return '<div style="padding:10px 14px;background:rgba(255,255,255,0.02);border-radius:6px;margin-bottom:6px;border-left:2px solid ' + c + ';">' +
+                        '<div style="font-size:0.68em;color:#6b665e;margin-bottom:3px;text-transform:uppercase;letter-spacing:0.04em;">' + esc(f.type || '') + '</div>' +
+                        '<div style="font-size:0.85em;color:#a8a299;line-height:1.5;">' + esc((f.full_content || f.label || '').slice(0, 200)) + '</div></div>';
+                }).join('') +
+                '</div></div>';
+        }
+
+        // ===== Timeline =====
+        async function renderTimeline(box) {
+            const token = TM.get();
+            const ns = getNs();
+            try {
+                const r = await fetch(API + '/api/knowledge/public/' + ns + '/timeline?token=' + encodeURIComponent(token));
+                if (!r.ok) throw new Error();
+                const data = await r.json();
+                const facts = data.facts || [];
+                if (!facts.length) { box.innerHTML = '<div class="inline-view-loading">暂无时间线数据</div>'; return; }
+
+                const typeColors = { '观点':'#6da89b','事件':'#d4a574','资讯':'#7eb8d4','决策':'#b8868a','情绪':'#c4956a' };
+                const typeCount = {};
+                facts.forEach(f => { typeCount[f.type] = (typeCount[f.type] || 0) + 1; });
+
+                let statsHtml = '<div style="display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap;">';
+                statsHtml += statBox(facts.length, '总计');
+                Object.entries(typeCount).forEach(([t, c]) => { statsHtml += statBox(c, t); });
+                statsHtml += '</div>';
+
+                let filterHtml = '<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">';
+                filterHtml += '<button class="tl-filter active" data-filter="all" style="padding:5px 14px;border-radius:6px;border:1px solid rgba(109,168,155,0.3);background:rgba(109,168,155,0.15);color:#6da89b;cursor:pointer;font-size:0.8em;">全部</button>';
+                Object.keys(typeCount).forEach(t => {
+                    filterHtml += '<button class="tl-filter" data-filter="' + t + '" style="padding:5px 14px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);background:transparent;color:#a8a299;cursor:pointer;font-size:0.8em;">' + t + '</button>';
+                });
+                filterHtml += '</div>';
+
+                function renderItems(filterType) {
+                    const filtered = filterType === 'all' ? facts : facts.filter(f => f.type === filterType);
+                    const groups = {};
+                    filtered.forEach(f => {
+                        const d = (f.created_at || f.timestamp || '').slice(0, 10) || '未知';
+                        if (!groups[d]) groups[d] = [];
+                        groups[d].push(f);
+                    });
+
+                    return Object.keys(groups).sort().reverse().map(date => {
+                        const dateLabel = formatDateCN(date);
+                        return '<div style="margin-bottom:20px;">' +
+                            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+                            '<span style="color:#e2b96a;font-family:Playfair Display,serif;font-weight:700;font-size:0.95em;">' + dateLabel + '</span>' +
+                            '<span style="color:#6b665e;font-size:0.75em;">' + groups[date].length + ' 条</span>' +
+                            '<div style="flex:1;height:1px;background:rgba(255,255,255,0.06);"></div></div>' +
+                            '<div style="position:relative;padding-left:24px;">' +
+                            '<div style="position:absolute;left:5px;top:0;bottom:0;width:2px;background:rgba(109,168,155,0.15);"></div>' +
+                            groups[date].map(item => {
+                                const c = typeColors[item.type] || '#6da89b';
+                                const time = (item.created_at || '').slice(11, 16) || '';
+                                return '<div style="position:relative;margin-bottom:10px;padding:12px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid rgba(255,255,255,0.04);transition:background 0.15s;cursor:default;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.02)\'">' +
+                                    '<div style="position:absolute;left:-19px;top:16px;width:8px;height:8px;border-radius:50%;background:' + c + ';border:2px solid #17181c;"></div>' +
+                                    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+                                    '<span style="font-size:0.68em;text-transform:uppercase;letter-spacing:0.04em;background:' + c + '22;color:' + c + ';padding:1px 6px;border-radius:3px;">' + esc(item.type || '') + '</span>' +
+                                    '<span style="color:#6b665e;font-size:0.72em;">' + time + '</span></div>' +
+                                    '<div style="color:#a8a299;font-size:0.88em;line-height:1.6;">' + esc((item.full_content || item.label || '').slice(0, 300)) + '</div></div>';
+                            }).join('') +
+                            '</div></div>';
+                    }).join('');
+                }
+
+                box.innerHTML = '<div style="padding:20px;">' + statsHtml + filterHtml + '<div id="tlItems">' + renderItems('all') + '</div></div>';
+
+                box.querySelectorAll('.tl-filter').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        box.querySelectorAll('.tl-filter').forEach(b => {
+                            b.style.background = 'transparent';
+                            b.style.borderColor = 'rgba(255,255,255,0.1)';
+                            b.style.color = '#a8a299';
+                            b.classList.remove('active');
+                        });
+                        btn.style.background = 'rgba(109,168,155,0.15)';
+                        btn.style.borderColor = 'rgba(109,168,155,0.3)';
+                        btn.style.color = '#6da89b';
+                        btn.classList.add('active');
+                        box.querySelector('#tlItems').innerHTML = renderItems(btn.dataset.filter);
+                    });
+                });
+            } catch (e) {
+                console.error('Timeline error:', e);
+                box.innerHTML = '<div class="inline-view-loading">时间线加载失败</div>';
+            }
+        }
+
+        function formatDateCN(ds) {
+            if (!ds || ds === '未知') return ds;
+            try { const d = new Date(ds); return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
+            catch { return ds; }
+        }
+
+        // ===== Chat =====
+        function renderChat(box) {
+            box.innerHTML =
+                '<div style="display:flex;flex-direction:column;height:500px;">' +
+                '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;">' +
+                '<span style="font-size:1.2em;">💬</span>' +
+                '<span style="font-family:Playfair Display,Georgia,serif;color:#e2b96a;font-weight:700;">知识问答</span>' +
+                '<span style="color:#6b665e;font-size:0.8em;">基于已存储知识回答</span></div>' +
+                '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;">' +
+                '<div style="text-align:center;color:#6b665e;padding:40px 0;font-size:0.88em;">输入问题，开始对话</div></div>' +
+                '<div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;">' +
+                '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;color:#e8e4df;font-size:0.9em;outline:none;font-family:inherit;">' +
+                '<button id="chatSendBtn" style="background:#6da89b;color:#fff;border:none;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:600;font-size:0.9em;transition:background 0.15s;" onmouseover="this.style.background=\'#5e9488\'" onmouseout="this.style.background=\'#6da89b\'">发送</button></div></div>';
+
+            document.getElementById('chatSendBtn').addEventListener('click', sendChat);
+            document.getElementById('chatInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+            });
+        }
+
+        async function sendChat() {
+            const inp = document.getElementById('chatInput');
+            const msgs = document.getElementById('chatMessages');
+            const q = inp.value.trim();
+            if (!q) return;
+            inp.value = '';
+
+            if (msgs.querySelector('div[style*="text-align:center"]')) msgs.innerHTML = '';
+
+            msgs.innerHTML += '<div style="align-self:flex-end;background:rgba(109,168,155,0.15);color:#e8e4df;padding:10px 14px;border-radius:12px 12px 2px 12px;max-width:80%;font-size:0.9em;line-height:1.5;">' + esc(q) + '</div>';
+
+            const lid = 'ld-' + Date.now();
+            msgs.innerHTML += '<div id="' + lid + '" style="align-self:flex-start;color:#6b665e;font-size:0.85em;padding:10px;">思考中...</div>';
+            msgs.scrollTop = msgs.scrollHeight;
+
+            const token = TM.get();
+            const ns = getNs();
+            try {
+                const r = await fetch(API + '/api/knowledge/public/' + ns + '/chat?token=' + encodeURIComponent(token), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: q })
+                });
+                const d = await r.json();
+                if (!r.ok) throw new Error(d.detail || '请求失败');
+                const ans = d.answer || d.response || d.message || JSON.stringify(d);
+                const el = document.getElementById(lid);
+                if (el) {
+                    el.style.cssText = 'align-self:flex-start;background:rgba(255,255,255,0.03);color:#e8e4df;padding:12px 16px;border-radius:12px 12px 12px 2px;max-width:80%;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);';
+                    el.innerHTML = esc(ans).replace(/\n/g, '<br>');
+                }
+            } catch (e) {
+                const el = document.getElementById(lid);
+                if (el) { el.style.color = '#b8868a'; el.textContent = e.message || '请求失败，请重试'; }
+            }
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+
+        // ===== Token Management =====
+        async function loadTokenList() {
+            const cogToken = localStorage.getItem('cog_token');
+            if (!cogToken) {
+                document.getElementById('tokenManagement').style.display = 'none';
+                return;
+            }
+            try {
+                const r = await fetch(API + '/api/agents/' + agentId + '/tokens', {
+                    headers: { 'Authorization': 'Bearer ' + cogToken }
+                });
+                if (!r.ok) throw new Error();
+                const d = await r.json();
+                renderTokenList(d.tokens || []);
+            } catch {
+                document.getElementById('tokenList').innerHTML = '<div style="color:var(--rose);padding:20px;">加载失败</div>';
+            }
+        }
+
+        function renderTokenList(tokens) {
+            if (!tokens.length) {
+                document.getElementById('tokenList').innerHTML = '<div style="color:var(--text-3);text-align:center;padding:20px">暂无 Token</div>';
+                return;
+            }
+            document.getElementById('tokenList').innerHTML = tokens.map(t => {
+                const scopeClass = t.scope || '';
+                const scopeLabels = { 'full': '🔓 全量', 'qa_public': '💬 问答', 'browse_public': '👁️ 浏览' };
+                const scopeLabel = scopeLabels[t.scope] || t.scope_label || t.scope || '';
+                const val = t.token_value || t.token_id;
+                const display = val.length > 20 ? val.slice(0, 8) + '...' + val.slice(-6) : val;
+                let meta = scopeLabel;
+                if (t.expires_at) meta += ' · 到期: ' + t.expires_at.slice(0, 10);
+                if (t.qa_limit) meta += ' · 问答: ' + t.qa_limit + '次';
+                if (t.is_sold) meta += ' · 已售出';
+                const shareUrl = location.origin + '/agent/' + agentId + '?token=' + encodeURIComponent(val);
+                return '<div class="token-item ' + esc(scopeClass) + '">' +
+                    '<div class="token-info">' +
+                    '<div class="token-id">' + esc(display) + '</div>' +
+                    '<div class="token-meta">' + esc(meta) + '</div>' +
+                    (t.note ? '<div class="token-note">📝 ' + esc(t.note) + '</div>' : '') +
+                    '</div>' +
+                    '<div class="token-actions">' +
+                    '<button onclick="navigator.clipboard.writeText(\'' + esc(shareUrl) + '\');this.textContent=\'已复制\';setTimeout(()=>this.textContent=\'复制链接\',1500)">复制链接</button>' +
+                    '</div></div>';
+            }).join('');
+        }
+
+        async function createToken() {
+            const cogToken = localStorage.getItem('cog_token');
+            if (!cogToken) { alert('请先登录 CogNexus'); return; }
+            const scope = document.getElementById('newTokenScope').value;
+            const duration = document.getElementById('newTokenDuration').value;
+            const qaLimitInput = document.getElementById('newTokenQaLimit').value;
+            const note = document.getElementById('newTokenNote').value;
+
+            // Create token via CogNexus API
+            try {
+                const r = await fetch(API + '/api/agents/' + agentId + '/tokens', {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + cogToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        scope: scope,
+                        duration: duration,
+                        qa_limit: qaLimitInput ? parseInt(qaLimitInput) : 20,
+                        note: note
+                    })
+                });
+                if (!r.ok) throw new Error();
+                document.getElementById('newTokenNote').value = '';
+                document.getElementById('newTokenQaLimit').value = '';
+                toast('Token 创建成功');
+                loadTokenList();
+            } catch { toast('创建失败', 'error'); }
+        }
+
+        // ===== Profile Edit =====
+        function openEditModal() {
+            const m = document.getElementById('editModal');
+            document.getElementById('editName').value = agentData.name || '';
+            document.getElementById('editBio').value = agentData.description || '';
+            document.getElementById('editAvatar').value = agentData.avatar_url || '';
+            m.classList.add('show');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('show');
+        }
+
+        async function saveProfile() {
+            const cogToken = localStorage.getItem('cog_token');
+            if (!cogToken) { alert('请先登录 CogNexus'); return; }
+            try {
+                const r = await fetch(API + '/api/agents/' + agentId, {
+                    method: 'PUT',
+                    headers: { 'Authorization': 'Bearer ' + cogToken, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: document.getElementById('editName').value,
+                        description: document.getElementById('editBio').value,
+                        avatar_url: document.getElementById('editAvatar').value,
+                        endpoint_url: agentData.endpoint_url || '',
+                        agent_type: agentData.agent_type || 'human',
+                        namespace: agentData.namespace || 'default'
+                    })
+                });
+                if (!r.ok) throw new Error();
+                agentData = await r.json();
+                renderProfile();
+                closeEditModal();
+                toast('资料已更新');
+            } catch { toast('保存失败', 'error'); }
+        }
+
+        // ===== Helpers =====
+        function toast(msg, type) {
+            const t = document.createElement('div');
+            t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 20px;border-radius:10px;color:#fff;font-size:0.88em;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.3);background:' + (type === 'error' ? 'rgba(184,134,138,0.95)' : 'rgba(109,168,155,0.95)') + ';';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
+
+        // Close modal on outside click
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) closeEditModal();
+        });
+
+        document.getElementById('tokenInput').addEventListener('keypress', e => { if (e.key === 'Enter') verifyToken(); });
+
+        init();
+
+        return { verifyToken, logout, openView, closeView, openEditModal, closeEditModal, saveProfile, createToken };
+    })();
+    </script>
+</body>
+</html>

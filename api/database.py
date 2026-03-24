@@ -107,12 +107,55 @@ def init_db():
     
     conn.commit()
     conn.close()
-    
+
+    # Knowledge / Settings 相关迁移
+    migrate_knowledge_schema()
+
     # Simulation 相关表 (独立迁移)
     from migrate_simulation import migrate as migrate_sim
     migrate_sim()
-    
+
     print("✅ 数据库初始化完成")
+
+
+def migrate_knowledge_schema():
+    """知识管理 & Settings 相关的 Schema 迁移"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # agents 表扩展：im_config, llm_config
+    cursor.execute("PRAGMA table_info(agents)")
+    columns = {row[1] for row in cursor.fetchall()}
+
+    if "im_config" not in columns:
+        cursor.execute("ALTER TABLE agents ADD COLUMN im_config TEXT DEFAULT '{}'")
+    if "llm_config" not in columns:
+        cursor.execute("ALTER TABLE agents ADD COLUMN llm_config TEXT DEFAULT '{}'")
+    if "is_public" not in columns:
+        cursor.execute("ALTER TABLE agents ADD COLUMN is_public INTEGER DEFAULT 1")
+
+    # simulations 表扩展：is_public
+    cursor.execute("PRAGMA table_info(simulations)")
+    sim_columns = {row[1] for row in cursor.fetchall()}
+    if "is_public" not in sim_columns:
+        cursor.execute("ALTER TABLE simulations ADD COLUMN is_public INTEGER DEFAULT 1")
+
+    # 用户全局配置表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_settings (
+            user_id TEXT PRIMARY KEY,
+            default_llm_provider TEXT,
+            default_llm_key_encrypted TEXT,
+            default_model TEXT,
+            ui_language TEXT DEFAULT 'en',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
 
 
 if __name__ == "__main__":

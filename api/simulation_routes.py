@@ -59,6 +59,7 @@ class SimulationCreate(BaseModel):
     min_agents: int = 3
     max_agents: int = 50
     stake_per_agent: int = 5
+    is_public: int = 1
     round_titles: List[str] = []
     llm_base_url: str = None
     llm_api_key: str = None  # 明文传入，后端加密存储
@@ -81,6 +82,7 @@ class SimulationUpdate(BaseModel):
     min_agents: int = None
     max_agents: int = None
     stake_per_agent: int = None
+    is_public: int = None
 
 
 class ParticipantUpdate(BaseModel):
@@ -277,7 +279,8 @@ async def api_create_simulation(
         min_agents=data.min_agents,
         max_agents=data.max_agents,
         stake_per_agent=data.stake_per_agent,
-        round_titles=data.round_titles
+        round_titles=data.round_titles,
+        is_public=data.is_public,
     )
 
     # 如果有 LLM 配置则加密存储
@@ -309,18 +312,35 @@ async def api_list_simulations(
     status: str = Query(None),
     category: str = Query(None),
     limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0)
+    offset: int = Query(0, ge=0),
+    authorization: str = Header(None)
 ):
-    """列出 Simulations"""
-    return list_simulations(status=status, category=category, limit=limit, offset=offset)
+    """列出 Simulations（公开的 + 自己的）"""
+    user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        from auth import verify_token
+        payload = verify_token(authorization.split(" ")[1])
+        if payload:
+            user_id = payload.get("user_id")
+    return list_simulations(status=status, category=category, limit=limit, offset=offset, user_id=user_id)
 
 
 @router.get("/{simulation_id}")
-async def api_get_simulation(simulation_id: str):
-    """获取 Simulation 详情"""
+async def api_get_simulation(simulation_id: str, authorization: str = Header(None)):
+    """获取 Simulation 详情（非公开仅创建者可见）"""
     sim = get_simulation(simulation_id)
     if not sim:
         raise HTTPException(404, "Simulation not found")
+
+    # 非公开 simulation 检查权限
+    if sim.get("is_public") == 0:
+        current_user_id = None
+        if authorization and authorization.startswith("Bearer "):
+            payload = verify_token(authorization.split(" ")[1])
+            if payload:
+                current_user_id = payload.get("user_id")
+        if not current_user_id or current_user_id != sim.get("created_by"):
+            raise HTTPException(404, "Simulation not found")
 
     # 附加参与者和轮次信息
     sim["participants"] = get_participants(simulation_id)
@@ -341,12 +361,16 @@ async def api_update_simulation(
         raise HTTPException(404, "Simulation not found")
     if sim["created_by"] != user["user_id"]:
         raise HTTPException(403, "无权修改")
-    if sim["status"] != "draft":
-        raise HTTPException(400, "只能修改 draft 状态的 Simulation")
 
     updates = {k: v for k, v in data.dict().items() if v is not None}
     if not updates:
         raise HTTPException(400, "无更新内容")
+
+    # 非 draft 状态：只允许修改 is_public，其他字段静默忽略
+    if sim["status"] != "draft":
+        updates = {k: v for k, v in updates.items() if k == "is_public"}
+        if not updates:
+            raise HTTPException(400, "非 draft 状态只能修改公开性设置")
 
     update_simulation(simulation_id, **updates)
     return {"success": True}

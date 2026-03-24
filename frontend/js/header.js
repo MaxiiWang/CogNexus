@@ -40,6 +40,10 @@
                                     <span class="icon">📊</span>
                                     <span data-i18n="nav.dashboard">仪表盘</span>
                                 </a>
+                                <a href="/settings" class="user-dropdown-item">
+                                    <span class="icon">⚙️</span>
+                                    <span data-i18n="nav.settings">设置</span>
+                                </a>
                                 <div class="user-dropdown-divider"></div>
                                 <button class="user-dropdown-item danger" onclick="logout()">
                                     <span class="icon">🚪</span>

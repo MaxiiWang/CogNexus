@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — Wielding.ai</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="robots" content="noindex">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260323">
+    <style>
+        /* ===== Settings Page ===== */
+        .settings-layout {
+            display: block;
+            max-width: 100%;
+            padding-bottom: var(--space-2xl);
+        }
+
+        /* Sidebar Nav */
+        .settings-nav {
+            position: sticky;
+            top: 80px;
+            align-self: start;
+        }
+
+        .settings-nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm);
+            color: var(--text-muted);
+            font-size: 0.88em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            text-decoration: none;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+            font-family: var(--font-sans);
+        }
+
+        .settings-nav-item:hover {
+            color: var(--text-secondary);
+            background: var(--bg-hover);
+        }
+
+        .settings-nav-item.active {
+            color: var(--accent-text);
+            background: var(--accent-muted);
+        }
+
+        .settings-nav-item .nav-icon {
+            font-size: 1em;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Settings Sections */
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .settings-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+
+        .settings-card-title {
+            font-family: var(--font-display);
+            font-size: 1.1em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: var(--space-xs);
+        }
+
+        .settings-card-desc {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-xl);
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-lg);
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* Connection Status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-md);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+        }
+
+        .connection-status .status-icon {
+            font-size: 1.2em;
+        }
+
+        .connection-status .status-text {
+            flex: 1;
+        }
+
+        .connection-status .status-label {
+            font-size: 0.9em;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        .connection-status .status-detail {
+            font-size: 0.78em;
+            color: var(--text-muted);
+        }
+
+        /* Account Info */
+        .account-card {
+            display: flex;
+            align-items: center;
+            gap: var(--space-lg);
+            padding: var(--space-lg);
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        .account-avatar {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--accent-muted);
+            border: 2px solid var(--border-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6em;
+            color: var(--accent-text);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-info .account-name {
+            font-family: var(--font-display);
+            font-size: 1.2em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .account-info .account-meta {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .settings-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .settings-nav {
+                position: static;
+                display: flex;
+                gap: var(--space-xs);
+                overflow-x: auto;
+                padding-bottom: var(--space-sm);
+                border-bottom: 1px solid var(--border-subtle);
+                margin-bottom: var(--space-lg);
+            }
+
+            .settings-nav-item {
+                white-space: nowrap;
+            }
+        }
+    </style>
+    <script src="/static/js/i18n.js?v=20260323" defer></script>
+    <script src="/static/js/header.js?v=20260323" defer></script>
+    <script src="/static/js/settings.js?v=20260323" defer></script>
+</head>
+<body>
+    <header></header>
+
+    <main class="container">
+        <div class="page-header">
+            <h1 data-i18n="settings.title">Settings</h1>
+            <p data-i18n="settings.subtitle">Manage your account, LLM providers, and integrations</p>
+        </div>
+
+        <div class="settings-layout">
+                <!-- Account -->
+                <div class="settings-section active" id="section-account">
+                    <div class="settings-card">
+                        <div class="settings-card-title" data-i18n="settings.account_title">Account</div>
+                        <div class="settings-card-desc" data-i18n="settings.account_desc">Your account information and preferences</div>
+
+                        <div class="account-card">
+                            <div class="account-avatar" id="accountAvatar">?</div>
+                            <div class="account-info">
+                                <div class="account-name" id="accountName">—</div>
+                                <div class="account-meta" id="accountMeta">—</div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label data-i18n="settings.language">Language</label>
+                            <select id="accountLanguage" onchange="Settings.changeLanguage(this.value)">
+                                <option value="en">English</option>
+                                <option value="zh">中文</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button class="btn btn-danger" onclick="Settings.logout()">
+                                <span data-i18n="nav.logout">Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card" style="margin-top:24px;">
+                    <div class="settings-card-desc" style="color:var(--text-muted);font-size:0.85em;">
+                        💡 LLM and IM configurations are now per-Agent. Go to <strong>Agent Detail → Config</strong> tab to configure each agent individually.
+                    </div>
+                </div>
+        </div>
+    </main>
+</body>
+</html>

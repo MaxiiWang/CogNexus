@@ -283,77 +283,153 @@
                         <div class="docs-nav-section">
                             <div class="docs-nav-title" data-i18n="docs.nav_concepts">Concepts</div>
                             <a href="#intro" class="active" data-i18n="docs.what_is">What is CogNexus</a>
+                            <a href="#knowledge" data-i18n="docs.knowledge_arch">Knowledge Architecture</a>
                             <a href="#agent" data-i18n="docs.agent_types">Agent Types</a>
-                            <a href="#atp" data-i18n="docs.atp_credits">ATP Credits</a>
-                            <a href="#token" data-i18n="docs.token_mechanism">Token Mechanism</a>
                         </div>
                         <div class="docs-nav-section">
                             <div class="docs-nav-title" data-i18n="docs.nav_usage">Usage</div>
-                            <a href="#browse" data-i18n="docs.browse_market">Browse Market</a>
-                            <a href="#purchase" data-i18n="docs.purchase_token">Purchase Token</a>
-                            <a href="#use" data-i18n="docs.use_agent">Use Agent</a>
+                            <a href="#manage-knowledge" data-i18n="docs.knowledge_mgmt">Knowledge Management</a>
+                            <a href="#character" data-i18n="docs.character_agent">Character Agents</a>
+                            <a href="#visualization" data-i18n="docs.visualization">Visualization</a>
                         </div>
                         <div class="docs-nav-section">
-                            <div class="docs-nav-title" data-i18n="docs.nav_publish">Publish</div>
-                            <a href="#publish" data-i18n="docs.publish_agent">Publish Agent</a>
-                            <a href="#manage" data-i18n="docs.manage_tokens">Manage Tokens</a>
+                            <div class="docs-nav-title" data-i18n="docs.nav_config">Configuration</div>
+                            <a href="#llm" data-i18n="docs.llm_config">LLM Config</a>
+                            <a href="#token" data-i18n="docs.token_mechanism">Token Mechanism</a>
+                            <a href="#api" data-i18n="docs.api_reference">API Reference</a>
                         </div>
                     </div>
                 </aside>
 
                 <article class="docs-content">
                     <h1 id="intro" data-i18n="docs.what_is">What is CogNexus</h1>
-                    <p data-i18n-html="docs.intro_p1">CogNexus is a <strong>distributed cognitive hub</strong> that enables AI Agent capabilities to flow and exchange. You can discover other people's Agents here, or publish your own for others to use.</p>
+                    <p data-i18n-html="docs.intro_p1">CogNexus is a <strong>personal knowledge management platform with AI Agent capabilities</strong>. It uses a three-layer architecture to store fragmented knowledge, discover hidden connections, and generate higher-level abstractions. You can also create Character Agents to chat with AI personas grounded in your knowledge.</p>
 
                     <div class="tip">
                         <span class="tip-icon">💡</span>
                         <p data-i18n="docs.intro_tip">CogNexus is currently in experimental stage. Features and APIs may change at any time.</p>
                     </div>
 
+                    <h2 id="knowledge" data-i18n="docs.knowledge_arch">Three-Layer Knowledge Architecture</h2>
+                    <p data-i18n="docs.knowledge_arch_intro">CogNexus organizes knowledge in three layers, each building on the previous:</p>
+
+                    <div class="info-box">
+                        <h4 data-i18n="docs.layer_fact_title">📝 Fact Layer</h4>
+                        <p data-i18n="docs.layer_fact_desc">Raw knowledge fragments — notes, quotes, observations, data points. Stored in SQLite (metadata) + Qdrant (bilingual semantic vectors via BGE-M3). Supports fast keyword and semantic search across all your knowledge.</p>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 data-i18n="docs.layer_relation_title">🔗 Relation Layer</h4>
+                        <p data-i18n="docs.layer_relation_desc">Connections between facts discovered via Neo4j knowledge graph. AI automatically identifies relationships — cause-effect, similarity, contradiction, temporal sequence. Browse the graph to see how your ideas connect.</p>
+                    </div>
+
+                    <div class="info-box">
+                        <h4 data-i18n="docs.layer_abstract_title">🧠 Abstraction Layer</h4>
+                        <p data-i18n="docs.layer_abstract_desc">Higher-level insights auto-generated from patterns in your knowledge. Use the /abstract command to trigger abstraction generation. View them in Tree view to see your knowledge hierarchy.</p>
+                    </div>
+
                     <h2 id="agent" data-i18n="docs.agent_types">Agent Types</h2>
-                    <p data-i18n="docs.agent_intro">CogNexus supports three types of Agents:</p>
+                    <p data-i18n="docs.agent_intro">CogNexus supports two types of Agents:</p>
 
                     <div class="info-box">
                         <h4 data-i18n="docs.agent_human_title">👤 Human</h4>
-                        <p data-i18n-html="docs.agent_human_desc">A real user's knowledge base. Built with <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a>, it contains the user's perspectives, experiences, and expertise. You can ask a Human Agent questions and receive answers based on their knowledge base.</p>
+                        <p data-i18n-html="docs.agent_human_desc">Your personal knowledge base agent. Created automatically on registration. Each Human Agent has its own namespace, knowledge store, and LLM configuration. It's your default identity on the platform.</p>
                     </div>
 
                     <div class="info-box">
-                        <h4 data-i18n="docs.agent_character_title">🎭 Character (Coming Soon)</h4>
-                        <p data-i18n="docs.agent_character_desc">AI role-playing. Can be historical figures, fictional characters, or domain experts. Chat with a Character to experience different perspectives and ways of thinking.</p>
+                        <h4 data-i18n="docs.agent_character_title">🎭 Character</h4>
+                        <p data-i18n="docs.agent_character_desc">AI role-playing agent with a configured persona. Can be historical figures (Laozi, Feynman), fictional characters, or domain experts. Characters are built on curated knowledge bases and respond from their unique perspective.</p>
                     </div>
 
-                    <div class="info-box">
-                        <h4 data-i18n="docs.agent_sim_title">🔮 Simulation (Coming Soon)</h4>
-                        <p data-i18n="docs.agent_sim_desc">Simulated environments and scenarios. Used for testing decisions, rehearsing conversations, and exploring hypothetical situations.</p>
-                    </div>
+                    <p data-i18n="docs.namespace_intro">Each Agent has a unique <code>namespace</code> that isolates its knowledge store. Your Human Agent's namespace defaults to your username (lowercase).</p>
 
-                    <h2 id="atp" data-i18n="docs.atp_credits">ATP Credits</h2>
-                    <p data-i18n-html="docs.atp_intro"><strong>ATP (Agent Trade Points)</strong> is CogNexus's internal credit system used for exchanging Agent capabilities.</p>
+                    <h2 id="manage-knowledge" data-i18n="docs.knowledge_mgmt">Knowledge Management</h2>
+                    <p data-i18n="docs.knowledge_mgmt_intro">You interact with your knowledge base through chat and slash commands:</p>
 
                     <table>
                         <thead>
                             <tr>
-                                <th data-i18n="docs.atp_table_header_method">Method</th>
-                                <th data-i18n="docs.atp_table_header_desc">Description</th>
+                                <th data-i18n="docs.cmd_header_command">Command</th>
+                                <th data-i18n="docs.cmd_header_desc">Description</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td data-i18n="docs.atp_register">Registration Bonus</td>
-                                <td data-i18n="docs.atp_register_desc">New users receive 100 ATP</td>
+                                <td><code>/research [topic]</code></td>
+                                <td data-i18n="docs.cmd_research">AI searches the web and stores findings as facts</td>
                             </tr>
                             <tr>
-                                <td data-i18n="docs.atp_sell">Sell Tokens</td>
-                                <td data-i18n="docs.atp_sell_desc">Earned when others purchase your Agent Tokens</td>
+                                <td><code>/today</code></td>
+                                <td data-i18n="docs.cmd_today">Review today's knowledge entries</td>
+                            </tr>
+                            <tr>
+                                <td><code>/abstract</code></td>
+                                <td data-i18n="docs.cmd_abstract">Generate abstractions from existing knowledge</td>
+                            </tr>
+                            <tr>
+                                <td><code>/search [query]</code></td>
+                                <td data-i18n="docs.cmd_search">Search across all knowledge by keyword or semantics</td>
                             </tr>
                         </tbody>
                     </table>
 
+                    <p data-i18n="docs.knowledge_store_intro">You can also store knowledge by simply chatting — the system automatically extracts facts from conversation and stores them in the appropriate layer.</p>
+
+                    <h2 id="character" data-i18n="docs.character_agent">Character Agents</h2>
+                    <p data-i18n="docs.character_intro">To create a Character Agent:</p>
+                    <ol>
+                        <li data-i18n="docs.character_step1">Go to Dashboard and click "Create Agent"</li>
+                        <li data-i18n="docs.character_step2">Choose type "Character" and set a namespace</li>
+                        <li data-i18n="docs.character_step3">Configure the persona — name, background, personality, speaking style</li>
+                        <li data-i18n="docs.character_step4">Add knowledge to the character's namespace (facts, writings, research)</li>
+                        <li data-i18n="docs.character_step5">Chat with the character — it responds based on persona + knowledge</li>
+                    </ol>
+
                     <div class="tip">
-                        <span class="tip-icon">⚠️</span>
-                        <p data-i18n-html="docs.atp_warning"><strong>Important:</strong> ATP is an internal platform credit only. It has no real-world monetary value and cannot be redeemed, withdrawn, or transferred.</p>
+                        <span class="tip-icon">💡</span>
+                        <p data-i18n="docs.character_tip">Characters can auto-research based on their identity. Use /research in a character's chat to have them gather knowledge aligned with their persona.</p>
                     </div>
+
+                    <h2 id="visualization" data-i18n="docs.visualization">Visualization</h2>
+                    <p data-i18n="docs.viz_intro">CogNexus provides multiple ways to visualize your knowledge:</p>
+                    <ul>
+                        <li data-i18n-html="docs.viz_graph"><strong>Graph View</strong> — Force-directed graph showing facts as nodes and relations as edges. Interactive zoom, pan, and click to explore connections.</li>
+                        <li data-i18n-html="docs.viz_tree"><strong>Tree View</strong> — Hierarchical view of the Abstraction Layer. See how high-level concepts break down into supporting facts.</li>
+                        <li data-i18n-html="docs.viz_timeline"><strong>Timeline</strong> — Chronological view of knowledge entries. Track how your understanding evolved over time.</li>
+                        <li data-i18n-html="docs.viz_chat"><strong>Chat</strong> — Conversational interface to query, add, and explore knowledge interactively.</li>
+                    </ul>
+
+                    <h2 id="llm" data-i18n="docs.llm_config">LLM Configuration</h2>
+                    <p data-i18n="docs.llm_intro">CogNexus supports multiple LLM providers:</p>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="docs.llm_header_provider">Provider</th>
+                                <th data-i18n="docs.llm_header_models">Models</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Anthropic</td>
+                                <td>Claude Sonnet, Claude Opus, Claude Haiku</td>
+                            </tr>
+                            <tr>
+                                <td>OpenAI</td>
+                                <td>GPT-4o, GPT-4o-mini</td>
+                            </tr>
+                            <tr>
+                                <td>DeepSeek</td>
+                                <td>DeepSeek Chat, DeepSeek Reasoner</td>
+                            </tr>
+                            <tr>
+                                <td data-i18n="docs.llm_doubao">Doubao</td>
+                                <td>Doubao Pro, Doubao Lite</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <p data-i18n="docs.llm_config_note">Set a global default in Settings → LLM Config. Each Agent can override with its own provider and API key via the Agent Config tab.</p>
 
                     <h2 id="token" data-i18n="docs.token_mechanism">Token Mechanism</h2>
                     <p data-i18n="docs.token_intro">Tokens are credentials for accessing Agents. Different token types have different permissions:</p>
@@ -370,70 +446,50 @@
                             <tr>
                                 <td><code>full</code></td>
                                 <td data-i18n="docs.token_full_perm">Full Access</td>
-                                <td data-i18n="docs.token_full_desc">Browse knowledge base + Q&A interaction + View details</td>
+                                <td data-i18n="docs.token_full_desc">Browse knowledge + Q&A + Chat + All views</td>
                             </tr>
                             <tr>
                                 <td><code>qa_public</code></td>
                                 <td data-i18n="docs.token_qa_perm">Public Q&A</td>
-                                <td data-i18n="docs.token_qa_desc">Limited Q&A sessions, suitable for trials</td>
+                                <td data-i18n="docs.token_qa_desc">Limited Q&A sessions with usage quota</td>
                             </tr>
                             <tr>
                                 <td><code>browse_public</code></td>
                                 <td data-i18n="docs.token_browse_perm">Browse Only</td>
-                                <td data-i18n="docs.token_browse_desc">Can only view public content, no interaction</td>
+                                <td data-i18n="docs.token_browse_desc">View public knowledge content only, no interaction</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <p data-i18n="docs.token_expiry">Tokens typically have an expiration date and need to be repurchased after expiry.</p>
+                    <p data-i18n="docs.token_create_note">A default browse_public Token is created automatically when you register. You can create additional Tokens in the Agent detail page → Token management.</p>
 
-                    <h2 id="browse" data-i18n="docs.browse_market">Browse Market</h2>
-                    <p data-i18n-html="docs.browse_intro">On the <a href="/marketplace">Market page</a> you can see all published Agents. Each Agent card displays:</p>
-                    <ul>
-                        <li data-i18n-html="docs.browse_item_name"><strong>Name and description</strong> — basic Agent information</li>
-                        <li data-i18n-html="docs.browse_item_type"><strong>Type tag</strong> — Human / Character / Simulation</li>
-                        <li data-i18n-html="docs.browse_item_price"><strong>Price</strong> — ATP required to purchase a Token</li>
-                        <li data-i18n-html="docs.browse_item_status"><strong>Online status</strong> — whether the Agent is accessible</li>
-                    </ul>
+                    <h2 id="api" data-i18n="docs.api_reference">API Reference</h2>
+                    <p data-i18n="docs.api_intro">Key API endpoints:</p>
 
-                    <h2 id="purchase" data-i18n="docs.purchase_token">Purchase Token</h2>
-                    <p data-i18n="docs.purchase_intro">After finding an Agent you're interested in:</p>
-                    <ol>
-                        <li data-i18n="docs.purchase_step1">Click the "Purchase" button on the Agent card</li>
-                        <li data-i18n="docs.purchase_step2">Confirm the price and Token type</li>
-                        <li data-i18n="docs.purchase_step3">ATP is deducted from your balance</li>
-                        <li data-i18n="docs.purchase_step4">Receive your Token, viewable in the Dashboard</li>
-                    </ol>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th data-i18n="docs.api_header_method">Method</th>
+                                <th data-i18n="docs.api_header_endpoint">Endpoint</th>
+                                <th data-i18n="docs.api_header_desc">Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>POST</td><td><code>/api/auth/register</code></td><td data-i18n="docs.api_register">Register + auto-create Agent</td></tr>
+                            <tr><td>POST</td><td><code>/api/auth/login</code></td><td data-i18n="docs.api_login">Login</td></tr>
+                            <tr><td>GET</td><td><code>/api/agents</code></td><td data-i18n="docs.api_agents">List all agents</td></tr>
+                            <tr><td>POST</td><td><code>/api/agents</code></td><td data-i18n="docs.api_create_agent">Create agent</td></tr>
+                            <tr><td>GET</td><td><code>/api/agents/{id}</code></td><td data-i18n="docs.api_agent_detail">Agent detail</td></tr>
+                            <tr><td>PUT</td><td><code>/api/agents/{id}</code></td><td data-i18n="docs.api_update_agent">Update agent</td></tr>
+                            <tr><td>GET</td><td><code>/api/agents/{id}/tokens</code></td><td data-i18n="docs.api_agent_tokens">List agent tokens</td></tr>
+                            <tr><td>GET</td><td><code>/api/stats</code></td><td data-i18n="docs.api_stats">Platform statistics</td></tr>
+                        </tbody>
+                    </table>
 
-                    <h2 id="use" data-i18n="docs.use_agent">Use Agent</h2>
-                    <p data-i18n-html="docs.use_intro">After purchasing a Token, you can find it in the "Purchased" section of your <a href="/dashboard">Dashboard</a>.</p>
-                    <ol>
-                        <li data-i18n="docs.use_step1">Click "Copy" to get the full Token</li>
-                        <li data-i18n="docs.use_step2">Click "Visit" to go to the Agent interface</li>
-                        <li data-i18n="docs.use_step3">Use the Token in the Agent interface to interact</li>
-                    </ol>
-
-                    <h2 id="publish" data-i18n="docs.publish_agent">Publish Agent</h2>
-                    <p data-i18n-html="docs.publish_intro">To publish your own Agent, you first need to deploy <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> as the Agent backend.</p>
-                    <p data-i18n="docs.publish_prereq">Once deployment is complete:</p>
-                    <ol>
-                        <li data-i18n-html="docs.publish_step1">Click "Publish Agent" in the <a href="/dashboard">Dashboard</a></li>
-                        <li data-i18n="docs.publish_step2">Enter your Cogmate API address</li>
-                        <li data-i18n="docs.publish_step3">Click "Detect" to auto-fetch Agent information</li>
-                        <li data-i18n="docs.publish_step4">Add description and pricing</li>
-                        <li data-i18n="docs.publish_step5">Submit for publication</li>
-                    </ol>
-
-                    <h2 id="manage" data-i18n="docs.manage_tokens">Manage Tokens</h2>
-                    <p data-i18n="docs.manage_intro">After publishing an Agent, you need to generate Tokens for users to purchase:</p>
-                    <ol>
-                        <li data-i18n="docs.manage_step1">Generate Tokens in Cogmate</li>
-                        <li data-i18n="docs.manage_step2">Find your Agent in the CogNexus Dashboard</li>
-                        <li data-i18n="docs.manage_step3">Click "Manage Tokens"</li>
-                        <li data-i18n="docs.manage_step4">Add the generated Tokens</li>
-                        <li data-i18n="docs.manage_step5">Set the unit price</li>
-                    </ol>
-                    <p data-i18n="docs.manage_note">When a user purchases a Token, it is marked as sold and you receive the corresponding ATP.</p>
+                    <div class="tip">
+                        <span class="tip-icon">🔑</span>
+                        <p data-i18n="docs.api_auth_note">Most endpoints require a Bearer token in the Authorization header. Get your token from the login response.</p>
+                    </div>
                 </article>
             </div>
         </div>

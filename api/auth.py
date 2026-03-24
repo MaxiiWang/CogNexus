@@ -1,16 +1,22 @@
 """
 Hub Authentication Module
 """
+import os
 import hashlib
 import secrets
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional
 
-# JWT 配置
-JWT_SECRET = "hub-secret-key-change-in-production"
+# JWT 配置 — 强制从环境变量读取
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError(
+        "❌ JWT_SECRET 环境变量未设置！"
+        "请在 .env 中配置: JWT_SECRET=$(openssl rand -hex 32)"
+    )
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRE_HOURS = 24 * 7  # 7天
+JWT_EXPIRE_HOURS = int(os.environ.get("JWT_EXPIRE_HOURS", 168))  # 默认 7 天
 
 
 def hash_password(password: str) -> str:

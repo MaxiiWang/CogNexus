@@ -113,6 +113,7 @@ def create_simulation(
     max_agents: int = 50,
     stake_per_agent: int = 5,
     round_titles: List[str] = None,
+    is_public: int = 1,
 ) -> Dict[str, Any]:
     """创建 Simulation + 初始化轮次"""
     conn = get_db()
@@ -131,15 +132,15 @@ def create_simulation(
             outcome_type, outcome_options, resolution_criteria, resolution_source,
             total_rounds, current_round, round_interval,
             min_agents, max_agents, stake_per_agent,
-            status, created_by, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'draft', ?, ?)
+            status, created_by, created_at, is_public
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 'draft', ?, ?, ?)
     """, (
         sim_id, title, description, question,
         category, json.dumps(tags),
         outcome_type, json.dumps(outcome_options), resolution_criteria, resolution_source,
         total_rounds, round_interval,
         min_agents, max_agents, stake_per_agent,
-        created_by, _now()
+        created_by, _now(), is_public
     ))
 
     # 初始化轮次
@@ -192,13 +193,19 @@ def list_simulations(
     status: str = None,
     category: str = None,
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
+    user_id: str = None,
 ) -> Dict:
     conn = get_db()
     cursor = conn.cursor()
 
-    query = "SELECT * FROM simulations WHERE 1=1"
-    params = []
+    # 公开的 + 自己创建的
+    if user_id:
+        query = "SELECT * FROM simulations WHERE (is_public = 1 OR is_public IS NULL OR created_by = ?)"
+        params = [user_id]
+    else:
+        query = "SELECT * FROM simulations WHERE (is_public = 1 OR is_public IS NULL)"
+        params = []
 
     if status:
         query += " AND status = ?"
@@ -265,7 +272,7 @@ def update_simulation(simulation_id: str, **kwargs) -> bool:
         "min_agents", "max_agents", "stake_per_agent",
         "status", "actual_outcome", "final_prediction",
         "current_round", "recruiting_at", "opens_at", "closes_at",
-        "resolved_at", "settled_at"
+        "resolved_at", "settled_at", "is_public"
     }
     sets = []
     vals = []

@@ -709,7 +709,7 @@
             <section class="section animate-in animate-in-delay-3">
                 <div class="section-header">
                     <h2 data-i18n="dash.section_agents">My Agents</h2>
-                    <button class="btn btn-primary btn-small" onclick="showCreateAgent()" data-i18n="dash.publish_agent">+ Publish Agent</button>
+                    <button class="btn btn-primary btn-small" onclick="showCreateAgent()">+ 新建 Agent</button>
                 </div>
                 <div class="card-list" id="agentsList">
                     <div class="empty" data-i18n="dash.no_agents">No Agents yet. Click the button above to publish</div>
@@ -739,88 +739,30 @@
 
     <!-- Create Agent Modal -->
     <div class="modal" id="createAgentModal">
-        <div class="modal-content" style="max-width: 560px;">
-            <h2 data-i18n="agent.publish">Publish Agent</h2>
-            <div class="modal-tip">
-                <span class="tip-icon">💡</span>
-                <div class="tip-content">
-                    <strong data-i18n="agent.prerequisite">Prerequisite</strong>
-                    <p>发布前请确保已部署 <a href="https://github.com/MaxiiWang/Cogmate" target="_blank">Cogmate</a> 并启动可视化 API。</p>
-                </div>
-            </div>
+        <div class="modal-content" style="max-width: 480px;">
+            <h2 id="createAgentTitle">✨ 新建 Agent</h2>
             <form id="createAgentForm" onsubmit="handleCreateAgent(event)">
                 <div class="form-group">
-                    <label data-i18n="agent.api_url">API URL</label>
-                    <div class="form-inline">
-                        <input type="url" name="endpoint_url" required placeholder="http://your-brain.com:8000">
-                        <button type="button" class="btn btn-secondary btn-small" onclick="probeAgent()" data-i18n="agent.detect">Detect</button>
-                    </div>
-                    <small data-i18n="agent.api_hint">Your Cogmate API endpoint. Click Detect to auto-fill info</small>
-                </div>
-                <div class="probe-result" id="probeResult">
-                    <div class="profile-selector" id="profileSelector">
-                        <!-- 角色卡片将动态生成 -->
-                    </div>
-                </div>
-                
-                <!-- 推荐方式提示 -->
-                <div class="publish-tip" id="publishTip" style="display:none; background: rgba(124,153,184,0.1); border: 1px solid rgba(124,153,184,0.3); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                    <div style="display: flex; align-items: flex-start; gap: 12px;">
-                        <span style="font-size: 1.5em;">💡</span>
-                        <div>
-                            <strong style="color: var(--accent-text);">推荐：从 Cogmate 直接发布</strong>
-                            <p style="font-size: 0.85em; color: var(--text-secondary); margin: 8px 0 0 0;">
-                                在你的 Cogmate 首页，点击角色的「📤 发布」按钮，可以一键完成发布并自动创建 Token 池，更简单安全。
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                <input type="hidden" name="namespace" value="default">
-                <div class="form-group">
-                    <label data-i18n="agent.name">Name</label>
-                    <input type="text" name="name" required placeholder="e.g., Max's Cogmate">
+                    <label>名称</label>
+                    <input type="text" name="name" required placeholder="给你的 Agent 起个名字">
                 </div>
                 <div class="form-group">
-                    <label data-i18n="agent.description">Description</label>
-                    <textarea name="description" placeholder="Describe your Agent specialty areas"></textarea>
+                    <label>描述</label>
+                    <textarea name="description" rows="2" placeholder="简单描述一下这个 Agent 的用途"></textarea>
                 </div>
-                <div class="form-group" style="display:none;">
+                <div class="form-group">
                     <label>类型</label>
-                    <select name="agent_type">
-                        <option value="human">👤 Human - 真实认知</option>
-                        <option value="character">🎭 Character - 角色扮演</option>
+                    <select name="agent_type" id="newAgentType" style="width:100%;">
+                        <option value="human">👤 Human — 个人知识库</option>
+                        <option value="character">🎭 Character — 角色扮演</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label data-i18n="agent.tags">Tags (comma separated)</label>
-                    <input type="text" name="tags" placeholder="AI, Investment, Career">
-                </div>
-                <div class="form-group">
-                    <label data-i18n="agent.tokens_label">Tokens (one per line, users will receive one upon purchase)</label>
-                    <textarea name="tokens" rows="4" placeholder="tok_xxxx1&#10;tok_xxxx2&#10;tok_xxxx3" style="font-family: var(--font-mono); font-size: 0.85em;"></textarea>
-                    <small data-i18n="agent.tokens_hint">Paste Tokens generated in your Cogmate here</small>
-                </div>
-                <div class="form-group">
-                    <label data-i18n="agent.token_pricing">Token Pricing (ATP)</label>
-                    <div class="form-row">
-                        <div>
-                            <input type="number" name="price_chat" value="10" min="1">
-                            <small>Chat</small>
-                        </div>
-                        <div>
-                            <input type="number" name="price_read" value="5" min="1">
-                            <small>Read</small>
-                        </div>
-                        <div>
-                            <input type="number" name="price_react" value="20" min="1">
-                            <small>React</small>
-                        </div>
-                    </div>
+                <div style="font-size:0.8em;color:var(--text-muted);background:var(--bg-secondary);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:var(--space-md);">
+                    💡 创建后可在 Agent Detail 中配置 LLM、IM 连接、Persona 等高级设置
                 </div>
                 <div class="modal-buttons">
-                    <button type="button" class="btn btn-secondary" onclick="hideModal()" data-i18n="common.cancel">Cancel</button>
-                    <button type="submit" class="btn btn-primary" data-i18n="agent.publish_btn">Publish</button>
+                    <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
+                    <button type="submit" class="btn btn-primary" id="createAgentSubmitBtn">✨ 创建</button>
                 </div>
             </form>
         </div>
@@ -1001,7 +943,13 @@
                             <input type="hidden" name="llm_model" id="simLlmModel">
                         </div>
                     </div>
-                    <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);border-top:1px solid var(--border-subtle);margin-top:var(--space-lg);">
+                    <div style="padding-top:var(--space-md);margin-top:var(--space-md);border-top:1px solid var(--border-subtle);">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.88em;color:var(--text-secondary);">
+                            <input type="checkbox" id="simIsPublic" name="is_public" checked style="width:16px;height:16px;accent-color:#6da89b;">
+                            公开可见 — 在平台中对其他用户可见
+                        </label>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:var(--space-md);padding-top:var(--space-lg);">
                         <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
                         <button type="submit" class="btn btn-primary" id="createSimSubmitBtn">✅ 创建模拟</button>
                     </div>
@@ -1094,7 +1042,9 @@
         async function loadMyAgents() {
             const token = localStorage.getItem('cog_token');
             try {
-                const res = await fetch('/api/agents');
+                const res = await fetch('/api/agents', {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 const data = await res.json();
 
                 // 筛选自己的 Agent
@@ -1131,6 +1081,7 @@
                             <div class="agent-endpoint">${a.endpoint_url}</div>
                         </div>
                         <div class="agent-card-actions">
+                            <a href="/agent-detail?id=${a.agent_id}" class="btn btn-primary btn-small">Detail</a>
                             <button class="btn btn-secondary btn-small" onclick="editAgent('${a.agent_id}')">${I18N.t('common.edit')}</button>
                             <button class="btn btn-secondary btn-small" onclick="manageTokens('${a.agent_id}')">Token</button>
                             <button class="btn btn-danger btn-small" onclick="deleteAgent('${a.agent_id}', '${safeName}')">${I18N.t('common.delete')}</button>
@@ -1319,37 +1270,17 @@
         function showCreateAgent() {
             editingAgentId = null;
             document.getElementById('createAgentForm').reset();
-            document.getElementById('probeResult').style.display = 'none';
-            document.querySelector('#createAgentModal h2').textContent = I18N.t('agent.publish');
+            // Reset type selection visual
+            document.querySelectorAll('#createAgentForm label[style*="border"]').forEach(l => l.style.borderColor = 'var(--border-subtle)');
+            document.querySelector('#createAgentForm label:first-of-type')?.style && (document.querySelectorAll('#createAgentForm input[name="agent_type"]')[0].closest('label').style.borderColor = 'var(--accent-primary)');
+            document.getElementById('createAgentTitle').textContent = '✨ 新建 Agent';
+            document.getElementById('createAgentSubmitBtn').textContent = '✨ 创建';
             document.getElementById('createAgentModal').classList.add('active');
         }
 
-        async function editAgent(agentId) {
-            editingAgentId = agentId;
-            const token = localStorage.getItem('cog_token');
-
-            try {
-                const res = await fetch(`/api/agents/${agentId}`);
-                const agent = await res.json();
-
-                const form = document.getElementById('createAgentForm');
-                form.endpoint_url.value = agent.endpoint_url || '';
-                form.name.value = agent.name || '';
-                form.description.value = agent.description || '';
-                form.agent_type.value = agent.agent_type || 'human';
-                form.namespace.value = agent.namespace || 'default';
-                form.tags.value = JSON.parse(agent.tags || '[]').join(', ');
-                form.price_chat.value = agent.price_chat || 10;
-                form.price_read.value = agent.price_read || 5;
-                form.price_react.value = agent.price_react || 20;
-                form.tokens.value = '';  // 不显示已有 token
-
-                document.getElementById('probeResult').style.display = 'none';
-                document.querySelector('#createAgentModal h2').textContent = I18N.t('agent.edit');
-                document.getElementById('createAgentModal').classList.add('active');
-            } catch (e) {
-                showAlert('error', I18N.t('agent.load_fail'));
-            }
+        function editAgent(agentId) {
+            // 编辑直接跳转到 Agent Detail 的 Config Tab
+            window.location.href = '/agent-detail?id=' + agentId + '&tab=config';
         }
 
         async function deleteAgent(agentId, name) {
@@ -1462,29 +1393,19 @@
             const form = e.target;
             const token = localStorage.getItem('cog_token');
 
-            const tags = form.tags.value.split(',').map(t => t.trim()).filter(t => t);
-            const tokens = form.tokens.value.split('\n').map(t => t.trim()).filter(t => t);
+            const agentType = form.agent_type.value || 'human';
 
             const data = {
                 name: form.name.value,
-                description: form.description.value,
-                agent_type: form.agent_type.value,
-                endpoint_url: form.endpoint_url.value,
-                namespace: form.namespace.value || 'default',
-                tags: tags,
-                tokens: tokens,
-                price_chat: parseInt(form.price_chat.value),
-                price_read: parseInt(form.price_read.value),
-                price_react: parseInt(form.price_react.value)
+                description: form.description.value || '',
+                agent_type: agentType,
+                endpoint_url: 'http://localhost:8081',
+                namespace: form.name.value.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 32) || 'default',
             };
 
-            const isEdit = editingAgentId !== null;
-            const url = isEdit ? `/api/agents/${editingAgentId}` : '/api/agents';
-            const method = isEdit ? 'PUT' : 'POST';
-
             try {
-                const res = await fetch(url, {
-                    method: method,
+                const res = await fetch('/api/agents', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
@@ -1496,13 +1417,18 @@
 
                 if (res.ok) {
                     hideModal();
-                    showAlert('success', result.message || (isEdit ? I18N.t('agent.update_success') : I18N.t('agent.publish_success')));
-                    loadMyAgents();
+                    showAlert('success', 'Agent 创建成功');
+                    // Jump to agent detail for further configuration
+                    if (result.agent_id) {
+                        window.location.href = '/agent-detail?id=' + result.agent_id;
+                    } else {
+                        loadMyAgents();
+                    }
                 } else {
-                    showAlert('error', result.detail || (isEdit ? I18N.t('agent.update_fail') : I18N.t('agent.publish_fail')));
+                    showAlert('error', result.detail || '创建失败');
                 }
             } catch (e) {
-                showAlert('error', I18N.t('common.network_error'));
+                showAlert('error', '网络错误');
             }
         }
 
@@ -1511,7 +1437,9 @@
         async function loadMySimulations() {
             const token = localStorage.getItem('cog_token');
             try {
-                const res = await fetch('/api/simulations?limit=100');
+                const res = await fetch('/api/simulations?limit=100', {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                });
                 const data = await res.json();
                 const allSims = data.simulations || [];
                 const mySimsBasic = allSims.filter(s => s.created_by === currentUser.user_id);
@@ -1534,7 +1462,9 @@
                 list.innerHTML = mySims.map(sim => {
                     const s = sim.status;
                     const isMC = sim.simulation_mode === 'monte_carlo';
-                    let actions = `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">${I18N.t('common.view')}</button>`;
+                    const isPublic = sim.is_public !== 0;
+                    let actions = `<button class="btn btn-secondary btn-small" onclick="toggleSimPublic('${sim.simulation_id}', ${isPublic ? 0 : 1})" title="${isPublic ? '设为私有' : '设为公开'}">${isPublic ? '🔓' : '🔒'}</button>` +
+                        `<button class="btn btn-secondary btn-small" onclick="openSimDetail('${sim.simulation_id}')">${I18N.t('common.view')}</button>`;
 
                     if (s === 'draft') {
                         actions = `<button class="btn btn-secondary btn-small" onclick="editSim('${sim.simulation_id}')">${I18N.t('common.edit')}</button>` + actions;
@@ -1674,40 +1604,64 @@
                 }
 
                 // LLM config
-                document.querySelectorAll('.llm-preset-btn').forEach(b => b.classList.remove('active'));
-                document.getElementById('llmCustomFields').style.display = 'none';
-                document.getElementById('llmApiKeyGroup').style.display = 'none';
-                document.querySelector('input[name="llm_base_url_hidden"]').value = '';
-                document.querySelector('input[name="llm_model_hidden"]').value = '';
+                document.querySelectorAll('#llmPresetsStep1 .llm-preset-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('llmCustomFieldsStep1').style.display = 'none';
+                document.getElementById('llmApiKeyGroupStep1').style.display = 'none';
 
                 if (sim.llm_base_url) {
                     // Try to match a preset
                     let matched = false;
-                    document.querySelectorAll('.llm-preset-btn[data-base]').forEach(btn => {
+                    document.querySelectorAll('#llmPresetsStep1 .llm-preset-btn[data-base]').forEach(btn => {
                         if (btn.dataset.base === sim.llm_base_url && btn.dataset.model === sim.llm_model) {
                             btn.classList.add('active');
-                            document.querySelector('input[name="llm_base_url_hidden"]').value = btn.dataset.base;
-                            document.querySelector('input[name="llm_model_hidden"]').value = btn.dataset.model;
-                            document.getElementById('llmApiKeyGroup').style.display = '';
+                            document.getElementById('llmApiKeyGroupStep1').style.display = '';
                             matched = true;
                         }
                     });
                     if (!matched) {
                         // Custom LLM
-                        document.querySelector('.llm-preset-btn[data-provider="custom"]').classList.add('active');
-                        document.getElementById('llmCustomFields').style.display = '';
-                        document.getElementById('llmApiKeyGroup').style.display = '';
-                        if (form.llm_base_url) form.llm_base_url.value = sim.llm_base_url;
-                        if (form.llm_model) form.llm_model.value = sim.llm_model || '';
+                        const customBtn = document.querySelector('#llmPresetsStep1 .llm-preset-btn[data-provider="custom"]');
+                        if (customBtn) customBtn.classList.add('active');
+                        document.getElementById('llmCustomFieldsStep1').style.display = '';
+                        document.getElementById('llmApiKeyGroupStep1').style.display = '';
+                        const baseInput = document.getElementById('llmCustomFieldsStep1').querySelector('input[placeholder*="URL"]');
+                        const modelInput = document.getElementById('llmCustomFieldsStep1').querySelector('input[placeholder*="model"]');
+                        if (baseInput) baseInput.value = sim.llm_base_url;
+                        if (modelInput) modelInput.value = sim.llm_model || '';
                     }
                 }
 
-                document.getElementById('createSimTitle').textContent = I18N.t('sim.edit_title');
-                document.getElementById('createSimSubmitBtn').textContent = I18N.t('common.save');
+                // is_public checkbox
+                const pubCheck = document.getElementById('simIsPublic');
+                if (pubCheck) pubCheck.checked = sim.is_public !== 0;
+
+                // Show step 2 directly for editing (skip LLM step)
+                document.getElementById('simStep1').style.display = 'none';
+                document.getElementById('simStep2').style.display = '';
+                const submitBtn = document.getElementById('createSimSubmitBtn');
+                if (submitBtn) submitBtn.textContent = I18N.t('common.save') || '保存';
                 document.getElementById('createSimModal').classList.add('active');
             } catch (e) {
                 showAlert('error', I18N.t('sim.load_fail'));
             }
+        }
+
+        async function toggleSimPublic(simId, newValue) {
+            const token = localStorage.getItem('cog_token');
+            try {
+                const res = await fetch(`/api/simulations/${simId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ is_public: newValue })
+                });
+                if (res.ok) {
+                    showAlert('success', newValue ? '已设为公开' : '已设为私有');
+                    loadMySimulations();
+                } else {
+                    const d = await res.json();
+                    showAlert('error', d.detail || '修改失败');
+                }
+            } catch { showAlert('error', '网络错误'); }
         }
 
         async function deleteSim(simId, title) {
@@ -1926,7 +1880,8 @@
                     target_population: parseInt(form.mc_population?.value) || 100,
                     pre_search: document.getElementById('preSearchCheckbox')?.checked || false
                 } : null,
-                round_titles: currentPlan?.round_plan ? currentPlan.round_plan.map(r => r.title || '') : []
+                round_titles: currentPlan?.round_plan ? currentPlan.round_plan.map(r => r.title || '') : [],
+                is_public: document.getElementById('simIsPublic').checked ? 1 : 0
             };
 
             const isEdit = editingSimId !== null;

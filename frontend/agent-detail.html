@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agent Detail — Wielding.ai</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="robots" content="noindex">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260323">
+    <link rel="stylesheet" href="/static/css/knowledge.css?v=20260323">
+    <style>
+        /* ===== Agent Detail Page ===== */
+        .agent-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: var(--space-xl) 0 var(--space-lg);
+        }
+
+        .agent-header-left {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .back-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85em;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-xs);
+        }
+
+        .back-link:hover {
+            color: var(--accent-text);
+            background: var(--accent-muted);
+        }
+
+        .agent-title {
+            font-family: var(--font-display);
+            font-size: 1.6em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .agent-header-right {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        /* ===== Tab Navigation ===== */
+        .detail-tabs {
+            display: flex;
+            gap: 2px;
+            border-bottom: 1px solid var(--border-subtle);
+            margin-bottom: var(--space-xl);
+        }
+
+        .detail-tab {
+            padding: var(--space-sm) var(--space-lg);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.88em;
+            font-family: var(--font-sans);
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all var(--transition-fast);
+            margin-bottom: -1px;
+        }
+
+        .detail-tab:hover {
+            color: var(--text-secondary);
+        }
+
+        .detail-tab.active {
+            color: var(--accent-text);
+            border-bottom-color: var(--accent-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            padding-bottom: 60px;
+        }
+
+        /* ===== Overview Tab — brain-visual style ===== */
+
+        /* Profile Section */
+        .ov-profile {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+        .ov-profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-muted);
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2em;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .ov-profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .ov-profile-info { flex: 1; }
+        .ov-profile-name {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .ov-profile-desc {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 12px;
+        }
+        .ov-features-list {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .ov-feature-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--accent-muted);
+            border: 1px solid rgba(212,160,84,0.1);
+            border-radius: 6px;
+            transition: all 0.25s;
+        }
+        .ov-feature-item:hover {
+            border-color: rgba(212,160,84,0.25);
+            transform: translateY(-1px);
+        }
+        .ov-feature-icon { font-size: 1em; }
+        .ov-feature-text {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .ov-edit-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-muted);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.78em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ov-edit-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-text);
+        }
+
+        /* Divider */
+        .ov-divider {
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255,255,255,0.1), transparent 80%);
+            margin: 40px 0;
+        }
+
+        /* Section label */
+        .ov-section-label {
+            font-size: 0.72em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 16px;
+        }
+
+        /* Stats Grid */
+        .ov-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 40px;
+        }
+        .ov-stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .ov-stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-primary), transparent);
+            opacity: 0.3;
+        }
+        .ov-stat-card h4 {
+            color: var(--text-muted);
+            font-size: 0.72em;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .ov-stat-value {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--accent-text);
+        }
+
+        /* View Cards — asymmetric grid */
+        .ov-view-cards {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 40px;
+        }
+        .ov-view-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+        .ov-view-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(212,160,84,0.04) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .ov-view-card:hover::before { opacity: 1; }
+        .ov-view-card:hover {
+            border-color: rgba(255,255,255,0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+        }
+        .ov-card-icon {
+            font-size: 1.6em;
+            margin-bottom: 14px;
+        }
+        .ov-view-card h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            color: var(--text-primary);
+            font-size: 1.05em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .ov-view-card p {
+            color: var(--text-muted);
+            font-size: 0.82em;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        /* Chat card — full width */
+        .ov-chat-card {
+            grid-column: span 3;
+            flex-direction: row;
+            align-items: center;
+            gap: 20px;
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(124,153,184,0.04) 100%);
+            border-color: rgba(124,153,184,0.12);
+        }
+        .ov-chat-card:hover {
+            border-color: rgba(124,153,184,0.3);
+        }
+        .ov-chat-card .ov-card-icon { margin-bottom: 0; }
+        .ov-chat-card .ov-card-text { flex: 1; }
+        .ov-chat-card h3 { color: #7c99b8; }
+
+        /* Token Management */
+        .ov-token-create-form {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .ov-form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .ov-form-group {
+            flex: 1;
+            min-width: 140px;
+        }
+        .ov-form-group label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.72em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 6px;
+        }
+        .ov-form-group select,
+        .ov-form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.25);
+            color: var(--text-primary);
+            font-size: 0.85em;
+            font-family: inherit;
+        }
+        .ov-form-group select:focus,
+        .ov-form-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .ov-form-group textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.25);
+            color: var(--text-primary);
+            font-size: 0.9em;
+            font-family: inherit;
+            min-height: 80px;
+            resize: vertical;
+        }
+        .ov-form-group textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .ov-create-btn {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.85em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ov-create-btn:hover {
+            background: var(--accent-secondary);
+            transform: translateY(-1px);
+        }
+        .ov-token-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ov-token-item {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        .ov-token-item.full { border-left: 2px solid #6da89b; }
+        .ov-token-item.qa_public { border-left: 2px solid #7c99b8; }
+        .ov-token-item.browse_public { border-left: 2px solid #9d8bb8; }
+        .ov-token-info { flex: 1; }
+        .ov-token-info .ov-token-id {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-text);
+            font-size: 0.85em;
+        }
+        .ov-token-info .ov-token-meta {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+        .ov-token-info .ov-token-note {
+            font-size: 0.82em;
+            color: var(--text-secondary);
+            margin-top: 3px;
+        }
+        .ov-token-actions { display: flex; gap: 6px; }
+        .ov-token-actions button {
+            padding: 5px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-subtle);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.78em;
+            transition: all 0.2s;
+        }
+        .ov-token-actions button:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .ov-token-actions .ov-revoke-btn:hover {
+            background: rgba(184,134,138,0.12);
+            border-color: rgba(184,134,138,0.3);
+            color: #b8868a;
+        }
+
+        /* Edit Profile Modal */
+        .ov-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.25s;
+        }
+        .ov-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .ov-modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 14px;
+            padding: 28px;
+            width: 90%;
+            max-width: 440px;
+            transform: translateY(20px);
+            transition: transform 0.25s;
+        }
+        .ov-modal-overlay.show .ov-modal-content {
+            transform: translateY(0);
+        }
+        .ov-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+        .ov-modal-header h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 1.2em;
+            color: var(--text-primary);
+        }
+        .ov-modal-close {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.4em;
+            cursor: pointer;
+            padding: 4px;
+        }
+        .ov-modal-close:hover { color: var(--text-primary); }
+        .ov-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+        .ov-btn-cancel {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+        .ov-btn-save {
+            background: var(--accent-primary);
+            border: none;
+            color: var(--bg-primary);
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .ov-btn-save:hover { background: var(--accent-secondary); }
+
+        /* Animations */
+        @keyframes ov-fade-up {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in {
+            animation: ov-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        .ov-delay-1 { animation-delay: 0.08s; }
+        .ov-delay-2 { animation-delay: 0.16s; }
+        .ov-delay-3 { animation-delay: 0.24s; }
+
+        /* ===== Config Tab ===== */
+        .config-section {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+        }
+
+        .config-section-title {
+            font-size: 0.78em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: var(--space-lg);
+            padding-bottom: var(--space-sm);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .config-actions {
+            display: flex;
+            gap: var(--space-md);
+            margin-top: var(--space-xl);
+            padding-top: var(--space-lg);
+            padding-bottom: 60px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 768px) {
+            .agent-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-md);
+            }
+
+            .detail-tabs {
+                overflow-x: auto;
+            }
+
+            .ov-profile {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .ov-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .ov-view-cards {
+                grid-template-columns: 1fr;
+            }
+
+            .ov-chat-card {
+                grid-column: span 1;
+                flex-direction: column;
+            }
+
+            .ov-chat-card .ov-card-text { width: 100%; }
+
+            .ov-features-list { justify-content: center; }
+
+            .ov-form-row { flex-direction: column; }
+        }
+    </style>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script src="/static/js/i18n.js?v=20260323" defer></script>
+    <script src="/static/js/header.js?v=20260323" defer></script>
+    <script src="/static/js/agent-detail.js?v=20260323" defer></script>
+</head>
+<body>
+    <header></header>
+
+    <main class="container">
+        <!-- Agent Header -->
+        <div class="agent-header">
+            <div class="agent-header-left">
+                <a href="/dashboard" class="back-link">
+                    <span>←</span>
+                    <span data-i18n="agent.back_to_agents">Back to Agents</span>
+                </a>
+                <h1 class="agent-title" id="agentName">—</h1>
+                <span class="status-badge" id="agentStatus">
+                    <span class="status-dot"></span>
+                    <span>—</span>
+                </span>
+            </div>
+            <div class="agent-header-right">
+                <span class="type-badge" id="agentTypeBadge">—</span>
+                <span class="tag" id="agentNamespace">—</span>
+            </div>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="detail-tabs">
+            <button class="detail-tab active" data-tab="overview">
+                <span data-i18n="agent.tab_overview">Overview</span>
+            </button>
+            <button class="detail-tab" data-tab="knowledge">
+                <span data-i18n="agent.tab_knowledge">Knowledge</span>
+            </button>
+            <button class="detail-tab" data-tab="config">
+                <span data-i18n="agent.tab_config">Config</span>
+            </button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="tab-overview">
+            <!-- a) Profile Section -->
+            <div class="ov-profile animate-in">
+                <div class="ov-profile-avatar" id="ovAvatar">🧠</div>
+                <div class="ov-profile-info">
+                    <div class="ov-profile-name" id="ovName">Loading...</div>
+                    <div class="ov-profile-desc" id="ovDesc"></div>
+                    <div class="ov-features-list">
+                        <div class="ov-feature-item"><span class="ov-feature-icon">📝</span><span class="ov-feature-text">事实层</span></div>
+                        <div class="ov-feature-item"><span class="ov-feature-icon">🕸️</span><span class="ov-feature-text">关联层</span></div>
+                        <div class="ov-feature-item"><span class="ov-feature-icon">📐</span><span class="ov-feature-text">抽象层</span></div>
+                    </div>
+                    <button class="ov-edit-btn" id="ovEditBtn" style="display:none" onclick="AgentDetail.openEditModal()">✏️ 编辑资料</button>
+                </div>
+            </div>
+
+            <div class="ov-divider"></div>
+
+            <!-- b) Stats Grid -->
+            <div class="ov-section-label animate-in ov-delay-1">知识库概览</div>
+            <div class="ov-stats-grid animate-in ov-delay-1">
+                <div class="ov-stat-card">
+                    <h4>知识节点</h4>
+                    <div class="ov-stat-value" id="statFacts">—</div>
+                </div>
+                <div class="ov-stat-card">
+                    <h4>关联边</h4>
+                    <div class="ov-stat-value" id="statEdges">—</div>
+                </div>
+                <div class="ov-stat-card">
+                    <h4>抽象规律</h4>
+                    <div class="ov-stat-value" id="statAbstracts">—</div>
+                </div>
+                <div class="ov-stat-card">
+                    <h4>数据范围</h4>
+                    <div class="ov-stat-value" id="statScope">—</div>
+                </div>
+            </div>
+
+            <!-- c) View Cards -->
+            <div class="ov-section-label animate-in ov-delay-2">功能入口</div>
+            <div class="ov-view-cards animate-in ov-delay-2">
+                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('graph')">
+                    <div class="ov-card-icon">🕸️</div>
+                    <h3>Graph View</h3>
+                    <p>力导向图，探索知识关联</p>
+                </a>
+                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('tree')">
+                    <div class="ov-card-icon">🌳</div>
+                    <h3>Tree View</h3>
+                    <p>抽象层树形，理解规律结构</p>
+                </a>
+                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('timeline')">
+                    <div class="ov-card-icon">📅</div>
+                    <h3>Timeline</h3>
+                    <p>时间轴，回顾知识演变</p>
+                </a>
+                <a class="ov-view-card ov-chat-card" href="javascript:void(0)" onclick="AgentDetail.goView('chat')">
+                    <div class="ov-card-icon">💬</div>
+                    <div class="ov-card-text">
+                        <h3>Chat</h3>
+                        <p>向知识库提问，获取基于存储知识的回答</p>
+                    </div>
+                </a>
+            </div>
+
+            <!-- d) Token Management (owner only) -->
+            <div class="ov-token-management" id="ovTokenMgmt" style="display:none">
+                <div class="ov-section-label animate-in ov-delay-3">Token 管理</div>
+                <div class="ov-token-create-form animate-in ov-delay-3">
+                    <div class="ov-form-row">
+                        <div class="ov-form-group">
+                            <label>权限类型</label>
+                            <select id="ovTokenScope">
+                                <option value="qa_public">💬 问答服务</option>
+                                <option value="browse_public">👁️ 公开浏览</option>
+                                <option value="full">🔓 全量访问</option>
+                            </select>
+                        </div>
+                        <div class="ov-form-group">
+                            <label>有效期</label>
+                            <select id="ovTokenDuration">
+                                <option value="1d">1 天</option>
+                                <option value="7d" selected>7 天</option>
+                                <option value="30d">30 天</option>
+                                <option value="90d">90 天</option>
+                            </select>
+                        </div>
+                        <div class="ov-form-group">
+                            <label>问答次数</label>
+                            <input type="number" id="ovTokenQaLimit" placeholder="默认20" min="0">
+                        </div>
+                        <div class="ov-form-group">
+                            <label>备注</label>
+                            <input type="text" id="ovTokenNote" placeholder="如：给朋友A">
+                        </div>
+                    </div>
+                    <button class="ov-create-btn" onclick="AgentDetail.addTokens()">添加 Token</button>
+                </div>
+                <div class="ov-token-list" id="ovTokenList">
+                    <div class="knowledge-loading" id="ovTokenLoading">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Profile Modal -->
+        <div class="ov-modal-overlay" id="editProfileModal">
+            <div class="ov-modal-content">
+                <div class="ov-modal-header">
+                    <h3>编辑 Agent 资料</h3>
+                    <button class="ov-modal-close" onclick="AgentDetail.closeEditModal()">×</button>
+                </div>
+                <div class="ov-form-group">
+                    <label>名称</label>
+                    <input type="text" id="editProfileName" placeholder="Agent 名称">
+                </div>
+                <div class="ov-form-group">
+                    <label>描述</label>
+                    <textarea id="editProfileDesc" placeholder="描述这个 Agent..." rows="3"></textarea>
+                </div>
+                <div class="ov-form-group">
+                    <label>头像 URL（留空使用默认 emoji）</label>
+                    <input type="text" id="editProfileAvatar" placeholder="https://...">
+                </div>
+                <div class="ov-modal-actions">
+                    <button class="ov-btn-cancel" onclick="AgentDetail.closeEditModal()">取消</button>
+                    <button class="ov-btn-save" onclick="AgentDetail.saveProfile()">保存</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Tab -->
+        <div class="tab-content" id="tab-knowledge">
+            <div class="knowledge-container">
+                <div class="view-switcher" id="viewSwitcher">
+                    <button class="view-btn active" data-view="graph">
+                        <span>🕸️</span> <span data-i18n="agent.view_graph">Graph</span>
+                    </button>
+                    <button class="view-btn" data-view="tree">
+                        <span>🌳</span> <span data-i18n="agent.view_tree">Tree</span>
+                    </button>
+                    <button class="view-btn" data-view="timeline">
+                        <span>📅</span> <span data-i18n="agent.view_timeline">Timeline</span>
+                    </button>
+                    <button class="view-btn" data-view="chat">
+                        <span>💬</span> <span data-i18n="agent.view_chat">Chat</span>
+                    </button>
+                </div>
+
+                <div id="knowledgeView" class="knowledge-view"></div>
+
+                <div class="knowledge-loading" id="knowledgeLoading" style="display:none;">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text" data-i18n="agent.loading_visualization">Loading visualization...</div>
+                </div>
+
+                <div class="knowledge-empty" id="knowledgeEmpty" style="display:none;">
+                    <div class="empty-icon">🧠</div>
+                    <div class="empty-text" data-i18n="agent.no_knowledge">No knowledge data yet. Start by adding facts to this agent's namespace.</div>
+                </div>
+
+                <!-- Detail Panel (slides in from right) -->
+                <div id="knowledgeDetailPanel" style="display:none;position:fixed;top:0;right:0;width:400px;max-width:90vw;height:100vh;background:#1e2025;border-left:1px solid rgba(255,255,255,0.08);z-index:1000;transform:translateX(100%);transition:transform 0.25s ease;overflow:hidden;display:flex;flex-direction:column;">
+                    <div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+                        <span style="font-family:var(--font-display);font-weight:700;color:#e2b96a;" id="detailPanelTitle">详情</span>
+                        <button onclick="AgentDetail.closeDetail()" style="background:none;border:none;color:#6b665e;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">×</button>
+                    </div>
+                    <div id="detailPanelContent" style="flex:1;overflow-y:auto;padding:20px;"></div>
+                </div>
+                <div id="detailPanelOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;" onclick="AgentDetail.closeDetail()"></div>
+            </div>
+        </div>
+
+        <!-- Config Tab -->
+        <div class="tab-content" id="tab-config">
+            <!-- 身份与角色 -->
+            <div class="config-section">
+                <div class="config-section-title">🎭 身份与角色</div>
+                <div class="form-row" style="grid-template-columns: 2fr 1fr;">
+                    <div class="form-group">
+                        <label>名称</label>
+                        <input type="text" id="configName" placeholder="Agent 或角色名称">
+                    </div>
+                    <div class="form-group">
+                        <label>类型</label>
+                        <select id="configType" onchange="document.getElementById('personaFields').style.display = this.value === 'character' ? 'block' : 'none'; document.getElementById('descLabel').textContent = this.value === 'character' ? '背景故事' : '描述'; document.getElementById('configDescription').placeholder = this.value === 'character' ? '用第一人称描述角色背景...' : '描述这个 Agent...'">
+                            <option value="human">Human（知识库）</option>
+                            <option value="character">Character（角色）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label id="descLabel">描述</label>
+                    <textarea id="configDescription" rows="3" placeholder="描述这个 Agent..."></textarea>
+                </div>
+
+                <!-- Character 展开字段 -->
+                <div id="personaFields" style="display:none;">
+                    <div style="height:1px;background:var(--border-subtle);margin:20px 0;"></div>
+                    <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+                        <div class="form-group">
+                            <label>头衔</label>
+                            <input type="text" id="configPersonaTitle" placeholder="e.g. 道家学派创始人">
+                        </div>
+                        <div class="form-group">
+                            <label>时代背景</label>
+                            <input type="text" id="configPersonaEra" placeholder="e.g. 春秋时期">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>性格特征</label>
+                        <input type="text" id="configPersonaTraits" placeholder="深邃, 淡泊, 睿智, 超脱（逗号分隔）">
+                    </div>
+                    <div class="form-group">
+                        <label>说话风格</label>
+                        <textarea id="configPersonaStyle" rows="3" placeholder="描述角色的说话方式、用词习惯、语气特点..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>核心信念</label>
+                        <textarea id="configPersonaBeliefs" rows="3" placeholder="每行一条核心信念或名言"></textarea>
+                        <small>每行一条</small>
+                    </div>
+                    <div class="form-group">
+                        <label>招呼语</label>
+                        <textarea id="configPersonaGreeting" rows="2" placeholder="角色的开场白..."></textarea>
+                    </div>
+
+                    <!-- 自动调研按钮 -->
+                    <div style="margin-top:16px;padding:16px;background:rgba(109,168,155,0.06);border:1px solid rgba(109,168,155,0.15);border-radius:var(--radius-md);">
+                        <div style="font-weight:600;font-size:0.9em;margin-bottom:6px;">🔬 自动调研</div>
+                        <div style="font-size:0.82em;color:var(--text-muted);margin-bottom:12px;">
+                            基于参考人物进行网络搜索，自动生成 Persona 设定并填充知识库。需要先配置 LLM API Key。
+                        </div>
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <label style="font-size:0.82em;">参考人物（真实姓名，用于搜索）</label>
+                            <input type="text" id="researchRefNames" placeholder="e.g. Elon Musk, Steve Jobs">
+                            <small>逗号分隔多个人物。搜索后信息会脱敏处理，存储时使用 Agent 名称代替真实姓名。</small>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button type="button" class="btn btn-primary btn-small" id="researchBtn" onclick="AgentDetail.startResearch('normal')">🔬 开始调研</button>
+                            <button type="button" class="btn btn-secondary btn-small" onclick="AgentDetail.startResearch('deep')">🔬 深度调研</button>
+                        </div>
+                        <div id="researchStatus" style="margin-top:10px;font-size:0.85em;display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- 高级选项（折叠） -->
+                <details style="margin-top:16px;">
+                    <summary style="color:var(--text-muted);font-size:0.82em;cursor:pointer;user-select:none;">⚙️ 高级选项</summary>
+                    <div style="padding-top:12px;">
+                        <div class="form-group">
+                            <label>公开可见</label>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9em;color:var(--text-secondary);">
+                                    <input type="checkbox" id="configIsPublic" checked style="width:16px;height:16px;accent-color:#6da89b;">
+                                    在平台市场中对其他用户可见
+                                </label>
+                            </div>
+                            <small>关闭后，此 Agent 仅自己可见，其他用户无法在市场中发现</small>
+                        </div>
+                        <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label>Namespace</label>
+                                <input type="text" id="configNamespace" placeholder="default">
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="configStatus">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="maintenance">Maintenance</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Endpoint URL</label>
+                            <input type="url" id="configEndpoint" placeholder="http://localhost:8081">
+                            <small>内部服务地址，通常不需要修改</small>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- LLM Configuration -->
+            <div class="config-section">
+                <div class="config-section-title">🤖 LLM Configuration</div>
+                <div class="form-group">
+                    <label>Provider</label>
+                    <select id="configLlmProvider">
+                        <option value="">— 请选择 Provider —</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="openai">OpenAI (GPT)</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="doubao">豆包 (Doubao)</option>
+                        <option value="custom">Custom Endpoint</option>
+                    </select>
+                    <small>必须配置 Provider 和 API Key 才能使用问答功能</small>
+                </div>
+                <div class="form-group">
+                    <label>Model</label>
+                    <input type="text" id="configLlmModel" placeholder="e.g. claude-sonnet-4-20250514">
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="configLlmKey" placeholder="sk-... (leave empty to keep current)">
+                    <small>Encrypted and stored securely. Leave blank to keep existing key.</small>
+                </div>
+                <div class="form-group" id="configLlmEndpointGroup" style="display:none;">
+                    <label>Custom Endpoint URL</label>
+                    <input type="url" id="configLlmEndpoint" placeholder="https://api.example.com/v1">
+                </div>
+            </div>
+
+            <!-- IM Connection Config -->
+            <div class="config-section">
+                <div class="config-section-title" data-i18n="agent.config_im">💬 IM Connection</div>
+                <div class="form-group">
+                    <label>Telegram Bot Token</label>
+                    <input type="password" id="configTgToken" placeholder="Enter bot token...">
+                    <small data-i18n="agent.tg_token_hint">Get from @BotFather on Telegram</small>
+                </div>
+                <div class="form-group">
+                    <label>Telegram Chat ID</label>
+                    <input type="text" id="configTgChatId" placeholder="Chat ID">
+                </div>
+            </div>
+
+            <div class="config-actions">
+                <button class="btn btn-primary" id="saveConfigBtn" onclick="AgentDetail.saveConfig()">
+                    <span data-i18n="common.save">Save</span>
+                </button>
+                <button class="btn btn-secondary" onclick="AgentDetail.resetConfig()">
+                    <span data-i18n="common.cancel">Cancel</span>
+                </button>
+                <button class="btn btn-danger" id="deleteAgentBtn" onclick="AgentDetail.deleteAgent()" style="margin-left:auto;">
+                    <span data-i18n="agent.delete_agent">Delete Agent</span>
+                </button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

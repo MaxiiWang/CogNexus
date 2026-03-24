@@ -1,17 +1,26 @@
 """
 CogNexus API - 分布式认知枢纽
 """
+# 最先加载 .env，确保 auth/crypto 模块能读到环境变量
+from pathlib import Path as _Path
+from dotenv import load_dotenv as _load_dotenv
+_load_dotenv(_Path(__file__).parent.parent / ".env")
+
 import uuid
 import json
 import httpx
 from datetime import datetime
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr
 from pathlib import Path
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from database import get_db, init_db
 from auth import (
@@ -19,6 +28,9 @@ from auth import (
     create_token, verify_token, 
     generate_agent_token
 )
+
+# 速率限制
+limiter = Limiter(key_func=get_remote_address)
 
 # 初始化数据库
 init_db()
@@ -32,10 +44,16 @@ app = FastAPI(
     openapi_url=None    # 禁用 OpenAPI schema
 )
 
-# CORS
+# 速率限制
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS — 从环境变量读取允许的来源
+import os as _os
+_cors_origins = _os.environ.get("CORS_ORIGINS", "https://wielding.ai").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in _cors_origins],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,14 +78,18 @@ class AgentCreate(BaseModel):
     name: str
     description: Optional[str] = None
     agent_type: str = "human"
-    endpoint_url: str
-    namespace: str = "default"  # Cogmate namespace
+    endpoint_url: str = "http://localhost:8081"
+    namespace: str = "default"
     avatar_url: Optional[str] = None
     tags: Optional[List[str]] = []
+    status: Optional[str] = "active"
+    is_public: Optional[int] = 1
+    llm_config: Optional[str] = "{}"
+    im_config: Optional[str] = "{}"
     price_chat: int = 10
     price_read: int = 5
     price_react: int = 20
-    tokens: Optional[List[str]] = []  # 用户提供的 Token 列表
+    tokens: Optional[List[str]] = []
 
 class TokenPurchase(BaseModel):
     agent_id: str
@@ -100,10 +122,19 @@ async def get_current_user(authorization: str = Header(None)):
     return payload
 
 
+# ==================== 健康检查 ====================
+
+@app.get("/health")
+async def health_check():
+    """健康检查端点"""
+    return {"status": "ok"}
+
+
 # ==================== 认证 API ====================
 
 @app.post("/api/auth/register")
-async def register(data: UserRegister):
+@limiter.limit("5/hour")
+async def register(request: Request, data: UserRegister):
     """用户注册"""
     conn = get_db()
     cursor = conn.cursor()
@@ -132,24 +163,48 @@ async def register(data: UserRegister):
         INSERT INTO transactions (tx_id, to_user_id, atp_amount, tx_type, description)
         VALUES (?, ?, 100, 'register', '注册奖励')
     """, (tx_id, user_id))
-    
+
+    # 自动创建 Human Agent
+    agent_id = f"agt_{uuid.uuid4().hex[:12]}"
+    namespace = data.username.lower()
+    # 确保 namespace 唯一
+    cursor.execute("SELECT agent_id FROM agents WHERE namespace = ?", (namespace,))
+    if cursor.fetchone():
+        namespace = f"{namespace}_{uuid.uuid4().hex[:6]}"
+
+    cursor.execute("""
+        INSERT INTO agents (agent_id, owner_id, name, description, agent_type,
+                           endpoint_url, namespace, status)
+        VALUES (?, ?, ?, ?, 'human', 'http://localhost:8081', ?, 'active')
+    """, (agent_id, user_id, data.username, '我的个人知识库', namespace))
+
+    # 为该 Agent 创建默认的 browse_public Token
+    default_token_id = f"tkn_{uuid.uuid4().hex[:12]}"
+    default_token_value = generate_agent_token()
+    cursor.execute("""
+        INSERT INTO agent_tokens (token_id, agent_id, token_value, permissions, scope, namespace)
+        VALUES (?, ?, ?, '["browse"]', 'browse_public', ?)
+    """, (default_token_id, agent_id, default_token_value, namespace))
+
     conn.commit()
     conn.close()
-    
+
     # 生成 Token
     token = create_token(user_id, data.username)
-    
+
     return {
         "user_id": user_id,
         "username": data.username,
         "atp_balance": 100,
         "token": token,
+        "agent_id": agent_id,
         "message": "注册成功，已获得 100 ATP"
     }
 
 
 @app.post("/api/auth/login")
-async def login(data: UserLogin):
+@limiter.limit("10/minute")
+async def login(request: Request, data: UserLogin):
     """用户登录"""
     conn = get_db()
     cursor = conn.cursor()
@@ -197,13 +252,52 @@ async def get_me(user: dict = Depends(get_current_user)):
 
 # ==================== Agent 探测 API ====================
 
+def _is_safe_url(url: str) -> bool:
+    """校验 URL 是否安全（拒绝内网/回环/元数据地址）"""
+    from urllib.parse import urlparse
+    import ipaddress
+    import socket
+
+    parsed = urlparse(url)
+    hostname = parsed.hostname
+    if not hostname:
+        return False
+
+    # 拒绝非 http/https
+    if parsed.scheme not in ("http", "https"):
+        return False
+
+    # 解析 IP
+    try:
+        # 先尝试直接解析为 IP
+        ip = ipaddress.ip_address(hostname)
+    except ValueError:
+        # 是域名，DNS 解析
+        try:
+            resolved = socket.getaddrinfo(hostname, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
+            ip = ipaddress.ip_address(resolved[0][4][0])
+        except (socket.gaierror, IndexError, ValueError):
+            return False
+
+    # 拒绝私有/回环/链路本地/保留地址
+    if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+        return False
+
+    return True
+
+
 @app.post("/api/agents/probe")
-async def probe_agent(data: AgentProbe):
+@limiter.limit("10/minute")
+async def probe_agent(request: Request, data: AgentProbe):
     """探测 Agent URL，获取所有角色列表"""
     import httpx
-    
+
     url = data.url.rstrip('/')
-    
+
+    # SSRF 防护：拒绝内网地址
+    if not _is_safe_url(url):
+        return {"success": False, "error": "URL 不允许：不能指向内网或保留地址"}
+
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # 尝试获取所有角色列表
@@ -331,18 +425,35 @@ async def check_agent_health(agent_id: str = None):
 
 
 @app.get("/api/agents")
-async def list_agents():
-    """列出所有公开 Agent"""
+async def list_agents(authorization: str = Header(None)):
+    """列出公开 Agent（登录用户可看到自己的非公开 Agent）"""
     conn = get_db()
     cursor = conn.cursor()
-    
-    # 获取 Agent 基本信息
-    cursor.execute("""
-        SELECT a.*, u.username as owner_name
-        FROM agents a
-        JOIN users u ON a.owner_id = u.user_id
-        ORDER BY a.created_at DESC
-    """)
+
+    # 解析当前用户（可选）
+    current_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        payload = verify_token(authorization.split(" ")[1])
+        if payload:
+            current_user_id = payload.get("user_id")
+
+    # 公开的 + 自己的
+    if current_user_id:
+        cursor.execute("""
+            SELECT a.*, u.username as owner_name
+            FROM agents a
+            JOIN users u ON a.owner_id = u.user_id
+            WHERE a.is_public = 1 OR a.owner_id = ?
+            ORDER BY a.created_at DESC
+        """, (current_user_id,))
+    else:
+        cursor.execute("""
+            SELECT a.*, u.username as owner_name
+            FROM agents a
+            JOIN users u ON a.owner_id = u.user_id
+            WHERE a.is_public = 1
+            ORDER BY a.created_at DESC
+        """)
     
     agents = []
     for row in cursor.fetchall():
@@ -372,6 +483,12 @@ async def list_agents():
         
         agent["token_types"] = token_types
         agent["total_available"] = sum(t["available"] for t in token_types)
+
+        # 非所有者隐藏内网地址
+        if not current_user_id or agent["owner_id"] != current_user_id:
+            agent.pop("endpoint_url", None)
+            agent.pop("source_url", None)
+
         agents.append(agent)
     
     conn.close()
@@ -380,11 +497,18 @@ async def list_agents():
 
 
 @app.get("/api/agents/{agent_id}")
-async def get_agent(agent_id: str):
-    """获取 Agent 详情"""
+async def get_agent(agent_id: str, authorization: str = Header(None)):
+    """获取 Agent 详情（非公开 Agent 仅所有者可见）"""
     conn = get_db()
     cursor = conn.cursor()
-    
+
+    # 解析当前用户（可选）
+    current_user_id = None
+    if authorization and authorization.startswith("Bearer "):
+        payload = verify_token(authorization.split(" ")[1])
+        if payload:
+            current_user_id = payload.get("user_id")
+
     cursor.execute("""
         SELECT a.*, u.username as owner_name,
                (SELECT price_chat FROM agent_tokens WHERE agent_id = a.agent_id LIMIT 1) as price_chat,
@@ -402,8 +526,43 @@ async def get_agent(agent_id: str):
     
     if not agent:
         raise HTTPException(status_code=404, detail="Agent 不存在")
-    
-    return dict(agent)
+
+    result = dict(agent)
+    is_owner = current_user_id and result["owner_id"] == current_user_id
+
+    # 非公开 Agent 仅所有者可见
+    if result.get("is_public") == 0 and not is_owner:
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+
+    # 脱敏 llm_config 中的 api_key
+    result["llm_config"] = _mask_llm_config(result.get("llm_config"))
+
+    # 非所有者隐藏内网地址
+    if not is_owner:
+        result.pop("endpoint_url", None)
+        result.pop("source_url", None)
+
+    return result
+
+
+def _mask_llm_config(raw: str) -> str:
+    """脱敏 llm_config，隐藏 api_key，添加 has_key 标记"""
+    if not raw:
+        return "{}"
+    try:
+        cfg = json.loads(raw) if isinstance(raw, str) else raw
+        if not isinstance(cfg, dict):
+            return "{}"
+        if cfg.get("api_key"):
+            key = cfg["api_key"]
+            cfg["api_key_masked"] = key[:6] + "..." + key[-4:] if len(key) > 10 else "***"
+            cfg["has_key"] = True
+            del cfg["api_key"]
+        else:
+            cfg["has_key"] = False
+        return json.dumps(cfg)
+    except Exception:
+        return "{}"
 
 
 @app.put("/api/agents/{agent_id}")
@@ -426,13 +585,27 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
     
     tags_str = json.dumps(data.tags) if data.tags else "[]"
     
+    # 合并 llm_config：保留已有的 api_key（如果前端没发新的）
+    new_llm = json.loads(data.llm_config) if data.llm_config else {}
+    if isinstance(new_llm, str):
+        new_llm = json.loads(new_llm)
+    existing_llm_raw = agent["llm_config"] if "llm_config" in agent.keys() else "{}"
+    existing_llm = json.loads(existing_llm_raw) if existing_llm_raw else {}
+    if not new_llm.get("api_key") and existing_llm.get("api_key"):
+        new_llm["api_key"] = existing_llm["api_key"]
+    llm_config_str = json.dumps(new_llm)
+    
     cursor.execute("""
         UPDATE agents SET name = ?, description = ?, agent_type = ?, 
                          endpoint_url = ?, avatar_url = ?, tags = ?,
+                         status = ?, namespace = ?, is_public = ?,
+                         llm_config = ?, im_config = ?,
                          updated_at = datetime('now')
         WHERE agent_id = ?
     """, (data.name, data.description, data.agent_type, 
-          data.endpoint_url, data.avatar_url, tags_str, agent_id))
+          data.endpoint_url, data.avatar_url, tags_str,
+          data.status, data.namespace, data.is_public,
+          llm_config_str, data.im_config, agent_id))
     
     # 更新定价
     cursor.execute("""
@@ -453,8 +626,16 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
                       data.price_chat, data.price_read, data.price_react))
     
     conn.commit()
+    
+    # 返回更新后的完整 agent 数据
+    cursor.execute("SELECT * FROM agents WHERE agent_id = ?", (agent_id,))
+    updated = cursor.fetchone()
     conn.close()
     
+    if updated:
+        result = dict(updated)
+        result["llm_config"] = _mask_llm_config(result.get("llm_config"))
+        return result
     return {"success": True, "message": "Agent 更新成功"}
 
 
@@ -836,12 +1017,18 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
     agent_id = f"agt_{uuid.uuid4().hex[:12]}"
     tags_str = json.dumps(data.tags) if data.tags else "[]"
     
+    # 确保 namespace 唯一
+    namespace = data.namespace or data.name.lower().replace(' ', '_')[:32]
+    cursor.execute("SELECT agent_id FROM agents WHERE namespace = ?", (namespace,))
+    if cursor.fetchone():
+        namespace = f"{namespace}_{uuid.uuid4().hex[:6]}"
+    
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type, 
                            endpoint_url, avatar_url, tags, namespace)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (agent_id, user["user_id"], data.name, data.description, 
-          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, data.namespace))
+          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace))
     
     # 存储用户提供的 Tokens
     token_count = 0
@@ -1137,7 +1324,7 @@ async def get_trending():
             FROM agent_tokens WHERE is_sold = 0 AND validated = 1
             GROUP BY agent_id
         ) tk ON tk.agent_id = a.agent_id
-        WHERE a.status = 'active'
+        WHERE a.status = 'active' AND (a.is_public = 1 OR a.is_public IS NULL)
         ORDER BY purchase_count DESC, available_tokens DESC, a.created_at DESC
         LIMIT 5
     """)
@@ -1159,6 +1346,7 @@ async def get_trending():
             FROM simulation_rounds
             GROUP BY simulation_id
         ) r ON r.simulation_id = s.simulation_id
+        WHERE (s.is_public = 1 OR s.is_public IS NULL)
         ORDER BY participant_count DESC, round_count DESC, s.created_at DESC
         LIMIT 5
     """)
@@ -1244,9 +1432,28 @@ async def simulation_detail_page(simulation_id: str):
 
 
 @app.get("/guide")
+@app.get("/docs")
 async def guide_page():
     """文档页面"""
     return FileResponse(FRONTEND_PATH / "docs.html")
+
+
+@app.get("/agent-detail")
+async def agent_detail_page():
+    """Agent 详情页"""
+    return FileResponse(FRONTEND_PATH / "agent-detail.html")
+
+
+@app.get("/settings")
+async def settings_page():
+    """设置页面"""
+    return FileResponse(FRONTEND_PATH / "settings.html")
+
+
+@app.get("/agent/{agent_id}")
+async def agent_public_page(agent_id: str):
+    """Agent 公开访客页面（不需要登录）"""
+    return FileResponse(FRONTEND_PATH / "agent-public.html")
 
 
 @app.get("/robots.txt")
@@ -1283,10 +1490,10 @@ async def sitemap_xml():
   <url><loc>https://wielding.ai/simulation</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://wielding.ai/guide</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>"""
 
-    # Dynamically add simulation detail pages
+    # Dynamically add public simulation detail pages
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute("SELECT simulation_id FROM simulations ORDER BY created_at DESC LIMIT 50")
+    cursor.execute("SELECT simulation_id FROM simulations WHERE is_public = 1 OR is_public IS NULL ORDER BY created_at DESC LIMIT 50")
     for row in cursor.fetchall():
         xml += f'\n  <url><loc>https://wielding.ai/simulation/{row["simulation_id"]}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>'
     conn.close()
@@ -1300,6 +1507,14 @@ async def sitemap_xml():
 from simulation_routes import router as simulation_router, agent_sim_router
 app.include_router(simulation_router)
 app.include_router(agent_sim_router)
+
+# ==================== Knowledge & Settings Routes ====================
+
+from routes.knowledge import router as knowledge_router, public_router as knowledge_public_router
+from routes.settings import router as settings_router
+app.include_router(knowledge_router)
+app.include_router(knowledge_public_router)
+app.include_router(settings_router)
 
 
 # 静态资源

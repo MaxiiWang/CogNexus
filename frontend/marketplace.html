@@ -427,10 +427,10 @@
                         tokenHtml = `<div style="color: var(--text-muted); padding: var(--space-sm) 0; font-size: 0.85em;">${I18N.t('market.no_tokens')}</div>`;
                     }
 
-                    const agentUrl = agent.endpoint_url || '#';
+                    const agentUrl = '/agent/' + agent.agent_id;
                     return `
                         <div class="agent-card ${typeClass} ${delayClass}">
-                            <div class="agent-header" onclick="window.open('${agentUrl}', '_blank')">
+                            <div class="agent-header" onclick="window.location.href='${agentUrl}'" style="cursor:pointer;">
                                 <div class="agent-avatar ${agent.agent_type}">
                                     ${agent.agent_type === 'human' ? '👤' : '🎭'}
                                 </div>
