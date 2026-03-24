@@ -740,18 +740,51 @@ async def delete_fact(
     fact_id: str,
     user: dict = Depends(verify_namespace),
 ):
-    """删除 fact（三库同步）"""
+    """删除 fact（三库独立同步，确保每个库都执行）"""
     cogmate = _get_cogmate(namespace)
 
     existing = cogmate.get_fact(fact_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Fact 未找到")
 
+    errors = []
+
+    # 1. SQLite — 直接删除
     try:
-        cogmate.delete(fact_id)
-        return {"success": True, "fact_id": fact_id, "message": "已删除"}
+        from cogmate_core import get_sqlite
+        conn = get_sqlite()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM facts WHERE fact_id = ?", (fact_id,))
+        cursor.execute("DELETE FROM associations WHERE from_fact_id = ? OR to_fact_id = ?", (fact_id, fact_id))
+        conn.commit()
+        conn.close()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
+        errors.append(f"SQLite: {e}")
+
+    # 2. Neo4j — DETACH DELETE
+    try:
+        from cogmate_core import get_neo4j
+        driver = get_neo4j()
+        with driver.session() as session:
+            session.run("MATCH (f:Fact {fact_id: $fid}) DETACH DELETE f", fid=fact_id)
+    except Exception as e:
+        errors.append(f"Neo4j: {e}")
+
+    # 3. Qdrant — 删除向量
+    try:
+        from cogmate_core import get_qdrant, get_collection_name
+        from qdrant_client.models import PointIdsList
+        client = get_qdrant()
+        client.delete(
+            collection_name=get_collection_name(namespace),
+            points_selector=PointIdsList(points=[fact_id])
+        )
+    except Exception as e:
+        errors.append(f"Qdrant: {e}")
+
+    if errors:
+        return {"success": True, "fact_id": fact_id, "message": "已删除（部分警告）", "warnings": errors}
+    return {"success": True, "fact_id": fact_id, "message": "已删除"}
 
 
 # ==================== 操作动作 ====================
