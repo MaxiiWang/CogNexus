@@ -298,7 +298,7 @@ def _web_search_fallback(query: str, max_results: int = 3) -> list:
         for item in data.get("web", {}).get("results", [])[:max_results]:
             results.append({
                 "summary": f"[网络] {item.get('title', '')}: {item.get('description', '')}",
-                "content_type": "网络参考",
+                "content_type": "资讯",
                 "fact_id": "web_" + item.get("url", "")[:20],
                 "_source": "web",
             })
@@ -1230,7 +1230,7 @@ async def update_fact(
 
 class StoreSuggestionRequest(BaseModel):
     summary: str
-    content_type: str = "网络参考"
+    content_type: str = "资讯"
 
 
 @router.post("/store-suggestion")
