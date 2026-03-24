@@ -1185,7 +1185,6 @@ const AgentDetail = (function() {
                 switch(state) {
                     case 'thinking':
                         stopMouthAnimation();
-                        try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
                         if (statusEl) { statusEl.textContent = '● 思考中...'; statusEl.style.color = 'rgba(226,185,106,0.5)'; }
                         break;
                     case 'speaking':
@@ -1194,7 +1193,6 @@ const AgentDetail = (function() {
                         break;
                     case 'idle':
                         stopMouthAnimation();
-                        try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
                         try { m.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
                         if (statusEl) { statusEl.textContent = '● 在线'; statusEl.style.color = 'rgba(255,255,255,0.35)'; }
                         break;
@@ -1208,18 +1206,52 @@ const AgentDetail = (function() {
     }
 
     let _mouthAnimFrame = null;
+    let _mouthTarget = 0;
+    let _mouthCurrent = 0;
 
     function startMouthAnimation() {
-        const cm = window._live2dModel?.internalModel?.coreModel;
-        if (!cm) return;
+        const model = window._live2dModel;
+        if (!model) return;
+
+        stopMouthAnimation();
         let t = 0;
+
         function animate() {
-            t += 0.15;
-            const openness = (Math.sin(t * 3.5) * 0.3 + Math.sin(t * 7.1) * 0.2 + 0.5) * 0.8;
-            try { cm.setParameterValueById('ParamMouthOpenY', Math.max(0, Math.min(1, openness))); } catch(e) {}
+            t += 1;
+            // Generate natural-looking mouth movement
+            _mouthTarget = (Math.sin(t * 0.25) * 0.35 + Math.sin(t * 0.41) * 0.25 + 0.5) * 0.9;
+            // Smooth interpolation
+            _mouthCurrent += (_mouthTarget - _mouthCurrent) * 0.3;
+            const val = Math.max(0, Math.min(1, _mouthCurrent));
+
+            // Method 1: Try direct coreModel parameter by index
+            try {
+                const cm = model.internalModel.coreModel;
+                // Find ParamMouthOpenY index
+                if (!window._mouthParamIdx && window._mouthParamIdx !== 0) {
+                    const count = cm.getParameterCount();
+                    for (let i = 0; i < count; i++) {
+                        if (cm.getParameterId(i) === 'ParamMouthOpenY') {
+                            window._mouthParamIdx = i;
+                            break;
+                        }
+                    }
+                }
+                if (window._mouthParamIdx !== undefined) {
+                    cm.setParameterValueByIndex(window._mouthParamIdx, val);
+                }
+            } catch(e) {}
+
+            // Method 2: Also try the lipSync property (some builds support this)
+            try {
+                if (model.internalModel.lipSync !== undefined) {
+                    model.internalModel.lipSync = true;
+                    model.internalModel.lipSyncValue = val;
+                }
+            } catch(e) {}
+
             _mouthAnimFrame = requestAnimationFrame(animate);
         }
-        stopMouthAnimation();
         animate();
     }
 
@@ -1228,6 +1260,21 @@ const AgentDetail = (function() {
             cancelAnimationFrame(_mouthAnimFrame);
             _mouthAnimFrame = null;
         }
+        _mouthTarget = 0;
+        _mouthCurrent = 0;
+        // Reset mouth to closed
+        try {
+            const model = window._live2dModel;
+            if (model) {
+                const cm = model.internalModel.coreModel;
+                if (window._mouthParamIdx !== undefined) {
+                    cm.setParameterValueByIndex(window._mouthParamIdx, 0);
+                }
+                if (model.internalModel.lipSync !== undefined) {
+                    model.internalModel.lipSyncValue = 0;
+                }
+            }
+        } catch(e) {}
     }
 
     function loadScript(src) {
