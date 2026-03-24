@@ -1450,7 +1450,7 @@ async def get_trending():
     # Hot Agents: by purchase count → available tokens → created_at
     cursor.execute("""
         SELECT a.agent_id, a.name, a.agent_type, a.description, a.avatar_url,
-               u.username as owner_name,
+               u.username as owner_name, a.price_per_chat,
                COALESCE(pt.purchase_count, 0) as purchase_count,
                COALESCE(tk.available_tokens, 0) as available_tokens
         FROM agents a
