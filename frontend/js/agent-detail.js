@@ -14,6 +14,60 @@ const AgentDetail = (function() {
     function getNs() { return (agentData && agentData.namespace) || 'default'; }
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
+    // ===== 通用自定义弹窗 =====
+    let _modalResolve = null;
+
+    function showModal(options) {
+        return new Promise((resolve) => {
+            _modalResolve = resolve;
+            const modal = document.getElementById('globalModal');
+            document.getElementById('modalTitle').textContent = options.title || '提示';
+            document.getElementById('modalBody').textContent = options.message || '';
+
+            const inputGroup = document.getElementById('modalInputGroup');
+            const input = document.getElementById('modalInput');
+            if (options.type === 'prompt') {
+                inputGroup.style.display = 'block';
+                document.getElementById('modalInputLabel').textContent = options.inputLabel || '';
+                input.value = options.inputDefault || '';
+                input.type = options.inputType || 'text';
+                setTimeout(() => input.focus(), 200);
+            } else {
+                inputGroup.style.display = 'none';
+            }
+
+            const confirmBtn = document.getElementById('modalConfirmBtn');
+            confirmBtn.textContent = options.confirmText || '确认';
+            if (options.confirmStyle === 'danger') {
+                confirmBtn.style.background = 'rgba(184,134,138,0.9)';
+            } else {
+                confirmBtn.style.background = 'rgba(109,168,155,0.9)';
+            }
+
+            input.onkeydown = (e) => { if (e.key === 'Enter') confirmModal(); };
+
+            modal.classList.add('show');
+        });
+    }
+
+    function closeModal() {
+        document.getElementById('globalModal').classList.remove('show');
+        if (_modalResolve) { _modalResolve(null); _modalResolve = null; }
+    }
+
+    function confirmModal() {
+        const modal = document.getElementById('globalModal');
+        const inputGroup = document.getElementById('modalInputGroup');
+        let result;
+        if (inputGroup.style.display !== 'none') {
+            result = document.getElementById('modalInput').value;
+        } else {
+            result = true;
+        }
+        modal.classList.remove('show');
+        if (_modalResolve) { _modalResolve(result); _modalResolve = null; }
+    }
+
     // ===== Init =====
     function init() {
         if (!requireAuth()) return;
@@ -769,7 +823,8 @@ const AgentDetail = (function() {
 
     async function deleteCurrentSession() {
         if (!currentSessionId) return;
-        if (!confirm('确定删除当前对话？所有消息将被永久删除。')) return;
+        const confirmed = await showModal({ title: '删除对话', message: '确定删除当前对话？所有消息将被永久删除。', confirmText: '删除', confirmStyle: 'danger' });
+        if (!confirmed) return;
 
         try {
             const r = await fetch('/api/agents/' + agentId + '/chat/sessions/' + currentSessionId, {
@@ -1052,7 +1107,8 @@ const AgentDetail = (function() {
     function resetConfig() { if (agentData) fillConfig(); }
 
     async function deleteAgent() {
-        if (!confirm('确定要删除该 Agent 吗？此操作不可撤销。')) return;
+        const confirmed = await showModal({ title: '删除 Agent', message: '确定要删除该 Agent 吗？此操作不可撤销。', confirmText: '删除', confirmStyle: 'danger' });
+        if (!confirmed) return;
         try {
             const r = await fetch('/api/agents/' + agentId, { method: 'DELETE', headers: hdrs() });
             if (!r.ok) throw new Error();
@@ -1272,7 +1328,8 @@ const AgentDetail = (function() {
     }
 
     async function deleteFact(factId) {
-        if (!confirm('确定删除此知识条目？此操作不可撤销，将同时删除图谱中的关联。')) return;
+        const confirmed = await showModal({ title: '删除知识条目', message: '确定删除此知识条目？此操作不可撤销，将同时删除图谱中的关联。', confirmText: '删除', confirmStyle: 'danger' });
+        if (!confirmed) return;
         const ns = getNs();
         try {
             const r = await fetch('/api/knowledge/' + ns + '/fact/' + factId, {
@@ -1294,7 +1351,8 @@ const AgentDetail = (function() {
             const currentPrivate = status.is_private;
             const newPrivate = !currentPrivate;
             const action = newPrivate ? '设为私有（Token 访客不可见）' : '设为公开';
-            if (!confirm('确定要将此条目' + action + '？')) return;
+            const confirmed = await showModal({ title: '隐私设置', message: '确定要将此条目' + action + '？' });
+            if (!confirmed) return;
 
             const r2 = await fetch('/api/knowledge/' + ns + '/privacy', {
                 method: 'POST', headers: jsonHdrs(),
@@ -1575,7 +1633,8 @@ const AgentDetail = (function() {
     }
 
     async function clearAvatar() {
-        if (!confirm('确定移除虚拟形象？')) return;
+        const confirmed = await showModal({ title: '移除虚拟形象', message: '确定移除当前虚拟形象？' });
+        if (!confirmed) return;
         try {
             const r = await fetch('/api/agents/' + agentId + '/avatar', {
                 method: 'PUT', headers: jsonHdrs(),
@@ -1622,7 +1681,8 @@ const AgentDetail = (function() {
         
         if (agentData.is_public === 1) {
             // Unpublish
-            if (!confirm('确定将此 Agent 设为私有？其他用户将无法访问。')) return;
+            const confirmed = await showModal({ title: '取消发布', message: '确定将此 Agent 设为私有？其他用户将无法访问。' });
+            if (!confirmed) return;
             try {
                 const r = await fetch('/api/agents/' + agentId + '/unpublish', { method: 'POST', headers: hdrs() });
                 if (!r.ok) throw new Error();
@@ -1632,7 +1692,7 @@ const AgentDetail = (function() {
             } catch { toast('操作失败', 'error'); }
         } else {
             // Publish — ask for price
-            const priceStr = prompt('设置每次对话的 ATP 价格（0 = 免费）：', '1');
+            const priceStr = await showModal({ title: '发布 Agent', message: '设置其他用户每次对话需要支付的 ATP 数量', type: 'prompt', inputLabel: '每次对话价格 (ATP)', inputDefault: '1', inputType: 'number', confirmText: '发布' });
             if (priceStr === null) return;
             const price = parseInt(priceStr);
             if (isNaN(price) || price < 0) { toast('请输入有效的价格', 'error'); return; }
@@ -1694,5 +1754,5 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal };
 })();

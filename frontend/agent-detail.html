@@ -767,6 +767,25 @@
             </div>
         </div>
 
+        <!-- 通用弹窗 -->
+        <div class="ov-modal-overlay" id="globalModal" onclick="AgentDetail.closeModal()">
+            <div class="ov-modal-content" style="max-width:400px;" onclick="event.stopPropagation()">
+                <div class="ov-modal-header">
+                    <h3 id="modalTitle">提示</h3>
+                    <button class="ov-modal-close" onclick="AgentDetail.closeModal()">×</button>
+                </div>
+                <div id="modalBody" style="margin-bottom:20px;color:var(--text-secondary);font-size:0.9em;line-height:1.6;"></div>
+                <div id="modalInputGroup" style="display:none;margin-bottom:20px;">
+                    <label id="modalInputLabel" style="display:block;color:var(--text-muted);font-size:0.82em;margin-bottom:8px;"></label>
+                    <input type="text" id="modalInput" style="width:100%;padding:10px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:var(--text-primary);font-size:0.9em;outline:none;transition:border-color 0.15s;" onfocus="this.style.borderColor='rgba(109,168,155,0.4)'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                </div>
+                <div class="ov-modal-actions" style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button id="modalCancelBtn" onclick="AgentDetail.closeModal()" style="padding:8px 20px;border-radius:8px;background:rgba(255,255,255,0.06);color:var(--text-secondary);border:1px solid rgba(255,255,255,0.1);cursor:pointer;font-size:0.85em;">取消</button>
+                    <button id="modalConfirmBtn" onclick="AgentDetail.confirmModal()" style="padding:8px 20px;border-radius:8px;background:rgba(109,168,155,0.9);color:#fff;border:none;cursor:pointer;font-size:0.85em;font-weight:600;">确认</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Edit Profile Modal -->
         <div class="ov-modal-overlay" id="editProfileModal">
             <div class="ov-modal-content">
