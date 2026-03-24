@@ -28,7 +28,11 @@ async def verify_namespace(
     namespace: str,
     authorization: str = Header(None),
 ):
-    """路由级别的 namespace 权限验证依赖"""
+    """路由级别的 namespace 权限验证依赖
+    
+    所有者：完全访问
+    其他已登录用户：仅限公开 Agent 的 chat/stream 和 stats
+    """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
 
@@ -41,17 +45,30 @@ async def verify_namespace(
 
     conn = get_db()
     cursor = conn.cursor()
+
+    # 先检查是否是所有者
     cursor.execute(
         "SELECT agent_id FROM agents WHERE owner_id = ? AND namespace = ? LIMIT 1",
         (user_id, namespace)
     )
+    if cursor.fetchone():
+        conn.close()
+        payload["_is_owner"] = True
+        return payload
+
+    # 非所有者：检查该 namespace 对应的 Agent 是否公开
+    cursor.execute(
+        "SELECT agent_id, is_public FROM agents WHERE namespace = ? LIMIT 1",
+        (namespace,)
+    )
     agent = cursor.fetchone()
     conn.close()
 
-    if not agent:
-        raise HTTPException(status_code=403, detail="无权访问此 namespace")
+    if agent and agent["is_public"] == 1:
+        payload["_is_owner"] = False
+        return payload
 
-    return payload
+    raise HTTPException(status_code=403, detail="无权访问此 namespace")
 
 
 # ==================== 请求模型 ====================
@@ -103,6 +120,12 @@ def _get_cogmate(namespace: str):
         raise HTTPException(status_code=503, detail="知识服务未配置，请先部署 Cogmate 基础设施")
     from cogmate_core import CogmateAgent
     return CogmateAgent(namespace=namespace)
+
+
+def _require_owner(user: dict):
+    """在写操作中调用，确保当前用户是 namespace 所有者"""
+    if not user.get("_is_owner"):
+        raise HTTPException(status_code=403, detail="仅所有者可执行此操作")
 
 
 def _get_agent_info(namespace: str) -> dict:
@@ -772,6 +795,7 @@ async def set_privacy(
     user: dict = Depends(verify_namespace),
 ):
     """设置实体隐私状态"""
+    _require_owner(user)
     from cogmate_core.privacy import (
         set_fact_private, set_abstract_private, get_privacy_status,
     )
@@ -811,6 +835,7 @@ async def set_privacy_batch(
     user: dict = Depends(verify_namespace),
 ):
     """批量设置实体隐私状态"""
+    _require_owner(user)
     from cogmate_core.privacy import (
         set_fact_private, set_abstract_private, get_privacy_status,
     )
@@ -900,6 +925,7 @@ async def update_fact(
     user: dict = Depends(verify_namespace),
 ):
     """更新 fact 的 summary（三库同步）"""
+    _require_owner(user)
     cogmate = _get_cogmate(namespace)
 
     # 先确认 fact 存在
@@ -971,6 +997,7 @@ async def delete_fact(
     user: dict = Depends(verify_namespace),
 ):
     """删除 fact（三库独立同步，确保每个库都执行）"""
+    _require_owner(user)
     cogmate = _get_cogmate(namespace)
 
     existing = cogmate.get_fact(fact_id)
@@ -1026,6 +1053,7 @@ async def action(
     user: dict = Depends(verify_namespace),
 ):
     """执行知识图谱操作"""
+    _require_owner(user)
     cogmate = _get_cogmate(namespace)
 
     if request.action == "create_relation":
@@ -1085,6 +1113,7 @@ async def update_profile(
     user: dict = Depends(verify_namespace),
 ):
     """更新 Agent 的 Profile 配置（含 persona）"""
+    _require_owner(user)
     try:
         from cogmate_core.profile_manager import ProfileManager
         pm = ProfileManager()
@@ -1166,6 +1195,7 @@ async def research_character_endpoint(
     user: dict = Depends(verify_namespace),
 ):
     """对 Character Agent 进行自动化调研（异步后台执行，立即返回 task_id）"""
+    _require_owner(user)
     # 验证是 character 类型
     conn = get_db()
     cursor = conn.cursor()
