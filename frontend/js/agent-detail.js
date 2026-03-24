@@ -1091,46 +1091,75 @@ const AgentDetail = (function() {
         const names = refInput.value.split(',').map(s => s.trim()).filter(Boolean);
         if (!names.length) { toast('请输入参考人物名称', 'error'); return; }
 
-        // Disable all research buttons
         const btns = document.querySelectorAll('#personaFields button[onclick*="startResearch"]');
         btns.forEach(b => b.disabled = true);
         statusEl.style.display = 'block';
         statusEl.style.color = 'var(--text-muted)';
-        const depthLabel = depth === 'deep' ? '深度' : '普通';
-        statusEl.textContent = '🔍 正在进行' + depthLabel + '调研（搜索 → 提取 → LLM 生成），预计 1-3 分钟...';
+        statusEl.textContent = '🔍 提交调研任务...';
 
         try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
-
+            // 提交任务（立即返回）
             const r = await fetch('/api/knowledge/' + ns + '/research-character', {
                 method: 'POST', headers: jsonHdrs(),
                 body: JSON.stringify({ reference_names: names, depth: depth }),
-                signal: controller.signal
+                timeout: 15000,
             });
-            clearTimeout(timeoutId);
-
             const d = await r.json();
-            if (r.ok) {
-                statusEl.style.color = '#6da89b';
-                statusEl.innerHTML = '✅ ' + esc(d.message || '调研完成') +
-                    (d.persona_summary?.traits ? '<br><span style="font-size:0.85em;color:var(--text-muted);">特征: ' + esc(d.persona_summary.traits.join(', ')) + '</span>' : '');
-                toast('调研完成，Persona 和知识已更新');
-                loadPersona();
-            } else {
+
+            if (!r.ok) {
                 statusEl.style.color = '#b8868a';
-                statusEl.textContent = '❌ ' + (d.detail || '调研失败');
+                statusEl.textContent = '❌ ' + (d.detail || '提交失败');
+                btns.forEach(b => b.disabled = false);
+                return;
             }
+
+            const taskId = d.task_id;
+            statusEl.textContent = '🔍 ' + (d.progress || '任务已启动，后台执行中...');
+
+            // 轮询进度
+            const pollInterval = setInterval(async () => {
+                try {
+                    const sr = await fetch('/api/knowledge/' + ns + '/research-character/status?task_id=' + taskId, { headers: hdrs() });
+                    if (!sr.ok) { clearInterval(pollInterval); btns.forEach(b => b.disabled = false); return; }
+                    const st = await sr.json();
+
+                    statusEl.textContent = st.progress || st.status;
+
+                    if (st.status === 'completed') {
+                        clearInterval(pollInterval);
+                        const res = st.result || {};
+                        statusEl.style.color = '#6da89b';
+                        statusEl.innerHTML = '✅ ' + esc(res.message || '调研完成') +
+                            (res.persona_summary?.traits ? '<br><span style="font-size:0.85em;color:var(--text-muted);">特征: ' + esc(res.persona_summary.traits.join(', ')) + '</span>' : '');
+                        toast('调研完成，Persona 和知识已更新');
+                        loadPersona();
+                        btns.forEach(b => b.disabled = false);
+                    } else if (st.status === 'failed') {
+                        clearInterval(pollInterval);
+                        statusEl.style.color = '#b8868a';
+                        statusEl.textContent = '❌ ' + (st.error || '调研失败');
+                        btns.forEach(b => b.disabled = false);
+                    }
+                } catch (e) {
+                    // 网络错误继续轮询
+                }
+            }, 3000); // 每 3 秒查一次
+
+            // 5 分钟超时保护
+            setTimeout(() => {
+                clearInterval(pollInterval);
+                btns.forEach(b => b.disabled = false);
+                if (statusEl.style.color !== 'rgb(109, 168, 155)') {
+                    statusEl.style.color = '#d4a574';
+                    statusEl.textContent = '⏱️ 调研仍在后台进行，可稍后刷新页面查看结果';
+                }
+            }, 300000);
+
         } catch (e) {
-            if (e.name === 'AbortError') {
-                statusEl.style.color = '#d4a574';
-                statusEl.textContent = '⏱️ 调研时间较长，请稍后刷新页面查看结果（后台仍在处理）';
-            } else {
-                statusEl.style.color = '#b8868a';
-                statusEl.textContent = '❌ 请求失败: ' + (e.message || '网络错误');
-            }
+            statusEl.style.color = '#b8868a';
+            statusEl.textContent = '❌ 请求失败: ' + (e.message || '网络错误');
+            btns.forEach(b => b.disabled = false);
         }
-        btns.forEach(b => b.disabled = false);
     }
 
     // ===== Detail Panel =====

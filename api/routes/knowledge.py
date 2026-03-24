@@ -1113,7 +1113,14 @@ async def update_profile(
         raise HTTPException(status_code=500, detail=f"更新 Profile 失败: {str(e)}")
 
 
-# ==================== Character 自动调研 ====================
+# ==================== Character 自动调研（异步后台执行）====================
+
+import asyncio as _asyncio
+import uuid as _uuid
+
+# 内存中的任务状态（重启后丢失，调研任务幂等可重跑）
+_research_tasks = {}  # task_id -> {status, progress, result, error, started_at, ...}
+
 
 class ResearchRequest(BaseModel):
     reference_names: list  # 参考人物名列表, e.g. ["Elon Musk"]
@@ -1126,7 +1133,7 @@ async def research_character_endpoint(
     request: ResearchRequest,
     user: dict = Depends(verify_namespace),
 ):
-    """对 Character Agent 进行自动化调研，填充 Persona 和知识库"""
+    """对 Character Agent 进行自动化调研（异步后台执行，立即返回 task_id）"""
     # 验证是 character 类型
     conn = get_db()
     cursor = conn.cursor()
@@ -1150,58 +1157,138 @@ async def research_character_endpoint(
     if not llm_config.get("api_key"):
         raise HTTPException(status_code=400, detail="请先在 Config 中配置 LLM API Key")
 
-    try:
-        from cogmate_core.character_research import (
-            research_character, apply_persona_to_profile, store_initial_knowledge,
-            discover_relations_with_llm, generate_abstracts_with_llm
-        )
+    # 检查是否已有进行中的调研任务
+    for tid, t in _research_tasks.items():
+        if t.get("namespace") == namespace and t.get("status") == "running":
+            return {"task_id": tid, "status": "running", "progress": t.get("progress", ""), "message": "已有调研任务进行中"}
 
-        # 1. 搜索 + 生成 Persona
-        result = research_character(
-            character_names=request.reference_names,
-            depth=request.depth,
-            llm_config=llm_config,
-            agent_name=agent_name,
-        )
+    # 创建后台任务
+    task_id = f"research_{_uuid.uuid4().hex[:8]}"
+    _research_tasks[task_id] = {
+        "status": "running",
+        "namespace": namespace,
+        "progress": "初始化...",
+        "result": None,
+        "error": None,
+        "started_at": datetime.now().isoformat(),
+    }
 
-        persona = result.get("persona")
-        if not persona:
-            raise HTTPException(status_code=500, detail="调研失败: 未生成 Persona")
+    async def _run_research():
+        task = _research_tasks[task_id]
+        try:
+            # 在线程池中运行同步阻塞代码，不阻塞事件循环
+            loop = _asyncio.get_event_loop()
+            result = await loop.run_in_executor(None, _do_research_sync,
+                namespace, request.reference_names, request.depth,
+                llm_config, agent_name, task_id)
+            task["status"] = "completed"
+            task["result"] = result
+            task["progress"] = "完成"
+        except Exception as e:
+            task["status"] = "failed"
+            task["error"] = str(e)
+            task["progress"] = f"失败: {str(e)[:100]}"
 
-        # 2. 应用 Persona 到 Profile
-        apply_persona_to_profile(namespace, persona, request.reference_names)
+    _asyncio.create_task(_run_research())
 
-        # 3. 存储知识到三库
-        stored = store_initial_knowledge(namespace, persona)
+    return {
+        "task_id": task_id,
+        "status": "running",
+        "progress": "初始化...",
+        "message": "调研任务已启动，请通过 status 接口查询进度",
+    }
 
-        # 4. LLM 分析关联关系 → 自动创建 Graph 边
-        relations_created = discover_relations_with_llm(
-            namespace, llm_config=llm_config, agent_name=agent_name)
 
-        # 5. LLM 归纳总结 → 自动生成 Tree 抽象层
-        abstracts_created = generate_abstracts_with_llm(
-            namespace, llm_config=llm_config, agent_name=agent_name)
+def _do_research_sync(namespace, reference_names, depth, llm_config, agent_name, task_id):
+    """同步执行调研（在线程池中运行）"""
+    task = _research_tasks.get(task_id, {})
 
-        return {
-            "success": True,
-            "persona_summary": {
-                "era": persona.era,
-                "traits": persona.traits,
-                "speaking_style": persona.speaking_style[:100],
-                "core_beliefs_count": len(persona.core_beliefs),
-                "quotes_count": len(persona.famous_quotes),
-            },
-            "knowledge_stored": stored,
-            "relations_created": relations_created,
-            "abstracts_created": abstracts_created,
-            "sources": result.get("sources", []),
-            "message": f"调研完成。已存储 {stored} 条知识、创建 {relations_created} 条关联、生成 {abstracts_created} 个抽象主题。"
-        }
+    from cogmate_core.character_research import (
+        research_character, apply_persona_to_profile, store_initial_knowledge,
+        discover_relations_with_llm, generate_abstracts_with_llm
+    )
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"调研失败: {str(e)}")
+    # 1. 搜索 + 生成 Persona
+    task["progress"] = "🔍 搜索资料 + 生成 Persona..."
+    result = research_character(
+        character_names=reference_names,
+        depth=depth,
+        llm_config=llm_config,
+        agent_name=agent_name,
+    )
+
+    persona = result.get("persona")
+    if not persona:
+        raise Exception("未生成 Persona")
+
+    # 2. 应用 Persona 到 Profile
+    task["progress"] = "📝 应用 Persona..."
+    apply_persona_to_profile(namespace, persona, reference_names)
+
+    # 3. 存储知识到三库
+    task["progress"] = "💾 存储知识到三库..."
+    stored = store_initial_knowledge(namespace, persona)
+
+    # 4. LLM 分析关联关系
+    task["progress"] = "🔗 发现关联关系..."
+    relations_created = discover_relations_with_llm(
+        namespace, llm_config=llm_config, agent_name=agent_name)
+
+    # 5. LLM 归纳总结
+    task["progress"] = "🌳 生成抽象层..."
+    abstracts_created = generate_abstracts_with_llm(
+        namespace, llm_config=llm_config, agent_name=agent_name)
+
+    return {
+        "success": True,
+        "persona_summary": {
+            "era": persona.era,
+            "traits": persona.traits,
+            "speaking_style": persona.speaking_style[:100],
+            "core_beliefs_count": len(persona.core_beliefs),
+            "quotes_count": len(persona.famous_quotes),
+        },
+        "knowledge_stored": stored,
+        "relations_created": relations_created,
+        "abstracts_created": abstracts_created,
+        "sources": result.get("sources", []),
+        "message": f"调研完成。已存储 {stored} 条知识、创建 {relations_created} 条关联、生成 {abstracts_created} 个抽象主题。"
+    }
+
+
+@router.get("/research-character/status")
+async def research_status(
+    namespace: str,
+    task_id: str = Query(...),
+    user: dict = Depends(verify_namespace),
+):
+    """查询调研任务进度"""
+    task = _research_tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在（可能服务已重启）")
+    if task.get("namespace") != namespace:
+        raise HTTPException(status_code=403, detail="无权查看")
+
+    response = {
+        "task_id": task_id,
+        "status": task["status"],
+        "progress": task.get("progress", ""),
+        "started_at": task.get("started_at"),
+    }
+    if task["status"] == "completed":
+        response["result"] = task["result"]
+    if task["status"] == "failed":
+        response["error"] = task["error"]
+
+    # 清理已完成超过 10 分钟的任务
+    now = datetime.now()
+    to_clean = [tid for tid, t in _research_tasks.items()
+                if t["status"] in ("completed", "failed") and
+                (now - datetime.fromisoformat(t["started_at"])).seconds > 600]
+    for tid in to_clean:
+        del _research_tasks[tid]
+
+    return response
 
 
 # ==================== 公开 Token 认证 (访客页面) ====================
