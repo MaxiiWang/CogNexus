@@ -674,6 +674,43 @@ const AgentDetail = (function() {
         const el = document.getElementById(lid);
         let fullText = '';
 
+        // Typewriter queue: characters arrive from SSE, rendered with delay
+        let charQueue = [];
+        let typewriterRunning = false;
+        let streamDone = false;
+
+        async function typewriterLoop() {
+            if (typewriterRunning) return;
+            typewriterRunning = true;
+            if (window.avatarCallback) window.avatarCallback('speaking');
+
+            while (charQueue.length > 0 || !streamDone) {
+                if (charQueue.length > 0) {
+                    // Render in small batches for efficiency
+                    const batchSize = Math.min(charQueue.length, 2);
+                    for (let i = 0; i < batchSize; i++) {
+                        fullText += charQueue.shift();
+                    }
+                    el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                    msgs.scrollTop = msgs.scrollHeight;
+                    await new Promise(r => setTimeout(r, 30));
+                } else {
+                    // Queue empty but stream not done, wait a bit
+                    await new Promise(r => setTimeout(r, 50));
+                }
+            }
+
+            // Drain remaining
+            if (charQueue.length > 0) {
+                fullText += charQueue.join('');
+                charQueue = [];
+                el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                msgs.scrollTop = msgs.scrollHeight;
+            }
+
+            typewriterRunning = false;
+        }
+
         try {
             const url = '/api/knowledge/' + getNs() + '/chat/stream?q=' + encodeURIComponent(q);
             const resp = await fetch(url, { headers: hdrs() });
@@ -693,34 +730,40 @@ const AgentDetail = (function() {
             const decoder = new TextDecoder();
             let buffer = '';
 
+            // Start typewriter consumer
+            const typewriterPromise = typewriterLoop();
+
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
                 buffer += decoder.decode(value, { stream: true });
                 const lines = buffer.split('\n');
-                buffer = lines.pop(); // keep incomplete line
+                buffer = lines.pop();
 
                 for (const line of lines) {
                     if (!line.startsWith('data: ')) continue;
                     try {
                         const ev = JSON.parse(line.slice(6));
                         if (ev.type === 'content') {
-                            if (window.avatarCallback) window.avatarCallback('speaking');
-                            fullText += ev.text;
-                            el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
-                            msgs.scrollTop = msgs.scrollHeight;
+                            // Push characters into queue
+                            for (const ch of ev.text) charQueue.push(ch);
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
                         }
                     } catch {}
                 }
             }
+
+            streamDone = true;
+            await typewriterPromise;
         } catch (e) {
+            streamDone = true;
             if (!fullText) {
                 el.style.color = '#b8868a';
                 el.textContent = '请求失败，请重试';
             }
         } finally {
+            streamDone = true;
             if (window.avatarCallback) window.avatarCallback('idle');
             btn.disabled = false;
             btn.textContent = '发送';
