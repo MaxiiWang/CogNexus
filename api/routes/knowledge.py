@@ -105,6 +105,24 @@ def _get_cogmate(namespace: str):
     return CogmateAgent(namespace=namespace)
 
 
+def _safe_query(namespace: str, query_text: str, top_k: int = 5, min_score: float = 0.5) -> dict:
+    """安全查询 — 空知识库/不存在的 collection 返回空结果而非崩溃"""
+    try:
+        cogmate = _get_cogmate(namespace)
+        return cogmate.query(query_text=query_text, top_k=top_k, min_score=min_score)
+    except Exception:
+        return {"vector_results": [], "graph_results": []}
+
+
+def _safe_stats(namespace: str) -> dict:
+    """安全统计 — 空知识库返回零值"""
+    try:
+        cogmate = _get_cogmate(namespace)
+        return cogmate.stats()
+    except Exception:
+        return {"total_facts": 0, "graph_nodes": 0, "graph_edges": 0, "by_type": {}}
+
+
 def _get_agent_llm_config(namespace: str) -> dict:
     """获取 Agent 的 LLM 配置（从 agents 表的 llm_config 字段）"""
     try:
@@ -309,8 +327,7 @@ async def search(
     user: dict = Depends(verify_namespace),
 ):
     """知识语义搜索"""
-    cogmate = _get_cogmate(namespace)
-    results = cogmate.query(q, top_k=20)
+    results = _safe_query(namespace, q, top_k=20)
 
     vector_results = results.get("vector_results", [])[:10]
 
@@ -361,10 +378,14 @@ async def chat_stream(
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # 检索知识库
-        cogmate = _get_cogmate(namespace)
-        results = cogmate.query(query_text=message, top_k=5, min_score=0.5)
-        vector_results = results.get("vector_results", [])
+        # 检索知识库（空知识库不应崩溃）
+        try:
+            cogmate = _get_cogmate(namespace)
+            results = cogmate.query(query_text=message, top_k=5, min_score=0.5)
+            vector_results = results.get("vector_results", [])
+        except Exception as e:
+            # Collection 不存在或知识库为空
+            vector_results = []
 
         yield f"data: {json.dumps({'type': 'meta', 'sources_count': len(vector_results)})}\n\n"
 
@@ -403,8 +424,7 @@ async def get_stats(
     user: dict = Depends(verify_namespace),
 ):
     """获取知识库统计概览"""
-    cogmate = _get_cogmate(namespace)
-    stats = cogmate.stats()
+    stats = _safe_stats(namespace)
 
     return {
         "total_facts": stats["total_facts"],
@@ -438,14 +458,9 @@ async def ask(
     user: dict = Depends(verify_namespace),
 ):
     """知识问答服务"""
-    cogmate = _get_cogmate(namespace)
 
-    # 语义搜索
-    results = cogmate.query(
-        query_text=request.question,
-        top_k=request.max_sources * 2,
-        min_score=0.5,
-    )
+    # 语义搜索（空知识库不崩溃）
+    results = _safe_query(namespace, request.question, top_k=request.max_sources * 2, min_score=0.5)
 
     vector_results = results.get("vector_results", [])[:request.max_sources]
 
@@ -480,10 +495,9 @@ async def ask_stream(
     user: dict = Depends(verify_namespace),
 ):
     """流式问答 API（Server-Sent Events）"""
-    cogmate = _get_cogmate(namespace)
 
-    # 语义搜索
-    results = cogmate.query(query_text=q, top_k=10, min_score=0.5)
+    # 语义搜索（空知识库不崩溃）
+    results = _safe_query(namespace, q, top_k=10, min_score=0.5)
     vector_results = results.get("vector_results", [])[:5]
 
     async def event_stream():
@@ -523,8 +537,7 @@ async def ask_stats(
     user: dict = Depends(verify_namespace),
 ):
     """查询问答统计"""
-    cogmate = _get_cogmate(namespace)
-    stats = cogmate.stats()
+    stats = _safe_stats(namespace)
 
     return {
         "namespace": namespace,
@@ -1245,8 +1258,7 @@ async def public_stats(namespace: str, token: str = Query(...)):
     if info.get("namespace") != namespace:
         raise HTTPException(status_code=403, detail="Token 与 namespace 不匹配")
 
-    cogmate = _get_cogmate(namespace)
-    stats = cogmate.stats()
+    stats = _safe_stats(namespace)
 
     return {
         "total_facts": stats["total_facts"],
