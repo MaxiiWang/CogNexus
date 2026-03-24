@@ -132,6 +132,11 @@
         const nav = document.querySelector('.nav-links');
         const btn = document.getElementById('mobileMenuToggle');
         if (nav) {
+            // Move nav-links to body on first open (fixes sticky/nav stacking context)
+            if (!nav.dataset.moved && window.innerWidth <= 768) {
+                document.body.appendChild(nav);
+                nav.dataset.moved = '1';
+            }
             nav.classList.toggle('mobile-open');
             btn.classList.toggle('active');
         }
