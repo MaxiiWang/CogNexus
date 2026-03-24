@@ -1448,7 +1448,10 @@
                 // Fetch details for each (to get participants and rounds)
                 const mySims = await Promise.all(mySimsBasic.map(async s => {
                     try {
-                        const r = await fetch(`/api/simulations/${s.simulation_id}`);
+                        const r = await fetch(`/api/simulations/${s.simulation_id}`, {
+                            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                        });
+                        if (!r.ok) return s;
                         return await r.json();
                     } catch { return s; }
                 }));
