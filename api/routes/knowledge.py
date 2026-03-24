@@ -543,6 +543,7 @@ async def chat_stream(
                 full_response = "".join(collected_response)
                 conn_save = get_db()
                 now = datetime.now().isoformat()
+                src_count = len(vector_results) if vector_results else 0
                 # 保存用户消息
                 conn_save.execute("""
                     INSERT INTO chat_messages (message_id, session_id, role, content, created_at)
@@ -553,7 +554,7 @@ async def chat_stream(
                     conn_save.execute("""
                         INSERT INTO chat_messages (message_id, session_id, role, content, sources_count, created_at)
                         VALUES (?, ?, 'assistant', ?, ?, ?)
-                    """, (f"msg_{_uuid.uuid4().hex[:12]}", session_id, full_response, 0, now))
+                    """, (f"msg_{_uuid.uuid4().hex[:12]}", session_id, full_response, src_count, now))
                 # 更新 session
                 conn_save.execute("""
                     UPDATE chat_sessions SET updated_at = ?, message_count = message_count + 2,
