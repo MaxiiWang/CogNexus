@@ -469,7 +469,8 @@ async def chat_stream(
                     base_url = provider_urls.get(provider, "https://api.openai.com/v1")
 
                 async with _httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
+                    async with client.stream(
+                        "POST",
                         f"{base_url.rstrip('/')}/chat/completions",
                         headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
                         json={
@@ -480,28 +481,29 @@ async def chat_stream(
                             ],
                             "stream": True,
                         },
-                    )
+                    ) as resp:
 
-                    if resp.status_code != 200:
-                        yield f"data: {json.dumps({'type': 'error', 'message': f'LLM 请求失败: {resp.status_code}'})}\n\n"
-                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
-                        return
+                        if resp.status_code != 200:
+                            await resp.aread()
+                            yield f"data: {json.dumps({'type': 'error', 'message': f'LLM 请求失败: {resp.status_code}'})}\n\n"
+                            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                            return
 
-                    async for line in resp.aiter_lines():
-                        if not line.startswith("data: "):
-                            continue
-                        chunk_data = line[6:]
-                        if chunk_data.strip() == "[DONE]":
-                            break
-                        try:
-                            import json as _json
-                            chunk_obj = _json.loads(chunk_data)
-                            delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
-                            text = delta.get("content", "")
-                            if text:
-                                yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
-                        except Exception:
-                            pass
+                        async for line in resp.aiter_lines():
+                            if not line.startswith("data: "):
+                                continue
+                            chunk_data = line[6:]
+                            if chunk_data.strip() == "[DONE]":
+                                break
+                            try:
+                                import json as _json
+                                chunk_obj = _json.loads(chunk_data)
+                                delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
+                                text = delta.get("content", "")
+                                if text:
+                                    yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
+                            except Exception:
+                                pass
 
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
