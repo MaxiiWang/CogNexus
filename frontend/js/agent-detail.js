@@ -1732,7 +1732,7 @@ const AgentDetail = (function() {
         try {
             const r = await fetch('/api/knowledge/' + getNs() + '/store-suggestion', {
                 method: 'POST', headers: jsonHdrs(),
-                body: JSON.stringify({ summary: summary, content_type: '网络参考' })
+                body: JSON.stringify({ summary: summary, content_type: '资讯' })
             });
             const d = await r.json();
             if (d.success) {
