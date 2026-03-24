@@ -594,6 +594,9 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
     existing_llm = json.loads(existing_llm_raw) if existing_llm_raw else {}
     if not new_llm.get("api_key") and existing_llm.get("api_key"):
         new_llm["api_key"] = existing_llm["api_key"]
+    # Always trim api_key whitespace
+    if new_llm.get("api_key"):
+        new_llm["api_key"] = new_llm["api_key"].strip()
     llm_config_str = json.dumps(new_llm)
     
     cursor.execute("""
