@@ -831,6 +831,7 @@ async def chat_stream(
         else:
             try:
                 import httpx as _httpx
+                import asyncio as _llm_asyncio
                 system_prompt = _build_dynamic_system_prompt(namespace, vector_results, chat_config, context_messages)
                 
                 provider = llm_cfg.get("provider", "")
@@ -845,42 +846,69 @@ async def chat_stream(
                     base_url = provider_urls.get(provider, "https://api.openai.com/v1")
                 
                 max_tokens = chat_config.get("max_tokens", 2000)
-                
-                async with _httpx.AsyncClient(timeout=60.0) as client:
-                    async with client.stream(
-                        "POST",
-                        f"{base_url.rstrip('/')}/chat/completions",
-                        headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
-                        json={
-                            "model": llm_cfg.get("model", "gpt-4o-mini"),
-                            "messages": [
-                                {"role": "system", "content": system_prompt},
-                                *context_messages,
-                                {"role": "user", "content": message},
-                            ],
-                            "stream": True,
-                            "max_tokens": max_tokens,
-                        },
-                    ) as resp:
-                        if resp.status_code != 200:
-                            await resp.aread()
-                            yield f"data: {json.dumps({'type': 'error', 'message': f'LLM 请求失败: {resp.status_code}'})}\n\n"
-                        else:
-                            async for line in resp.aiter_lines():
-                                if not line.startswith("data: "):
-                                    continue
-                                chunk_data = line[6:]
-                                if chunk_data.strip() == "[DONE]":
-                                    break
-                                try:
-                                    chunk_obj = json.loads(chunk_data)
-                                    delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
-                                    text = delta.get("content", "")
-                                    if text:
-                                        collected_response.append(text)
-                                        yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
-                                except Exception:
-                                    pass
+
+                # 用 Queue 实现心跳保活：后台任务发 LLM 请求，主循环发心跳 + 转发 chunk
+                chunk_queue = _llm_asyncio.Queue()
+
+                async def _fetch_llm():
+                    try:
+                        async with _httpx.AsyncClient(timeout=90.0) as client:
+                            async with client.stream(
+                                "POST",
+                                f"{base_url.rstrip('/')}/chat/completions",
+                                headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
+                                json={
+                                    "model": llm_cfg.get("model", "gpt-4o-mini"),
+                                    "messages": [
+                                        {"role": "system", "content": system_prompt},
+                                        *context_messages,
+                                        {"role": "user", "content": message},
+                                    ],
+                                    "stream": True,
+                                    "max_tokens": max_tokens,
+                                },
+                            ) as resp:
+                                if resp.status_code != 200:
+                                    await resp.aread()
+                                    await chunk_queue.put(("error", f"LLM 请求失败: {resp.status_code}"))
+                                else:
+                                    async for line in resp.aiter_lines():
+                                        if not line.startswith("data: "):
+                                            continue
+                                        chunk_data = line[6:]
+                                        if chunk_data.strip() == "[DONE]":
+                                            break
+                                        try:
+                                            chunk_obj = json.loads(chunk_data)
+                                            delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
+                                            text = delta.get("content", "")
+                                            if text:
+                                                await chunk_queue.put(("content", text))
+                                        except Exception:
+                                            pass
+                    except Exception as e:
+                        await chunk_queue.put(("error", str(e)))
+                    await chunk_queue.put(("done", None))
+
+                # 启动后台 LLM 任务
+                _llm_asyncio.create_task(_fetch_llm())
+
+                # 主循环：发心跳 + 转发 chunk
+                while True:
+                    try:
+                        msg_type, msg_data = await _llm_asyncio.wait_for(chunk_queue.get(), timeout=5.0)
+                        if msg_type == "content":
+                            collected_response.append(msg_data)
+                            yield f"data: {json.dumps({'type': 'content', 'text': msg_data})}\n\n"
+                        elif msg_type == "error":
+                            yield f"data: {json.dumps({'type': 'error', 'message': msg_data})}\n\n"
+                            break
+                        elif msg_type == "done":
+                            break
+                    except _llm_asyncio.TimeoutError:
+                        # 5 秒没收到 chunk → 发心跳注释保活
+                        yield ": heartbeat\n\n"
+
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
