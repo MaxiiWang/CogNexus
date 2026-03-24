@@ -185,13 +185,10 @@ const AgentDetail = (function() {
             }
         } catch {}
 
-        // 非所有者：只显示概览和对话 Tab
-        if (!isOwner) {
-            document.querySelectorAll('.detail-tab').forEach(tab => {
-                const t = tab.dataset.tab;
-                if (t && t !== 'overview' && t !== 'chat') {
-                    tab.style.display = 'none';
-                }
+        // 所有者：显示所有 owner-only 元素
+        if (isOwner) {
+            document.querySelectorAll('.owner-only').forEach(el => {
+                el.style.display = '';
             });
         }
     }

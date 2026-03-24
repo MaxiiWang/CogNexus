@@ -647,13 +647,13 @@
             <button class="detail-tab" data-tab="chat">
                 <span>💬</span> <span data-i18n="agent.tab_chat">Chat</span>
             </button>
-            <button class="detail-tab" data-tab="knowledge">
+            <button class="detail-tab owner-only" data-tab="knowledge" style="display:none;">
                 <span data-i18n="agent.tab_knowledge">Knowledge</span>
             </button>
-            <button class="detail-tab" data-tab="config">
+            <button class="detail-tab owner-only" data-tab="config" style="display:none;">
                 <span data-i18n="agent.tab_config">Config</span>
             </button>
-            <button class="detail-tab" data-tab="usage">
+            <button class="detail-tab owner-only" data-tab="usage" style="display:none;">
                 <span data-i18n="agent.tab_usage">Usage</span>
             </button>
         </div>
@@ -698,9 +698,9 @@
                 </div>
             </div>
 
-            <!-- c) View Cards -->
-            <div class="ov-section-label animate-in ov-delay-2">功能入口</div>
-            <div class="ov-view-cards animate-in ov-delay-2">
+            <!-- c) View Cards (owner only) -->
+            <div class="ov-section-label animate-in ov-delay-2 owner-only" style="display:none;">功能入口</div>
+            <div class="ov-view-cards animate-in ov-delay-2 owner-only" style="display:none;">
                 <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('graph')">
                     <div class="ov-card-icon">🕸️</div>
                     <h3>Graph View</h3>
