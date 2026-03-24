@@ -1122,6 +1122,10 @@ footer {
         padding: 0;
     }
 
+    .nav-links .user-menu.active {
+        display: block !important;
+    }
+
     .nav-links .user-menu .user-dropdown {
         width: 100%;
     }

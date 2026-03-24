@@ -706,10 +706,13 @@ async def chat_stream(
                 pass
 
         def yield_suggestions():
-            """生成网络搜索建议存入事件（在 done 之前调用）"""
-            if web_suggestions:
-                return f"data: {json.dumps({'type': 'suggestions', 'items': web_suggestions}, ensure_ascii=False)}\n\n"
-            return ""
+            """生成网络搜索建议存入事件（仅 owner 与自己的 Human Agent 对话时）"""
+            if not web_suggestions:
+                return ""
+            # 只有 owner 才能存入知识
+            if not user.get("_is_owner"):
+                return ""
+            return f"data: {json.dumps({'type': 'suggestions', 'items': web_suggestions}, ensure_ascii=False)}\n\n"
 
         # 网络搜索增强（开启后始终搜索，作为知识库的补充而非仅 fallback）
         web_suggestions = []
@@ -881,6 +884,9 @@ async def chat_stream(
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
         save_messages()
+        sg = yield_suggestions()
+        if sg:
+            yield sg
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

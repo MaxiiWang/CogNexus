@@ -559,6 +559,21 @@
                 display: flex !important;
             }
             #mobileChatToggle { display: flex; }
+
+            /* Chat session bar: compact on mobile */
+            .chat-layout #chatArea > div:first-child {
+                flex-wrap: wrap !important;
+                gap: 6px !important;
+                padding: 8px 12px !important;
+            }
+            .chat-layout #chatArea select {
+                min-width: 0 !important;
+                font-size: 0.8em !important;
+            }
+            .chat-layout #chatArea button {
+                padding: 6px 10px !important;
+                font-size: 0.75em !important;
+            }
         }
         .animate-in {
             animation: ov-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
