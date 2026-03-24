@@ -978,9 +978,10 @@ const AgentDetail = (function() {
                                 '<div style="font-size:0.75em;color:rgba(226,185,106,0.6);margin-bottom:8px;">📰 发现新信息，是否存入知识库？</div>' +
                                 ev.items.map((item, i) => {
                                     const text = (item.summary || '').replace(/^\[网络\]\s*/, '');
+                                    const sugIdx = 'sug_item_' + Date.now() + '_' + i;
                                     return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(226,185,106,0.06);border:1px solid rgba(226,185,106,0.15);border-radius:8px;margin-bottom:6px;">' +
-                                        '<div style="flex:1;font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;">' + esc(text) + '</div>' +
-                                        '<button onclick="AgentDetail.storeSuggestion(this,\'' + esc(text).replace(/'/g, "\\'") + '\')" style="flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;">存入</button>' +
+                                        '<div style="flex:1;font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;" id="' + sugIdx + '">' + esc(text) + '</div>' +
+                                        '<button onclick="AgentDetail.storeSuggestion(this,document.getElementById(\'' + sugIdx + '\').textContent)" style="flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;">存入</button>' +
                                         '</div>';
                                 }).join('') +
                                 '</div>';
