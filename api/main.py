@@ -35,6 +35,13 @@ limiter = Limiter(key_func=get_remote_address)
 # 初始化数据库
 init_db()
 
+# 预加载 embedding 模型（配合 uvicorn --preload，fork 前加载一次，worker 共享内存）
+try:
+    from cogmate_core.config import get_embedder
+    get_embedder()
+except Exception as e:
+    print(f"⚠️ Embedding 预加载跳过: {e}")
+
 app = FastAPI(
     title="CogNexus - 分布式认知枢纽",
     description="连接 Human、Character、Simulate",
