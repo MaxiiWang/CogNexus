@@ -990,13 +990,22 @@
         loadStats();
         loadTrending();
 
-        // Auto-open login modal if ?login=1
-        const _params = new URLSearchParams(window.location.search);
-        if (_params.get('login') === '1') {
-            showModal('login');
-        } else if (_params.get('register') === '1') {
-            showModal('register');
-        }
+        // Auto-open login modal if ?login=1 (with delay to ensure DOM ready)
+        setTimeout(() => {
+            const _params = new URLSearchParams(window.location.search);
+            if (_params.get('login') === '1' && !checkAuth()) {
+                showModal('login');
+                showAlert('info', typeof I18N !== 'undefined' ? I18N.t('auth.login_required') : '请先登录后再继续操作');
+            } else if (_params.get('register') === '1' && !checkAuth()) {
+                showModal('register');
+            } else if (_params.get('redirect') && checkAuth()) {
+                // Already logged in, redirect immediately
+                const redirectUrl = _params.get('redirect');
+                if (redirectUrl && redirectUrl.startsWith('/')) {
+                    window.location.href = redirectUrl;
+                }
+            }
+        }, 200);
     </script>
 
     <!-- Google tag (gtag.js) -->
