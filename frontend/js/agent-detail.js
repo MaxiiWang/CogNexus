@@ -967,6 +967,20 @@ const AgentDetail = (function() {
                             fullText += ev.text;
                             el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
                             msgs.scrollTop = msgs.scrollHeight;
+                        } else if (ev.type === 'suggestions' && ev.items && ev.items.length > 0) {
+                            // Render suggestion cards after the AI bubble
+                            const sugId = 'sug-' + Date.now();
+                            msgs.innerHTML += '<div id="' + sugId + '" style="align-self:flex-start;max-width:85%;margin-top:4px;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);">' +
+                                '<div style="font-size:0.75em;color:rgba(226,185,106,0.6);margin-bottom:8px;">📰 发现新信息，是否存入知识库？</div>' +
+                                ev.items.map((item, i) => {
+                                    const text = (item.summary || '').replace(/^\[网络\]\s*/, '');
+                                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(226,185,106,0.06);border:1px solid rgba(226,185,106,0.15);border-radius:8px;margin-bottom:6px;">' +
+                                        '<div style="flex:1;font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;">' + esc(text) + '</div>' +
+                                        '<button onclick="AgentDetail.storeSuggestion(this,\'' + esc(text).replace(/'/g, "\\'") + '\')" style="flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;">存入</button>' +
+                                        '</div>';
+                                }).join('') +
+                                '</div>';
+                            msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
                         }
@@ -1708,6 +1722,35 @@ const AgentDetail = (function() {
         input.value = '';
     }
 
+    async function storeSuggestion(btn, summary) {
+        btn.disabled = true;
+        btn.textContent = '...';
+        try {
+            const r = await fetch('/api/knowledge/' + getNs() + '/store-suggestion', {
+                method: 'POST', headers: jsonHdrs(),
+                body: JSON.stringify({ summary: summary, content_type: '网络参考' })
+            });
+            const d = await r.json();
+            if (d.success) {
+                btn.textContent = '✅ 已存入';
+                btn.style.background = 'rgba(109,168,155,0.3)';
+                btn.style.cursor = 'default';
+            } else if (d.duplicate) {
+                btn.textContent = '⚠️ 已有相似';
+                btn.style.background = 'rgba(226,185,106,0.2)';
+                btn.style.color = '#e2b96a';
+                btn.title = d.similar_fact || '';
+                btn.style.cursor = 'default';
+            } else {
+                btn.textContent = '❌ 失败';
+                btn.disabled = false;
+            }
+        } catch(e) {
+            btn.textContent = '❌ 失败';
+            btn.disabled = false;
+        }
+    }
+
     async function clearAvatar() {
         const confirmed = await showModal({ title: '移除虚拟形象', message: '确定移除当前虚拟形象？' });
         if (!confirmed) return;
@@ -1830,5 +1873,5 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, storeSuggestion };
 })();

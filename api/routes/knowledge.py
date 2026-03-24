@@ -678,6 +678,9 @@ async def chat_stream(
             collected_response.append(result)
             yield f"data: {json.dumps({'type': 'content', 'text': result})}\n\n"
             save_messages()
+            sg = yield_suggestions()
+            if sg:
+                yield sg
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -702,11 +705,19 @@ async def chat_stream(
             except Exception:
                 pass
 
+        def yield_suggestions():
+            """生成网络搜索建议存入事件（在 done 之前调用）"""
+            if web_suggestions:
+                return f"data: {json.dumps({'type': 'suggestions', 'items': web_suggestions}, ensure_ascii=False)}\n\n"
+            return ""
+
         # 网络搜索增强（开启后始终搜索，作为知识库的补充而非仅 fallback）
+        web_suggestions = []
         if chat_config.get("enable_web_search"):
             try:
                 web_results = _web_search_fallback(message)
                 if web_results:
+                    web_suggestions = [{"summary": w["summary"], "content_type": w["content_type"]} for w in web_results]
                     vector_results = vector_results + web_results
             except Exception:
                 pass
@@ -722,6 +733,9 @@ async def chat_stream(
             collected_response.append('📭 知识库中暂无相关内容。')
             yield f"data: {json.dumps({'type': 'content', 'text': '📭 知识库中暂无相关内容。'})}\n\n"
             save_messages()
+            sg = yield_suggestions()
+            if sg:
+                yield sg
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -794,6 +808,9 @@ async def chat_stream(
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
             save_messages()
+            sg = yield_suggestions()
+            if sg:
+                yield sg
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -1203,6 +1220,52 @@ async def update_fact(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+
+class StoreSuggestionRequest(BaseModel):
+    summary: str
+    content_type: str = "网络参考"
+
+
+@router.post("/store-suggestion")
+async def store_suggestion(
+    namespace: str,
+    request: StoreSuggestionRequest,
+    user: dict = Depends(verify_namespace),
+):
+    """存入建议的知识条目（带去重检查）"""
+    _require_owner(user)
+    
+    # 去重检查：向量相似度 > 0.85 视为重复
+    try:
+        cogmate = _get_cogmate(namespace)
+        existing = cogmate.query(query_text=request.summary, top_k=1, min_score=0.85)
+        if existing.get("vector_results"):
+            similar = existing["vector_results"][0]
+            return {
+                "success": False,
+                "duplicate": True,
+                "similar_fact": similar.get("summary", "")[:80],
+                "message": "知识库中已有相似内容，跳过存入",
+            }
+    except Exception:
+        pass
+    
+    # 存入三库
+    try:
+        cogmate = _get_cogmate(namespace)
+        result = cogmate.store(
+            request.summary,
+            content_type=request.content_type,
+            source_type="web_suggested",
+        )
+        return {
+            "success": True,
+            "fact_id": result.get("fact_id", ""),
+            "message": "已存入知识库",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"存入失败: {str(e)}")
 
 
 @router.delete("/fact/{fact_id}")
