@@ -101,10 +101,13 @@
 
 html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
 }
 
 body {
     background: var(--bg-primary);
+    overflow-x: hidden;
+    max-width: 100vw;
     color: var(--text-primary);
     font-family: var(--font-sans);
     line-height: 1.6;
