@@ -550,6 +550,42 @@
             .hero-buttons { flex-direction: column; align-items: center; }
             .oss-header { flex-direction: column; align-items: flex-start; }
             .oss-badges { margin-left: 0; }
+            .modal-content {
+                width: 95vw !important;
+                max-width: none !important;
+                margin: 16px;
+                padding: 24px 20px !important;
+                border-radius: 16px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-content h2 {
+                font-size: 1.3em;
+            }
+            .modal-content .form-group label {
+                font-size: 0.85em;
+            }
+            .modal-content .form-group input,
+            .modal-content .form-group select,
+            .modal-content .form-group textarea {
+                padding: 12px 14px;
+                font-size: 1em;
+            }
+            .modal-buttons {
+                flex-direction: column;
+                gap: 8px;
+            }
+            .modal-buttons .btn {
+                width: 100%;
+                padding: 14px;
+                font-size: 1em;
+            }
+            .alert-toast, [class*="alert"] {
+                right: 16px !important;
+                left: 16px !important;
+                max-width: none !important;
+                text-align: center;
+            }
         }
     </style>
 </head>
@@ -947,6 +983,12 @@
             const alert = document.createElement('div');
             alert.className = `alert alert-${type}`;
             alert.textContent = message;
+            if (window.innerWidth <= 768) {
+                alert.style.left = '16px';
+                alert.style.right = '16px';
+                alert.style.maxWidth = 'none';
+                alert.style.textAlign = 'center';
+            }
             document.body.appendChild(alert);
             setTimeout(() => alert.remove(), 3000);
         }
@@ -977,13 +1019,13 @@
             });
         })();
 
-        // Override header auth buttons
-        setTimeout(() => {
-            const loginBtn = document.getElementById('headerLoginBtn');
-            if (loginBtn) { loginBtn.href = '#'; loginBtn.onclick = (e) => { e.preventDefault(); showModal('login'); }; }
-            const regBtn = document.getElementById('headerRegisterBtn');
-            if (regBtn) { regBtn.href = '#'; regBtn.onclick = (e) => { e.preventDefault(); showModal('register'); }; }
-        }, 100);
+        // Override header auth buttons (works even after nav-links moved to body)
+        document.addEventListener('click', function(e) {
+            const loginBtn = e.target.closest('#headerLoginBtn');
+            const regBtn = e.target.closest('#headerRegisterBtn');
+            if (loginBtn) { e.preventDefault(); showModal('login'); }
+            if (regBtn) { e.preventDefault(); showModal('register'); }
+        });
 
         // Init
         checkAuth();
