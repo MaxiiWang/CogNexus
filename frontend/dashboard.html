@@ -1258,8 +1258,9 @@
             editingAgentId = null;
             document.getElementById('createAgentForm').reset();
             // Reset type selection visual
-            document.querySelectorAll('#createAgentForm label[style*="border"]').forEach(l => l.style.borderColor = 'var(--border-subtle)');
-            document.querySelector('#createAgentForm label:first-of-type')?.style && (document.querySelectorAll('#createAgentForm input[name="agent_type"]')[0].closest('label').style.borderColor = 'var(--accent-primary)');
+            // Reset agent type selector
+            const typeSelect = document.getElementById('newAgentType');
+            if (typeSelect) typeSelect.value = 'human';
             document.getElementById('createAgentTitle').textContent = '✨ 新建 Agent';
             document.getElementById('createAgentSubmitBtn').textContent = '✨ 创建';
             document.getElementById('createAgentModal').classList.add('active');
