@@ -962,8 +962,12 @@ const AgentDetail = (function() {
                     if (!line.startsWith('data: ')) continue;
                     try {
                         const ev = JSON.parse(line.slice(6));
-                        if (ev.type === 'content' && ev.text) {
+                        if (ev.type === 'thinking') {
+                            el.innerHTML = '<span style="color:rgba(226,185,106,0.6);font-size:0.85em;">💭 ' + esc(ev.text || '思考中...') + '</span>';
+                            if (window.avatarCallback) window.avatarCallback('thinking');
+                        } else if (ev.type === 'content' && ev.text) {
                             markSpeaking();
+                            if (!fullText) el.innerHTML = ''; // clear thinking indicator
                             fullText += ev.text;
                             el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
                             msgs.scrollTop = msgs.scrollHeight;

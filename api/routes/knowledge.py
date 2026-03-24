@@ -726,6 +726,7 @@ async def chat_stream(
                 pass
 
         yield f"data: {json.dumps({'type': 'meta', 'sources_count': len(vector_results)})}\n\n"
+        yield f"data: {json.dumps({'type': 'thinking', 'text': '正在思考...'})}\n\n"
 
         agent_info = _get_agent_info(namespace)
         is_character = agent_info.get("agent_type") == "character"
