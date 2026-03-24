@@ -1160,8 +1160,8 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
 
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type, 
-                           endpoint_url, avatar_url, tags, namespace, llm_config)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           endpoint_url, avatar_url, tags, namespace, llm_config, is_public)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     """, (agent_id, user["user_id"], data.name, data.description, 
           data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace, llm_config_str))
     
