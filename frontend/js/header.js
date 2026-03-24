@@ -13,6 +13,9 @@
         <div class="container">
             <nav>
                 <a href="/" class="logo">CogNexus<span class="dot">.</span></a>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" onclick="toggleMobileMenu()">
+                    <span></span><span></span><span></span>
+                </button>
                 <div class="nav-links">
                     <a href="/marketplace"${isActive('/marketplace') ? ' class="active"' : ''}><span data-i18n="nav.market">市场</span></a>
                     <a href="/simulation"${isActive('/simulation') ? ' class="active"' : ''}><span data-i18n="nav.simulation">Simulation</span></a>
@@ -125,4 +128,22 @@
     if (typeof I18N !== 'undefined' && I18N.apply) {
         I18N.apply();
     }
+    window.toggleMobileMenu = function() {
+        const nav = document.querySelector('.nav-links');
+        const btn = document.getElementById('mobileMenuToggle');
+        if (nav) {
+            nav.classList.toggle('mobile-open');
+            btn.classList.toggle('active');
+        }
+    };
+
+    // Close menu when clicking a link
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.nav-links a') || e.target.closest('.nav-links button')) {
+            const nav = document.querySelector('.nav-links');
+            const btn = document.getElementById('mobileMenuToggle');
+            if (nav) nav.classList.remove('mobile-open');
+            if (btn) btn.classList.remove('active');
+        }
+    });
 })();

@@ -525,7 +525,7 @@
             .chat-layout { flex-direction: column !important; }
             .chat-layout #avatarPanel {
                 width: 100% !important; min-width: 0 !important;
-                max-height: 240px !important; border-right: none !important;
+                max-height: 200px !important; border-right: none !important;
                 border-bottom: 1px solid rgba(255,255,255,0.04) !important;
             }
         }
@@ -570,11 +570,24 @@
             .agent-header {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: var(--space-md);
+                gap: 12px;
+            }
+            .agent-header-right {
+                width: 100%;
+                justify-content: flex-start;
             }
 
             .detail-tabs {
                 overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+                scrollbar-width: none;
+            }
+            .detail-tabs::-webkit-scrollbar {
+                display: none;
+            }
+            .detail-tab {
+                flex-shrink: 0;
             }
 
             .ov-profile {
@@ -583,12 +596,16 @@
                 text-align: center;
             }
 
-            .ov-stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .ov-view-cards {
+                grid-template-columns: 1fr 1fr !important;
             }
 
-            .ov-view-cards {
-                grid-template-columns: 1fr;
+            .ov-stat-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
+
+            .ov-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .ov-chat-card {
@@ -601,6 +618,42 @@
             .ov-features-list { justify-content: center; }
 
             .ov-form-row { flex-direction: column; }
+
+            /* Config sections */
+            .config-section .form-row {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Usage stats cards */
+            #tab-usage .config-section > div:first-child {
+                flex-direction: column;
+            }
+
+            /* Detail panel */
+            #knowledgeDetailPanel {
+                width: 100% !important;
+            }
+
+            /* Modal */
+            .ov-modal-content {
+                width: 95% !important;
+                max-width: none !important;
+                padding: 20px !important;
+            }
+
+            /* Preset avatar grid */
+            #presetAvatarGrid {
+                grid-template-columns: repeat(3, 1fr) !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .ov-view-cards {
+                grid-template-columns: 1fr !important;
+            }
+            #presetAvatarGrid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
         }
     </style>
     <script type="importmap">
