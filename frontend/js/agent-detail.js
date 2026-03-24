@@ -615,23 +615,29 @@ const AgentDetail = (function() {
     function renderChat(box, ld, em) {
         if (ld && ld.style) ld.style.display = 'none';
 
+        // Show avatar panel if model available
+        const avatarPanel = document.getElementById('avatarPanel');
+        if (avatarPanel && agentData && agentData.avatar_model_url) {
+            avatarPanel.style.display = 'flex';
+            const nameEl = document.getElementById('avatarNameText');
+            if (nameEl) nameEl.textContent = agentData.name || '';
+        }
+
         box.style.display = 'flex';
         box.style.flexDirection = 'column';
         box.style.height = '100%';
 
         box.innerHTML =
-            '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;">' +
-            '<span style="font-size:1.2em;">💬</span>' +
-            '<span style="font-family:Playfair Display,Georgia,serif;color:#e2b96a;font-weight:700;">知识问答</span>' +
-            '<span style="color:#6b665e;font-size:0.8em;">基于已存储知识回答</span></div>' +
-            '<div id="avatarContainer" style="display:flex;justify-content:center;padding:16px 0;background:linear-gradient(180deg,rgba(30,32,37,1) 0%,rgba(26,26,34,0.5) 100%);border-bottom:1px solid rgba(255,255,255,0.04);min-height:200px;max-height:280px;overflow:hidden;' + (agentData && agentData.avatar_model_url ? '' : 'display:none;') + '">' +
-            '<canvas id="avatarCanvas" style="max-height:260px;"></canvas>' +
-            '</div>' +
-            '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;">' +
-            '<div style="text-align:center;color:#6b665e;padding:40px 0;font-size:0.88em;">输入问题，开始对话</div></div>' +
-            '<div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;">' +
-            '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;color:#e8e4df;font-size:0.9em;outline:none;">' +
-            '<button id="chatSendBtn" style="background:#6da89b;color:#fff;border:none;border-radius:8px;padding:10px 18px;cursor:pointer;font-weight:600;font-size:0.9em;transition:background 0.15s;" onmouseover="this.style.background=\'#5e9488\'" onmouseout="this.style.background=\'#6da89b\'">发送</button></div>';
+            '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">' +
+            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:12px;">' +
+            '<div style="width:48px;height:48px;border-radius:50%;background:rgba(109,168,155,0.12);display:flex;align-items:center;justify-content:center;font-size:1.4em;">💬</div>' +
+            '<div style="font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.95em;color:rgba(232,228,223,0.5);text-align:center;line-height:1.6;">与 <span style="color:rgba(226,185,106,0.8);font-weight:600;">' + esc(agentData ? agentData.name : '') + '</span> 的知识库对话<br><span style="font-size:0.85em;color:rgba(255,255,255,0.25);">基于已存储的知识进行问答</span></div>' +
+            '</div></div>' +
+            '<div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);">' +
+            '<div style="display:flex;gap:12px;align-items:flex-end;">' +
+            '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
+            '<button id="chatSendBtn" style="background:rgba(109,168,155,0.9);color:#fff;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:\'DM Sans\',\'Inter\',sans-serif;font-weight:600;font-size:0.88em;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);letter-spacing:0.02em;" onmouseover="this.style.background=\'rgba(109,168,155,1)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.9)\';this.style.transform=\'none\'">发送</button>' +
+            '</div></div>';
 
         document.getElementById('chatSendBtn').addEventListener('click', sendChat);
         document.getElementById('chatInput').addEventListener('keydown', e => {
@@ -651,14 +657,18 @@ const AgentDetail = (function() {
         if (window.avatarCallback) window.avatarCallback('thinking');
 
         // Clear welcome message on first send
-        if (msgs.querySelector('div[style*="text-align:center"]')) msgs.innerHTML = '';
+        if (msgs.querySelector('div[style*="flex-direction:column"]')) msgs.innerHTML = '';
 
         // User bubble
-        msgs.innerHTML += '<div style="align-self:flex-end;background:rgba(109,168,155,0.15);color:#e8e4df;padding:10px 14px;border-radius:12px 12px 2px 12px;max-width:80%;font-size:0.9em;line-height:1.5;">' + esc(q) + '</div>';
+        msgs.innerHTML += '<div style="align-self:flex-end;max-width:75%;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);">' +
+            '<div style="background:rgba(109,168,155,0.12);color:rgba(232,228,223,0.95);padding:12px 16px;border-radius:16px 16px 4px 16px;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;line-height:1.6;letter-spacing:0.01em;">' + esc(q) + '</div></div>';
 
         // AI bubble (will be streamed into)
         const lid = 'ld-' + Date.now();
-        msgs.innerHTML += '<div id="' + lid + '" style="align-self:flex-start;background:rgba(255,255,255,0.03);color:#e8e4df;padding:12px 16px;border-radius:12px 12px 12px 2px;max-width:80%;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);min-height:20px;"></div>';
+        const agentName = agentData ? agentData.name : 'AI';
+        msgs.innerHTML += '<div style="align-self:flex-start;max-width:80%;animation:fadeUp 0.25s cubic-bezier(0.16,1,0.3,1);">' +
+            '<div style="font-size:0.72em;color:rgba(226,185,106,0.6);margin-bottom:6px;font-weight:600;letter-spacing:0.03em;">' + esc(agentName) + '</div>' +
+            '<div id="' + lid + '" style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);min-height:24px;letter-spacing:0.01em;"></div></div>';
         msgs.scrollTop = msgs.scrollHeight;
 
         const el = document.getElementById(lid);
@@ -1104,9 +1114,9 @@ const AgentDetail = (function() {
     async function initLive2D() {
         if (!agentData || !agentData.avatar_model_url) return;
 
-        const container = document.getElementById('avatarContainer');
+        const panel = document.getElementById('avatarPanel');
         const canvas = document.getElementById('avatarCanvas');
-        if (!container || !canvas) return;
+        if (!panel || !canvas) return;
 
         // Load Cubism 4 Core + pixi.js + pixi-live2d-display (order matters!)
         if (!window.Live2DCubismCore) {
@@ -1120,29 +1130,31 @@ const AgentDetail = (function() {
         }
 
         try {
+            const panelW = panel.clientWidth || 320;
+            const panelH = panel.clientHeight || 500;
+
             const app = new PIXI.Application({
                 view: canvas,
                 autoStart: true,
                 backgroundAlpha: 0,
-                width: 280,
-                height: 260,
+                width: panelW,
+                height: panelH,
                 antialias: true,
             });
 
             const model = await PIXI.live2d.Live2DModel.from(agentData.avatar_model_url);
 
-            // Scale and position
-            const scale = Math.min(260 / model.height, 280 / model.width) * 0.8;
+            // Scale to fill panel nicely
+            const scale = Math.min(panelH / model.height, panelW / model.width) * 0.85;
             model.scale.set(scale);
-            model.x = (280 - model.width * scale) / 2;
-            model.y = (260 - model.height * scale) / 2;
-
-            // Enable auto interaction (eye tracking)
             model.anchor.set(0.5, 0.5);
-            model.x = 140;
-            model.y = 140;
+            model.x = panelW / 2;
+            model.y = panelH / 2;
 
             app.stage.addChild(model);
+
+            // Interactive — eyes follow mouse
+            model.interactive = true;
 
             // Start idle motion
             try {
@@ -1154,6 +1166,7 @@ const AgentDetail = (function() {
             window._live2dApp = app;
 
             // Set up avatar state callback
+            const statusEl = document.getElementById('avatarStatusText');
             window.avatarCallback = function(state) {
                 if (!window._live2dModel) return;
                 const m = window._live2dModel;
@@ -1164,21 +1177,24 @@ const AgentDetail = (function() {
                     case 'thinking':
                         stopMouthAnimation();
                         try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
+                        if (statusEl) { statusEl.textContent = '● 思考中...'; statusEl.style.color = 'rgba(226,185,106,0.5)'; }
                         break;
                     case 'speaking':
                         startMouthAnimation();
+                        if (statusEl) { statusEl.textContent = '● 回答中'; statusEl.style.color = 'rgba(109,168,155,0.6)'; }
                         break;
                     case 'idle':
                         stopMouthAnimation();
                         try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
                         try { m.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
+                        if (statusEl) { statusEl.textContent = '● 在线'; statusEl.style.color = 'rgba(255,255,255,0.35)'; }
                         break;
                 }
             };
 
         } catch(e) {
             console.error('Live2D init error:', e);
-            container.style.display = 'none';
+            panel.style.display = 'none';
         }
     }
 
