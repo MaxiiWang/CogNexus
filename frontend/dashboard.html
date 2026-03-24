@@ -726,11 +726,11 @@
 
     <!-- Create Agent Modal -->
     <div class="modal" id="createAgentModal">
-        <div class="modal-content" style="max-width: 480px;">
+        <div class="modal-content" style="max-width: 520px;">
             <h2 id="createAgentTitle">✨ 新建 Agent</h2>
             <form id="createAgentForm" onsubmit="handleCreateAgent(event)">
                 <div class="form-group">
-                    <label>名称</label>
+                    <label>名称 *</label>
                     <input type="text" name="name" required placeholder="给你的 Agent 起个名字">
                 </div>
                 <div class="form-group">
@@ -744,8 +744,29 @@
                         <option value="character">🎭 Character — 角色扮演</option>
                     </select>
                 </div>
-                <div style="font-size:0.8em;color:var(--text-muted);background:var(--bg-secondary);padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:var(--space-md);">
-                    💡 创建后可在 Agent Detail 中配置 LLM、IM 连接、Persona 等高级设置
+
+                <div class="sim-config-section" style="margin-bottom:var(--space-md);padding:14px 16px;background:var(--bg-secondary);border-radius:var(--radius-md);border:1px solid var(--border-subtle);">
+                    <div style="font-size:0.88em;font-weight:600;color:var(--text-primary);margin-bottom:10px;">🤖 大模型配置 <span style="font-size:0.8em;font-weight:400;color:var(--text-muted);">（用于对话和知识问答）</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;" id="agentLlmPresets">
+                        <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-seed-2-0-lite-260215" onclick="selectAgentLLMPreset(this)">🌋 Doubao Lite</button>
+                        <button type="button" class="llm-preset-btn" data-provider="doubao" data-base="https://ark.cn-beijing.volces.com/api/v3" data-model="doubao-1-5-pro-32k-250115" onclick="selectAgentLLMPreset(this)">🌋 Doubao Pro</button>
+                        <button type="button" class="llm-preset-btn" data-provider="deepseek" data-base="https://api.deepseek.com/v1" data-model="deepseek-chat" onclick="selectAgentLLMPreset(this)">🐋 DeepSeek</button>
+                        <button type="button" class="llm-preset-btn" data-provider="custom" onclick="selectAgentLLMPreset(this)">⚙️ 自定义</button>
+                    </div>
+                    <div id="agentLlmCustomFields" style="display:none;margin-bottom:8px;">
+                        <input type="url" id="agentLlmEndpoint" placeholder="Base URL (OpenAI compatible)" style="width:100%;padding:8px 12px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85em;margin-bottom:4px;">
+                        <input type="text" id="agentLlmModelCustom" placeholder="Model name" style="width:100%;padding:8px 12px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85em;">
+                    </div>
+                    <div id="agentLlmKeyGroup" style="display:none;">
+                        <input type="password" id="agentLlmApiKey" placeholder="API Key" style="width:100%;padding:8px 12px;background:var(--bg-tertiary);border:1px solid var(--border-subtle);border-radius:var(--radius-sm);color:var(--text-primary);font-size:0.85em;">
+                    </div>
+                    <input type="hidden" id="agentLlmProvider" value="">
+                    <input type="hidden" id="agentLlmBase" value="">
+                    <input type="hidden" id="agentLlmModel" value="">
+                </div>
+
+                <div style="font-size:0.78em;color:var(--text-muted);padding:8px 12px;border-radius:var(--radius-sm);margin-bottom:var(--space-md);line-height:1.5;">
+                    💡 创建后仍可在 Agent 详情页修改大模型配置、Persona、虚拟形象等设置
                 </div>
                 <div class="modal-buttons">
                     <button type="button" class="btn btn-secondary" onclick="hideModal()">取消</button>
@@ -1254,13 +1275,36 @@
             }
         }
 
+        // Agent LLM preset selection
+        function selectAgentLLMPreset(btn) {
+            document.querySelectorAll('#agentLlmPresets .llm-preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const provider = btn.dataset.provider;
+            document.getElementById('agentLlmProvider').value = provider;
+            if (provider === 'custom') {
+                document.getElementById('agentLlmCustomFields').style.display = 'block';
+                document.getElementById('agentLlmBase').value = '';
+                document.getElementById('agentLlmModel').value = '';
+            } else {
+                document.getElementById('agentLlmCustomFields').style.display = 'none';
+                document.getElementById('agentLlmBase').value = btn.dataset.base || '';
+                document.getElementById('agentLlmModel').value = btn.dataset.model || '';
+            }
+            document.getElementById('agentLlmKeyGroup').style.display = 'block';
+        }
+
         function showCreateAgent() {
             editingAgentId = null;
             document.getElementById('createAgentForm').reset();
-            // Reset type selection visual
-            // Reset agent type selector
             const typeSelect = document.getElementById('newAgentType');
             if (typeSelect) typeSelect.value = 'human';
+            // Reset LLM preset
+            document.querySelectorAll('#agentLlmPresets .llm-preset-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('agentLlmKeyGroup').style.display = 'none';
+            document.getElementById('agentLlmCustomFields').style.display = 'none';
+            document.getElementById('agentLlmProvider').value = '';
+            document.getElementById('agentLlmBase').value = '';
+            document.getElementById('agentLlmModel').value = '';
             document.getElementById('createAgentTitle').textContent = '✨ 新建 Agent';
             document.getElementById('createAgentSubmitBtn').textContent = '✨ 创建';
             document.getElementById('createAgentModal').classList.add('active');
@@ -1383,12 +1427,28 @@
 
             const agentType = form.agent_type.value || 'human';
 
+            // Build LLM config from preset selection
+            const llmProvider = document.getElementById('agentLlmProvider').value;
+            const llmConfig = {};
+            if (llmProvider) {
+                llmConfig.provider = llmProvider;
+                if (llmProvider === 'custom') {
+                    llmConfig.endpoint = document.getElementById('agentLlmEndpoint').value;
+                    llmConfig.model = document.getElementById('agentLlmModelCustom').value;
+                } else {
+                    llmConfig.model = document.getElementById('agentLlmModel').value;
+                }
+                const apiKey = document.getElementById('agentLlmApiKey').value;
+                if (apiKey) llmConfig.api_key = apiKey;
+            }
+
             const data = {
                 name: form.name.value,
                 description: form.description.value || '',
                 agent_type: agentType,
                 endpoint_url: 'http://localhost:8081',
                 namespace: form.name.value.toLowerCase().replace(/[^a-z0-9_-]/g, '_').slice(0, 32) || 'default',
+                llm_config: JSON.stringify(llmConfig),
             };
 
             try {
