@@ -742,7 +742,7 @@ const AgentDetail = (function() {
             // Input area
             '<div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);">' +
             '<div style="display:flex;gap:12px;align-items:flex-end;">' +
-            '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
+            '<input id="chatInput" type="text" placeholder="输入你的问题..." autocomplete="off" autocorrect="off" name="chat-message-' + Date.now() + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
             '<button id="chatSendBtn" style="background:rgba(109,168,155,0.9);color:#fff;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;font-size:0.88em;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);" onmouseover="this.style.background=\'rgba(109,168,155,1)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.9)\'">发送</button>' +
             '</div></div>';
 
@@ -918,7 +918,7 @@ const AgentDetail = (function() {
         const agentName = agentData ? agentData.name : 'AI';
         msgs.innerHTML += '<div style="align-self:flex-start;max-width:80%;animation:fadeUp 0.25s cubic-bezier(0.16,1,0.3,1);">' +
             '<div style="font-size:0.72em;color:rgba(226,185,106,0.6);margin-bottom:6px;font-weight:600;letter-spacing:0.03em;">' + esc(agentName) + '</div>' +
-            '<div id="' + lid + '" style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);min-height:24px;letter-spacing:0.01em;"></div></div>';
+            '<div id="' + lid + '" style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);min-height:24px;letter-spacing:0.01em;"><span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></div></div>';
         msgs.scrollTop = msgs.scrollHeight;
 
         const el = document.getElementById(lid);
@@ -963,7 +963,7 @@ const AgentDetail = (function() {
                     try {
                         const ev = JSON.parse(line.slice(6));
                         if (ev.type === 'thinking') {
-                            el.innerHTML = '<span style="color:rgba(226,185,106,0.6);font-size:0.85em;">💭 ' + esc(ev.text || '思考中...') + '</span>';
+                            el.innerHTML = '<span style="color:rgba(226,185,106,0.6);font-size:0.85em;">💭 ' + esc(ev.text || '思考中') + '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></span>';
                             if (window.avatarCallback) window.avatarCallback('thinking');
                         } else if (ev.type === 'content' && ev.text) {
                             markSpeaking();

@@ -1114,8 +1114,12 @@ footer {
 
     .nav-links .auth-buttons {
         padding: 14px 24px;
-        display: flex;
         gap: 10px;
+    }
+
+    /* 移动端菜单中，已登录/未登录的显示由 JS inline style 控制 */
+    .nav-links .auth-buttons:not([style*="none"]) {
+        display: flex !important;
     }
 
     .nav-links .user-menu {
@@ -1124,6 +1128,10 @@ footer {
 
     .nav-links .user-menu.active {
         display: block !important;
+    }
+
+    .nav-links .user-menu.active .user-dropdown-trigger {
+        display: flex;
     }
 
     .nav-links .user-menu .user-dropdown {
