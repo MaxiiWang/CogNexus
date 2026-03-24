@@ -585,7 +585,7 @@
                     <div class="step-item">
                         <div class="step-num">🌐</div>
                         <h4 data-i18n="home.step4_title">Share & Explore</h4>
-                        <p data-i18n="home.step4_desc">Share your knowledge via Tokens, visualize with Graph, Tree, and Timeline views</p>
+                        <p data-i18n="home.step4_desc">Publish your Agent, let others chat with your knowledge base</p>
                     </div>
                 </div>
             </div>
@@ -594,7 +594,7 @@
         <!-- ===== 2. Trending ===== -->
         <section class="trending">
             <div class="container">
-                <h2 class="animate-in" data-i18n="home.trending_title">🔥 Trending on Wielding.ai</h2>
+                <h2 class="animate-in" data-i18n="home.trending_title" style="display:none;"></h2>
                 <div class="trending-grid">
                     <div class="trending-col">
                         <h3>🏆 <span data-i18n="home.hot_agents">Hot Agents</span></h3>
@@ -643,7 +643,7 @@
                     <div class="feature-card animate-in animate-in-delay-3">
                         <div class="feature-icon">🌐</div>
                         <h3 data-i18n="home.layer_simulation">Visualization & Sharing</h3>
-                        <p data-i18n="home.sim_desc_full">Visualize your knowledge with force-directed Graph view, hierarchical Tree view (abstraction layer), and Timeline. Share access via scoped Tokens (browse / Q&A / full). Supports multiple LLM providers: Anthropic, OpenAI, DeepSeek, and Doubao.</p>
+                        <p data-i18n="home.sim_desc_full">Visualize your knowledge with force-directed Graph view, hierarchical Tree view (abstraction layer), and Timeline. Publish your Agent and let others chat — pay-per-conversation with ATP. Supports multiple LLM providers: Anthropic, OpenAI, DeepSeek, and Doubao.</p>
                     </div>
                 </div>
             </div>
@@ -725,11 +725,11 @@
                     </div>
                     <div class="faq-item animate-in animate-in-delay-3">
                         <div class="faq-question" onclick="toggleFaq(this)">
-                            <span data-i18n="home.faq4_q">How does Token sharing work?</span>
+                            <span data-i18n="home.faq4_q">How does Agent monetization work?</span>
                             <span class="faq-toggle">+</span>
                         </div>
                         <div class="faq-answer">
-                            <div class="faq-answer-inner" data-i18n="home.faq4_a">Tokens are scoped access credentials for your knowledge base. There are three permission levels: browse_public (view only), qa_public (limited Q&A), and full (complete access). You can generate Tokens for any Agent and share them with others. Token holders can access your Agent based on the granted permissions.</div>
+                            <div class="faq-answer-inner" data-i18n="home.faq4_a">Publish your Agent and set a per-conversation ATP price. Other users spend ATP to chat with your Agent, and you earn ATP revenue automatically. New users receive 100 ATP on registration. You can also set your Agent as free to maximize reach.</div>
                         </div>
                     </div>
                     <div class="faq-item animate-in animate-in-delay-3">
@@ -849,14 +849,14 @@
                 const typeIcon = a.agent_type === 'human' ? '👤' : a.agent_type === 'character' ? '🎭' : '🔮';
                 const typeClass = a.agent_type || 'human';
                 return `
-                <div class="trending-item">
+                <a href="/agent-detail?id=${a.agent_id}&tab=chat" class="trending-item" style="text-decoration:none;color:inherit;cursor:pointer;">
                     <div class="trending-rank ${i < 3 ? 'rank-' + (i+1) : ''}">${i+1}</div>
                     <div class="trending-info">
                         <h4>${typeIcon} ${escHtml(a.name)}</h4>
-                        <p>${escHtml(a.owner_name)} · ${a.purchase_count || 0} purchases</p>
+                        <p>${escHtml(a.owner_name)} · ${a.price_per_chat ? a.price_per_chat + ' ATP/次' : '免费对话'}</p>
                     </div>
                     <span class="trending-badge ${typeClass}">${capitalize(typeClass)}</span>
-                </div>`;
+                </a>`;
             }).join('');
         }
 
