@@ -704,7 +704,7 @@ async def update_fact(
 
         # 3. Qdrant (re-embed + upsert)
         agent = CogmateAgent(namespace=namespace)
-        vector = agent._embed(new_summary)
+        vector = agent.embed(new_summary)
         client = get_qdrant()
         client.upsert(
             collection_name=get_collection_name(namespace),
