@@ -1086,30 +1086,32 @@ footer {
     }
 
     .nav-links {
-        display: none;
+        display: none !important;
         position: fixed;
-        top: 60px;
+        top: 56px;
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(10, 10, 15, 0.98);
+        background: #0a0a0f;
         backdrop-filter: blur(12px);
         flex-direction: column;
         align-items: stretch;
         gap: 0;
-        z-index: 1000;
-        padding: var(--space-md) 0;
+        z-index: 9999;
+        padding: 8px 0;
         overflow-y: auto;
     }
 
     .nav-links.mobile-open {
-        display: flex;
+        display: flex !important;
     }
 
-    .nav-links a {
-        font-size: 0.95em;
-        padding: 14px 24px;
-        border-bottom: 1px solid rgba(255,255,255,0.04);
+    .nav-links > a {
+        display: block !important;
+        font-size: 1em;
+        padding: 16px 24px;
+        color: var(--text-secondary) !important;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
     }
 
     .nav-links .auth-buttons {

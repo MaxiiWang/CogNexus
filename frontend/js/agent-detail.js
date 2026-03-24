@@ -742,7 +742,7 @@ const AgentDetail = (function() {
             // Input area
             '<div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);">' +
             '<div style="display:flex;gap:12px;align-items:flex-end;">' +
-            '<input id="chatInput" type="text" placeholder="输入你的问题..." autocomplete="off" autocorrect="off" name="chat-message-' + Date.now() + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
+            '<input id="chatInput" type="search" placeholder="输入你的问题..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" role="presentation" data-form-type="other" name="q' + Date.now() + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
             '<button id="chatSendBtn" style="background:rgba(109,168,155,0.9);color:#fff;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;font-size:0.88em;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);" onmouseover="this.style.background=\'rgba(109,168,155,1)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.9)\'">发送</button>' +
             '</div></div>';
 
@@ -963,7 +963,7 @@ const AgentDetail = (function() {
                     try {
                         const ev = JSON.parse(line.slice(6));
                         if (ev.type === 'thinking') {
-                            el.innerHTML = '<span style="color:rgba(226,185,106,0.6);font-size:0.85em;">💭 ' + esc(ev.text || '思考中') + '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></span>';
+                            el.innerHTML = '<span style="color:rgba(226,185,106,0.6);font-size:0.85em;">💭 ' + esc((ev.text || '思考中').replace(/\.{2,}$/, '')) + '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span></span>';
                             if (window.avatarCallback) window.avatarCallback('thinking');
                         } else if (ev.type === 'content' && ev.text) {
                             markSpeaking();
