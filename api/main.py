@@ -1518,6 +1518,11 @@ app.include_router(settings_router)
 
 
 # 静态资源
+# Avatar model files (Live2D etc.)
+AVATARS_PATH = Path(__file__).parent.parent / "data" / "avatars"
+AVATARS_PATH.mkdir(parents=True, exist_ok=True)
+app.mount("/avatars", StaticFiles(directory=AVATARS_PATH), name="avatars")
+
 app.mount("/static", StaticFiles(directory=FRONTEND_PATH), name="static")
 
 

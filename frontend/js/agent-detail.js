@@ -53,6 +53,7 @@ const AgentDetail = (function() {
         chatInitialized = true;
         const box = document.getElementById('chatArea');
         renderChat(box, {style:{}}, {style:{}});
+        initLive2D();
     }
 
     function setupViewSwitcher() {
@@ -623,6 +624,9 @@ const AgentDetail = (function() {
             '<span style="font-size:1.2em;">💬</span>' +
             '<span style="font-family:Playfair Display,Georgia,serif;color:#e2b96a;font-weight:700;">知识问答</span>' +
             '<span style="color:#6b665e;font-size:0.8em;">基于已存储知识回答</span></div>' +
+            '<div id="avatarContainer" style="display:flex;justify-content:center;padding:16px 0;background:linear-gradient(180deg,rgba(30,32,37,1) 0%,rgba(26,26,34,0.5) 100%);border-bottom:1px solid rgba(255,255,255,0.04);min-height:200px;max-height:280px;overflow:hidden;' + (agentData && agentData.avatar_model_url ? '' : 'display:none;') + '">' +
+            '<canvas id="avatarCanvas" style="max-height:260px;"></canvas>' +
+            '</div>' +
             '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;">' +
             '<div style="text-align:center;color:#6b665e;padding:40px 0;font-size:0.88em;">输入问题，开始对话</div></div>' +
             '<div style="padding:12px 16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;">' +
@@ -644,6 +648,7 @@ const AgentDetail = (function() {
         inp.value = '';
         btn.disabled = true;
         btn.textContent = '...';
+        if (window.avatarCallback) window.avatarCallback('thinking');
 
         // Clear welcome message on first send
         if (msgs.querySelector('div[style*="text-align:center"]')) msgs.innerHTML = '';
@@ -690,6 +695,7 @@ const AgentDetail = (function() {
                     try {
                         const ev = JSON.parse(line.slice(6));
                         if (ev.type === 'content') {
+                            if (window.avatarCallback) window.avatarCallback('speaking');
                             fullText += ev.text;
                             el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
                             msgs.scrollTop = msgs.scrollHeight;
@@ -705,6 +711,7 @@ const AgentDetail = (function() {
                 el.textContent = '请求失败，请重试';
             }
         } finally {
+            if (window.avatarCallback) window.avatarCallback('idle');
             btn.disabled = false;
             btn.textContent = '发送';
             msgs.scrollTop = msgs.scrollHeight;
@@ -1091,6 +1098,118 @@ const AgentDetail = (function() {
             toast(newPrivate ? '已设为私有' : '已设为公开');
             if (currentView) loadKnowledgeView(currentView);
         } catch { toast('设置失败', 'error'); }
+    }
+
+    // ===== Live2D Avatar =====
+    async function initLive2D() {
+        if (!agentData || !agentData.avatar_model_url) return;
+
+        const container = document.getElementById('avatarContainer');
+        const canvas = document.getElementById('avatarCanvas');
+        if (!container || !canvas) return;
+
+        // Load pixi.js + pixi-live2d-display via CDN
+        if (!window.PIXI) {
+            await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js');
+        }
+        if (!window.PIXI.live2d) {
+            await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js');
+        }
+
+        try {
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                backgroundAlpha: 0,
+                width: 280,
+                height: 260,
+                antialias: true,
+            });
+
+            const model = await PIXI.live2d.Live2DModel.from(agentData.avatar_model_url);
+
+            // Scale and position
+            const scale = Math.min(260 / model.height, 280 / model.width) * 0.8;
+            model.scale.set(scale);
+            model.x = (280 - model.width * scale) / 2;
+            model.y = (260 - model.height * scale) / 2;
+
+            // Enable auto interaction (eye tracking)
+            model.anchor.set(0.5, 0.5);
+            model.x = 140;
+            model.y = 140;
+
+            app.stage.addChild(model);
+
+            // Start idle motion
+            try {
+                model.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE);
+            } catch(e) {}
+
+            // Store reference for chat integration
+            window._live2dModel = model;
+            window._live2dApp = app;
+
+            // Set up avatar state callback
+            window.avatarCallback = function(state) {
+                if (!window._live2dModel) return;
+                const m = window._live2dModel;
+                const cm = m.internalModel?.coreModel;
+                if (!cm) return;
+
+                switch(state) {
+                    case 'thinking':
+                        stopMouthAnimation();
+                        try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
+                        break;
+                    case 'speaking':
+                        startMouthAnimation();
+                        break;
+                    case 'idle':
+                        stopMouthAnimation();
+                        try { cm.setParameterValueById('ParamMouthOpenY', 0); } catch(e) {}
+                        try { m.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
+                        break;
+                }
+            };
+
+        } catch(e) {
+            console.error('Live2D init error:', e);
+            container.style.display = 'none';
+        }
+    }
+
+    let _mouthAnimFrame = null;
+
+    function startMouthAnimation() {
+        const cm = window._live2dModel?.internalModel?.coreModel;
+        if (!cm) return;
+        let t = 0;
+        function animate() {
+            t += 0.15;
+            const openness = (Math.sin(t * 3.5) * 0.3 + Math.sin(t * 7.1) * 0.2 + 0.5) * 0.8;
+            try { cm.setParameterValueById('ParamMouthOpenY', Math.max(0, Math.min(1, openness))); } catch(e) {}
+            _mouthAnimFrame = requestAnimationFrame(animate);
+        }
+        stopMouthAnimation();
+        animate();
+    }
+
+    function stopMouthAnimation() {
+        if (_mouthAnimFrame) {
+            cancelAnimationFrame(_mouthAnimFrame);
+            _mouthAnimFrame = null;
+        }
+    }
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
     }
 
     return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy };

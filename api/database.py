@@ -133,6 +133,8 @@ def migrate_knowledge_schema():
         cursor.execute("ALTER TABLE agents ADD COLUMN llm_config TEXT DEFAULT '{}'")
     if "is_public" not in columns:
         cursor.execute("ALTER TABLE agents ADD COLUMN is_public INTEGER DEFAULT 1")
+    if "avatar_model_url" not in columns:
+        cursor.execute("ALTER TABLE agents ADD COLUMN avatar_model_url TEXT")
 
     # simulations 表扩展：is_public
     cursor.execute("PRAGMA table_info(simulations)")

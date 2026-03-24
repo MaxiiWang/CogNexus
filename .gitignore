@@ -6,6 +6,9 @@
 data/
 logs/
 
+# Avatar 模型文件（大文件，不提交）
+# data/avatars/ 已被 data/ 覆盖
+
 # Python
 __pycache__/
 *.py[cod]
