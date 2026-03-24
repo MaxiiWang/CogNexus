@@ -1512,11 +1512,12 @@ app.include_router(agent_sim_router)
 
 from routes.knowledge import router as knowledge_router, public_router as knowledge_public_router
 from routes.settings import router as settings_router
-from routes.chat import router as chat_router
+from routes.chat import router as chat_router, avatar_router
 app.include_router(knowledge_router)
 app.include_router(knowledge_public_router)
 app.include_router(settings_router)
 app.include_router(chat_router)
+app.include_router(avatar_router)
 
 
 # 静态资源

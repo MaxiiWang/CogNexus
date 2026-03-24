@@ -928,6 +928,7 @@ const AgentDetail = (function() {
         document.getElementById('configTgChatId').value = tg.chat_id || '';
         // Load persona
         loadPersona();
+        loadPresetAvatars();
     }
 
     async function loadPersona() {
@@ -1446,5 +1447,119 @@ const AgentDetail = (function() {
         });
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession };
+    // ===== Avatar Model Management =====
+
+    async function loadPresetAvatars() {
+        const grid = document.getElementById('presetAvatarGrid');
+        if (!grid) return;
+
+        try {
+            const r = await fetch('/api/avatars/presets');
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            const presets = data.presets || [];
+
+            const currentUrl = agentData ? agentData.avatar_model_url : '';
+
+            grid.innerHTML = presets.map(p => {
+                const isSelected = currentUrl && currentUrl.includes('/presets/' + p.id + '/');
+                return '<div onclick="AgentDetail.selectPreset(\'' + esc(p.id) + '\')" style="' +
+                    'padding:16px 12px;border-radius:10px;text-align:center;cursor:pointer;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);' +
+                    'background:' + (isSelected ? 'rgba(109,168,155,0.15)' : 'rgba(255,255,255,0.03)') + ';' +
+                    'border:1px solid ' + (isSelected ? 'rgba(109,168,155,0.4)' : 'rgba(255,255,255,0.06)') + ';' +
+                    '" onmouseover="if(!this.dataset.selected)this.style.background=\'rgba(255,255,255,0.06)\'" ' +
+                    'onmouseout="if(!this.dataset.selected)this.style.background=\'rgba(255,255,255,0.03)\'" ' +
+                    'data-selected="' + (isSelected ? '1' : '') + '">' +
+                    '<div style="font-size:1.6em;margin-bottom:8px;">' +
+                        (p.style === '萌系' ? '🐱' : p.style === 'Q版' ? '🍙' : p.style === '简约' ? '👤' : p.style === '知性' ? '👩‍💼' : p.style === '甜美' ? '🌸' : '🎭') +
+                    '</div>' +
+                    '<div style="font-size:0.85em;color:' + (isSelected ? '#6da89b' : '#e8e4df') + ';font-weight:600;">' + esc(p.name) + '</div>' +
+                    '<div style="font-size:0.72em;color:#6b665e;margin-top:4px;">' + esc(p.description) + '</div>' +
+                    (isSelected ? '<div style="font-size:0.7em;color:#6da89b;margin-top:6px;">✓ 当前使用</div>' : '') +
+                    '</div>';
+            }).join('');
+        } catch(e) {
+            grid.innerHTML = '<div style="color:#6b665e;font-size:0.85em;padding:12px;">加载预置模型失败</div>';
+        }
+
+        // Update current label
+        updateAvatarLabel();
+    }
+
+    function updateAvatarLabel() {
+        const label = document.getElementById('currentAvatarLabel');
+        if (!label) return;
+        if (agentData && agentData.avatar_model_url) {
+            label.textContent = '当前: ' + agentData.avatar_model_url.split('/').pop();
+        } else {
+            label.textContent = '未设置虚拟形象';
+        }
+    }
+
+    async function selectPreset(presetId) {
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/avatar', {
+                method: 'PUT', headers: jsonHdrs(),
+                body: JSON.stringify({ preset: presetId })
+            });
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            agentData.avatar_model_url = data.avatar_model_url;
+            loadPresetAvatars();
+            toast('虚拟形象已更新，切换到对话 Tab 查看效果');
+        } catch(e) { toast('设置失败', 'error'); }
+    }
+
+    async function uploadAvatar(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const status = document.getElementById('avatarUploadStatus');
+        status.textContent = '上传中...';
+        status.style.color = '#e2b96a';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const r = await fetch('/api/agents/' + agentId + '/avatar/upload', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+                body: formData
+            });
+
+            if (!r.ok) {
+                const err = await r.json();
+                throw new Error(err.detail || '上传失败');
+            }
+
+            const data = await r.json();
+            agentData.avatar_model_url = data.avatar_model_url;
+            status.textContent = '✅ 上传成功 (' + (data.files_count || 0) + ' 个文件)';
+            status.style.color = '#6da89b';
+            loadPresetAvatars();
+            toast('自定义模型已上传');
+        } catch(e) {
+            status.textContent = '❌ ' + (e.message || '上传失败');
+            status.style.color = '#b8868a';
+        }
+
+        input.value = '';
+    }
+
+    async function clearAvatar() {
+        if (!confirm('确定移除虚拟形象？')) return;
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/avatar', {
+                method: 'PUT', headers: jsonHdrs(),
+                body: JSON.stringify({ clear: true })
+            });
+            if (!r.ok) throw new Error();
+            agentData.avatar_model_url = null;
+            loadPresetAvatars();
+            toast('虚拟形象已移除');
+        } catch(e) { toast('操作失败', 'error'); }
+    }
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar };
 })();

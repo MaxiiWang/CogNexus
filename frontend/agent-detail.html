@@ -847,6 +847,30 @@
 
         <!-- Config Tab -->
         <div class="tab-content" id="tab-config">
+            <!-- Avatar 模型 -->
+            <div class="config-section">
+                <div class="config-section-title">🎨 虚拟形象</div>
+                <div style="margin-bottom:16px;">
+                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">选择预置模型</label>
+                    <div id="presetAvatarGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:10px;">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+                <div style="margin-bottom:16px;">
+                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">上传自定义模型</label>
+                    <div style="margin-top:10px;display:flex;gap:12px;align-items:center;">
+                        <label for="avatarUploadInput" style="padding:10px 20px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);color:var(--text-secondary);cursor:pointer;font-size:0.85em;transition:all 0.15s;">📁 选择 .zip 文件</label>
+                        <input type="file" id="avatarUploadInput" accept=".zip" style="display:none;" onchange="AgentDetail.uploadAvatar(this)">
+                        <span id="avatarUploadStatus" style="color:var(--text-muted);font-size:0.8em;"></span>
+                    </div>
+                    <div style="margin-top:8px;font-size:0.75em;color:var(--text-muted);">支持 Live2D Cubism 模型 (.zip)，包含 .model3.json + .moc3 + 纹理文件，最大 20MB</div>
+                </div>
+                <div style="margin-top:12px;">
+                    <button onclick="AgentDetail.clearAvatar()" style="padding:8px 16px;border-radius:6px;background:rgba(184,134,138,0.1);color:#b8868a;border:1px solid rgba(184,134,138,0.2);cursor:pointer;font-size:0.82em;">移除虚拟形象</button>
+                    <span id="currentAvatarLabel" style="margin-left:12px;color:var(--text-muted);font-size:0.8em;"></span>
+                </div>
+            </div>
+
             <!-- 身份与角色 -->
             <div class="config-section">
                 <div class="config-section-title">🎭 身份与角色</div>

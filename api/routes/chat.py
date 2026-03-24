@@ -8,8 +8,11 @@ import uuid
 import json
 from datetime import datetime
 from typing import Optional, List
-from fastapi import APIRouter, Depends, Query, Header, HTTPException
+from fastapi import APIRouter, Depends, Query, Header, HTTPException, UploadFile, File
 from pydantic import BaseModel
+import shutil
+import zipfile
+import tempfile
 
 import sys
 from pathlib import Path
@@ -219,3 +222,185 @@ async def get_messages(
     conn.close()
     
     return {"messages": messages, "session_id": session_id}
+
+
+# ==================== Avatar 模型管理 ====================
+
+avatar_router = APIRouter(prefix="/api", tags=["avatar"])
+
+
+@avatar_router.get("/avatars/presets")
+async def list_preset_avatars():
+    """获取预置 Live2D 模型列表"""
+    presets_dir = Path(__file__).parent.parent.parent / "data" / "avatars" / "presets"
+    presets = []
+
+    # 预定义的模型信息
+    preset_info = {
+        "haru": {"name": "春 (Haru)", "description": "活泼开朗的少女", "style": "日系"},
+        "hiyori": {"name": "日和 (Hiyori)", "description": "温柔甜美的女孩", "style": "甜美"},
+        "mao": {"name": "猫 (Mao)", "description": "猫耳萌系角色", "style": "萌系"},
+        "mark": {"name": "Mark", "description": "简约男性角色", "style": "简约"},
+        "natori": {"name": "名取 (Natori)", "description": "成熟知性的女性", "style": "知性"},
+        "rice": {"name": "Rice", "description": "Q版可爱角色", "style": "Q版"},
+    }
+
+    if presets_dir.exists():
+        for d in sorted(presets_dir.iterdir()):
+            if d.is_dir():
+                model_files = list(d.glob("*.model3.json"))
+                if model_files:
+                    slug = d.name
+                    info = preset_info.get(slug, {"name": slug, "description": "", "style": ""})
+                    entry_file = model_files[0].name
+                    presets.append({
+                        "id": slug,
+                        "name": info["name"],
+                        "description": info["description"],
+                        "style": info["style"],
+                        "model_url": f"/avatars/presets/{slug}/{entry_file}",
+                        "preview_url": f"/avatars/presets/{slug}/{entry_file}",
+                    })
+
+    return {"presets": presets}
+
+
+class AvatarSetRequest(BaseModel):
+    preset: Optional[str] = None
+    avatar_model_url: Optional[str] = None
+    clear: bool = False
+
+
+@avatar_router.put("/agents/{agent_id}/avatar")
+async def set_agent_avatar(
+    agent_id: str,
+    data: AvatarSetRequest,
+    user: dict = Depends(get_current_user),
+):
+    """设置 Agent 的 Avatar（预置/自定义/清除）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT owner_id FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权修改")
+
+    if data.clear:
+        conn.execute("UPDATE agents SET avatar_model_url = NULL WHERE agent_id = ?", (agent_id,))
+        conn.commit()
+        conn.close()
+        return {"success": True, "avatar_model_url": None}
+
+    if data.preset:
+        presets_dir = Path(__file__).parent.parent.parent / "data" / "avatars" / "presets" / data.preset
+        if not presets_dir.exists():
+            conn.close()
+            raise HTTPException(status_code=404, detail=f"预置模型 '{data.preset}' 不存在")
+        model_files = list(presets_dir.glob("*.model3.json"))
+        if not model_files:
+            conn.close()
+            raise HTTPException(status_code=404, detail="模型文件不完整")
+        url = f"/avatars/presets/{data.preset}/{model_files[0].name}"
+        conn.execute("UPDATE agents SET avatar_model_url = ? WHERE agent_id = ?", (url, agent_id))
+        conn.commit()
+        conn.close()
+        return {"success": True, "avatar_model_url": url}
+
+    if data.avatar_model_url:
+        conn.execute("UPDATE agents SET avatar_model_url = ? WHERE agent_id = ?", (data.avatar_model_url, agent_id))
+        conn.commit()
+        conn.close()
+        return {"success": True, "avatar_model_url": data.avatar_model_url}
+
+    conn.close()
+    raise HTTPException(status_code=400, detail="请指定 preset、avatar_model_url 或 clear")
+
+
+@avatar_router.post("/agents/{agent_id}/avatar/upload")
+async def upload_avatar(
+    agent_id: str,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """上传自定义 Live2D 模型 (.zip，限制 20MB)"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT owner_id FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权修改")
+    conn.close()
+
+    if not file.filename or not file.filename.lower().endswith('.zip'):
+        raise HTTPException(status_code=400, detail="请上传 .zip 格式的模型文件")
+
+    content = await file.read()
+    if len(content) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="文件大小不能超过 20MB")
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        zip_path = Path(tmp_dir) / "model.zip"
+        zip_path.write_bytes(content)
+
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                for name in zf.namelist():
+                    if '..' in name or name.startswith('/'):
+                        raise HTTPException(status_code=400, detail=f"不安全的文件路径: {name}")
+
+                allowed_exts = {'.json', '.moc3', '.png', '.jpg', '.jpeg', '.motion3.json',
+                               '.exp3.json', '.physics3.json', '.pose3.json', '.cdi3.json',
+                               '.userdata3.json'}
+
+                zf.extractall(tmp_dir)
+        except zipfile.BadZipFile:
+            raise HTTPException(status_code=400, detail="无效的 zip 文件")
+
+        extract_dir = Path(tmp_dir)
+        model_files = list(extract_dir.rglob("*.model3.json"))
+        if not model_files:
+            raise HTTPException(status_code=400, detail="zip 中未找到 .model3.json 文件")
+
+        model_root = model_files[0].parent
+
+        moc3_files = list(model_root.rglob("*.moc3"))
+        if not moc3_files:
+            raise HTTPException(status_code=400, detail="zip 中未找到 .moc3 文件")
+
+        dest_dir = Path(__file__).parent.parent.parent / "data" / "avatars" / agent_id
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        for f in model_root.rglob("*"):
+            if f.is_file():
+                suffix = ''.join(f.suffixes).lower()
+                is_allowed = any(suffix.endswith(ext) for ext in allowed_exts)
+                if is_allowed:
+                    rel = f.relative_to(model_root)
+                    dest = dest_dir / rel
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(f, dest)
+
+        entry_file = model_files[0].name
+        model_url = f"/avatars/{agent_id}/{entry_file}"
+
+        conn = get_db()
+        conn.execute("UPDATE agents SET avatar_model_url = ? WHERE agent_id = ?", (model_url, agent_id))
+        conn.commit()
+        conn.close()
+
+        return {
+            "success": True,
+            "avatar_model_url": model_url,
+            "files_count": len(list(dest_dir.rglob("*"))),
+            "message": "模型上传成功"
+        }
