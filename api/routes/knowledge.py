@@ -77,6 +77,16 @@ class ActionRequest(BaseModel):
     params: dict
 
 
+class FactUpdateRequest(BaseModel):
+    summary: str
+    content_type: Optional[str] = None
+
+
+class PrivacyBatchRequest(BaseModel):
+    entity_ids: list
+    is_private: bool
+
+
 # ==================== 辅助函数 ====================
 
 def _check_cogmate_available():
@@ -564,6 +574,52 @@ async def set_privacy(
         }
 
 
+@router.put("/privacy/batch")
+async def set_privacy_batch(
+    namespace: str,
+    request: PrivacyBatchRequest,
+    user: dict = Depends(verify_namespace),
+):
+    """批量设置实体隐私状态"""
+    from cogmate_core.privacy import (
+        set_fact_private, set_abstract_private, get_privacy_status,
+    )
+
+    results = []
+    for entity_id in request.entity_ids:
+        status = get_privacy_status(entity_id)
+        if not status:
+            results.append({"entity_id": entity_id, "success": False, "error": "未找到"})
+            continue
+
+        try:
+            if status["type"] == "fact":
+                success = set_fact_private(entity_id, request.is_private)
+                results.append({"entity_id": entity_id, "type": "fact", "success": success})
+            else:
+                success, _ = set_abstract_private(entity_id, request.is_private)
+                results.append({"entity_id": entity_id, "type": "abstract", "success": success})
+        except Exception as e:
+            results.append({"entity_id": entity_id, "success": False, "error": str(e)})
+
+    return {
+        "is_private": request.is_private,
+        "total": len(request.entity_ids),
+        "results": results,
+    }
+
+
+@router.get("/privacy/list")
+async def list_private_entities_endpoint(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+):
+    """列出所有私有实体"""
+    from cogmate_core.privacy import list_private_entities
+    entities = list_private_entities()
+    return {"entities": entities}
+
+
 @router.get("/privacy/{entity_id}")
 async def get_privacy(
     namespace: str,
@@ -588,6 +644,114 @@ async def get_privacy_stats(
     """获取隐私统计"""
     from cogmate_core.privacy import get_privacy_stats as _get_stats
     return _get_stats()
+
+
+# ==================== Fact CRUD ====================
+
+@router.get("/fact/{fact_id}")
+async def get_fact(
+    namespace: str,
+    fact_id: str,
+    user: dict = Depends(verify_namespace),
+):
+    """获取单条 fact 详情"""
+    cogmate = _get_cogmate(namespace)
+    fact = cogmate.get_fact(fact_id)
+    if not fact:
+        raise HTTPException(status_code=404, detail="Fact 未找到")
+    return fact
+
+
+@router.put("/fact/{fact_id}")
+async def update_fact(
+    namespace: str,
+    fact_id: str,
+    request: FactUpdateRequest,
+    user: dict = Depends(verify_namespace),
+):
+    """更新 fact 的 summary（三库同步）"""
+    cogmate = _get_cogmate(namespace)
+
+    # 先确认 fact 存在
+    existing = cogmate.get_fact(fact_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Fact 未找到")
+
+    new_summary = request.summary
+    content_type = request.content_type or existing.get("content_type", "事实")
+    now = datetime.now().isoformat()
+
+    try:
+        from cogmate_core import get_sqlite, get_qdrant, get_neo4j, get_collection_name, CogmateAgent
+        from qdrant_client.models import PointStruct
+
+        # 1. SQLite
+        conn = get_sqlite()
+        conn.execute(
+            "UPDATE facts SET summary=?, content_type=?, updated_at=? WHERE fact_id=?",
+            (new_summary, content_type, now, fact_id),
+        )
+        conn.commit()
+        conn.close()
+
+        # 2. Neo4j
+        driver = get_neo4j()
+        with driver.session() as session:
+            session.run(
+                "MATCH (f:Fact {fact_id: $fid}) SET f.summary = $summary, f.content_type = $type",
+                fid=fact_id, summary=new_summary, type=content_type,
+            )
+
+        # 3. Qdrant (re-embed + upsert)
+        agent = CogmateAgent(namespace=namespace)
+        vector = agent._embed(new_summary)
+        client = get_qdrant()
+        client.upsert(
+            collection_name=get_collection_name(namespace),
+            points=[
+                PointStruct(
+                    id=fact_id,
+                    vector=vector,
+                    payload={
+                        "summary": new_summary,
+                        "content_type": content_type,
+                        "namespace": namespace,
+                    },
+                )
+            ],
+        )
+
+        return {
+            "success": True,
+            "fact_id": fact_id,
+            "summary": new_summary,
+            "content_type": content_type,
+            "updated_at": now,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
+
+
+@router.delete("/fact/{fact_id}")
+async def delete_fact(
+    namespace: str,
+    fact_id: str,
+    user: dict = Depends(verify_namespace),
+):
+    """删除 fact（三库同步）"""
+    cogmate = _get_cogmate(namespace)
+
+    existing = cogmate.get_fact(fact_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Fact 未找到")
+
+    try:
+        cogmate.delete(fact_id)
+        return {"success": True, "fact_id": fact_id, "message": "已删除"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"删除失败: {str(e)}")
 
 
 # ==================== 操作动作 ====================

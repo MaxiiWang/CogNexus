@@ -533,8 +533,13 @@ const AgentDetail = (function() {
                             const preview = fullText.slice(0, 120);
                             const hasMore = fullText.length > 120;
                             const itemId = 'tl-' + (item.id || item.full_id || Math.random().toString(36).slice(2));
-                            return '<div data-item-id="' + esc(item.id || item.full_id || '') + '" style="position:relative;margin-bottom:10px;padding:12px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid rgba(255,255,255,0.04);transition:background 0.15s;cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\'" onmouseout="this.style.background=\'rgba(255,255,255,0.02)\'">' +
+                            return '<div data-item-id="' + esc(item.id || item.full_id || '') + '" style="position:relative;margin-bottom:10px;padding:12px 16px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid rgba(255,255,255,0.04);transition:background 0.15s;cursor:pointer;" onmouseover="this.style.background=\'rgba(255,255,255,0.04)\';var a=this.querySelector(\'.tl-item-actions\');if(a)a.style.display=\'flex\'" onmouseout="this.style.background=\'rgba(255,255,255,0.02)\';var a=this.querySelector(\'.tl-item-actions\');if(a)a.style.display=\'none\'">' +
                                 '<div style="position:absolute;left:-19px;top:16px;width:8px;height:8px;border-radius:50%;background:' + c + ';border:2px solid #0a0a0f;"></div>' +
+                                '<div class="tl-item-actions" style="position:absolute;right:8px;top:8px;display:none;gap:6px;">' +
+                                '<button onclick="event.stopPropagation();AgentDetail.editFact(\'' + esc(item.full_id || item.id) + '\')" style="padding:4px 8px;border-radius:4px;background:rgba(109,168,155,0.2);color:#6da89b;border:none;cursor:pointer;font-size:0.75em;" title="编辑">✏️</button>' +
+                                '<button onclick="event.stopPropagation();AgentDetail.togglePrivacy(\'' + esc(item.full_id || item.id) + '\')" style="padding:4px 8px;border-radius:4px;background:rgba(226,185,106,0.2);color:#e2b96a;border:none;cursor:pointer;font-size:0.75em;" title="隐私">🔒</button>' +
+                                '<button onclick="event.stopPropagation();AgentDetail.deleteFact(\'' + esc(item.full_id || item.id) + '\')" style="padding:4px 8px;border-radius:4px;background:rgba(184,134,138,0.2);color:#b8868a;border:none;cursor:pointer;font-size:0.75em;" title="删除">🗑️</button>' +
+                                '</div>' +
                                 '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
                                 '<span style="font-size:0.68em;color:#6b665e;text-transform:uppercase;letter-spacing:0.04em;background:' + c + '22;color:' + c + ';padding:1px 6px;border-radius:3px;">' + esc(item.type || '') + '</span>' +
                                 '<span style="color:#6b665e;font-size:0.72em;">' + time + '</span></div>' +
@@ -960,6 +965,12 @@ const AgentDetail = (function() {
             }
         }
 
+        const actionHtml = '<div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.06);display:flex;gap:10px;flex-wrap:wrap;">' +
+            '<button onclick="AgentDetail.editFact(\'' + esc(item.full_id || item.id) + '\')" style="padding:8px 16px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.3);cursor:pointer;font-size:0.85em;">✏️ 编辑</button>' +
+            '<button onclick="AgentDetail.togglePrivacy(\'' + esc(item.full_id || item.id) + '\')" style="padding:8px 16px;border-radius:6px;background:rgba(226,185,106,0.15);color:#e2b96a;border:1px solid rgba(226,185,106,0.3);cursor:pointer;font-size:0.85em;" id="privacyBtn-' + esc(item.full_id || item.id) + '">🔒 隐私设置</button>' +
+            '<button onclick="AgentDetail.deleteFact(\'' + esc(item.full_id || item.id) + '\')" style="padding:8px 16px;border-radius:6px;background:rgba(184,134,138,0.15);color:#b8868a;border:1px solid rgba(184,134,138,0.3);cursor:pointer;font-size:0.85em;">🗑️ 删除</button>' +
+            '</div>';
+
         content.innerHTML =
             '<div style="margin-bottom:16px;"><span style="background:' + color + '22;color:' + color + ';padding:3px 10px;border-radius:4px;font-size:0.78em;font-weight:600;">' + esc(item.type || '') + '</span></div>' +
             '<div style="color:#e8e4df;line-height:1.8;font-size:0.92em;white-space:pre-wrap;word-break:break-word;">' + esc(item.full_content || item.label || item.content || '') + '</div>' +
@@ -969,7 +980,8 @@ const AgentDetail = (function() {
             (item.degree !== undefined ? '<br>连接度: ' + item.degree : '') +
             (item.context ? '<br>情境: ' + esc(item.context) : '') +
             '</div>' +
-            relHtml;
+            relHtml +
+            actionHtml;
 
         panel.style.display = 'flex';
         overlay.style.display = 'block';
@@ -983,5 +995,86 @@ const AgentDetail = (function() {
         setTimeout(() => { panel.style.display = 'none'; overlay.style.display = 'none'; }, 250);
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail };
+    // ===== Fact CRUD & Privacy =====
+    async function editFact(factId) {
+        const ns = getNs();
+        try {
+            const r = await fetch('/api/knowledge/' + ns + '/fact/' + factId, { headers: hdrs() });
+            if (!r.ok) throw new Error();
+            const fact = await r.json();
+
+            const content = document.getElementById('detailPanelContent');
+            content.innerHTML =
+                '<div style="margin-bottom:16px;"><label style="color:#6b665e;font-size:0.8em;text-transform:uppercase;letter-spacing:0.04em;">内容类型</label>' +
+                '<select id="editFactType" style="width:100%;margin-top:6px;padding:10px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e8e4df;font-size:0.9em;">' +
+                ['观点','事件','资讯','决策','情绪'].map(t => '<option value="' + t + '"' + (t === fact.content_type ? ' selected' : '') + '>' + t + '</option>').join('') +
+                '</select></div>' +
+                '<div style="margin-bottom:16px;"><label style="color:#6b665e;font-size:0.8em;text-transform:uppercase;letter-spacing:0.04em;">内容</label>' +
+                '<textarea id="editFactSummary" rows="8" style="width:100%;margin-top:6px;padding:12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#e8e4df;font-size:0.9em;line-height:1.6;resize:vertical;">' + esc(fact.summary || '') + '</textarea></div>' +
+                '<div style="display:flex;gap:10px;">' +
+                '<button onclick="AgentDetail.saveFactEdit(\'' + esc(factId) + '\')" style="flex:1;padding:10px;background:#6da89b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;">保存</button>' +
+                '<button onclick="AgentDetail.cancelEdit()" style="flex:1;padding:10px;background:rgba(255,255,255,0.06);color:#a8a299;border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;">取消</button>' +
+                '</div>';
+
+            document.getElementById('detailPanelTitle').textContent = '编辑知识条目';
+        } catch(e) { toast('加载失败', 'error'); }
+    }
+
+    async function saveFactEdit(factId) {
+        const ns = getNs();
+        const summary = document.getElementById('editFactSummary').value.trim();
+        const contentType = document.getElementById('editFactType').value;
+        if (!summary) { toast('内容不能为空', 'error'); return; }
+        try {
+            const r = await fetch('/api/knowledge/' + ns + '/fact/' + factId, {
+                method: 'PUT', headers: jsonHdrs(),
+                body: JSON.stringify({ summary, content_type: contentType })
+            });
+            if (!r.ok) throw new Error();
+            toast('已更新');
+            closeDetail();
+            if (currentView) loadKnowledgeView(currentView);
+        } catch { toast('保存失败', 'error'); }
+    }
+
+    function cancelEdit() {
+        closeDetail();
+    }
+
+    async function deleteFact(factId) {
+        if (!confirm('确定删除此知识条目？此操作不可撤销，将同时删除图谱中的关联。')) return;
+        const ns = getNs();
+        try {
+            const r = await fetch('/api/knowledge/' + ns + '/fact/' + factId, {
+                method: 'DELETE', headers: hdrs()
+            });
+            if (!r.ok) throw new Error();
+            toast('已删除');
+            closeDetail();
+            if (currentView) loadKnowledgeView(currentView);
+        } catch { toast('删除失败', 'error'); }
+    }
+
+    async function togglePrivacy(factId) {
+        const ns = getNs();
+        try {
+            const r = await fetch('/api/knowledge/' + ns + '/privacy/' + factId, { headers: hdrs() });
+            if (!r.ok) throw new Error();
+            const status = await r.json();
+            const currentPrivate = status.is_private;
+            const newPrivate = !currentPrivate;
+            const action = newPrivate ? '设为私有（Token 访客不可见）' : '设为公开';
+            if (!confirm('确定要将此条目' + action + '？')) return;
+
+            const r2 = await fetch('/api/knowledge/' + ns + '/privacy', {
+                method: 'POST', headers: jsonHdrs(),
+                body: JSON.stringify({ entity_id: factId, is_private: newPrivate, cascade: false })
+            });
+            if (!r2.ok) throw new Error();
+            toast(newPrivate ? '已设为私有' : '已设为公开');
+            if (currentView) loadKnowledgeView(currentView);
+        } catch { toast('设置失败', 'error'); }
+    }
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy };
 })();
