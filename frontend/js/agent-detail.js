@@ -171,17 +171,29 @@ const AgentDetail = (function() {
     }
 
     function checkOwnership() {
+        let isOwner = false;
         try {
             const token = getToken();
             if (!token) return;
             const payload = JSON.parse(atob(token.split('.')[1]));
             const userId = payload.sub || payload.user_id;
             if (agentData.owner_id && agentData.owner_id === userId) {
+                isOwner = true;
                 document.getElementById('ovEditBtn').style.display = '';
                 document.getElementById('ovTokenMgmt').style.display = '';
                 loadTokens();
             }
         } catch {}
+
+        // 非所有者：只显示概览和对话 Tab
+        if (!isOwner) {
+            document.querySelectorAll('.detail-tab').forEach(tab => {
+                const t = tab.dataset.tab;
+                if (t && t !== 'overview' && t !== 'chat') {
+                    tab.style.display = 'none';
+                }
+            });
+        }
     }
 
     async function loadStats() {
