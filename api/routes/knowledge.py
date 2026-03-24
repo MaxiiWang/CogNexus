@@ -240,6 +240,73 @@ def _build_dynamic_system_prompt(namespace: str, vector_results: list, chat_conf
     return "\n".join(parts)
 
 
+def _graph_reasoning(namespace: str, fact_ids: list, max_hops: int = 2) -> list:
+    """通过 Neo4j 图谱查询关联知识，扩展检索结果"""
+    try:
+        from cogmate_core import get_neo4j
+        driver = get_neo4j()
+        extra_facts = []
+        seen_ids = set(fact_ids)
+
+        with driver.session() as session:
+            for fid in fact_ids[:5]:  # 只对 top 5 做扩展，避免太慢
+                result = session.run("""
+                    MATCH (a:Fact {fact_id: $fid})-[r]-(b:Fact)
+                    WHERE b.namespace = $ns OR ($ns = "default" AND b.namespace IS NULL)
+                    RETURN b.fact_id as id, b.summary as summary, b.content_type as type,
+                           type(r) as relation, r.confidence as confidence
+                    LIMIT 3
+                """, fid=fid, ns=namespace)
+
+                for record in result:
+                    if record["id"] not in seen_ids:
+                        seen_ids.add(record["id"])
+                        extra_facts.append({
+                            "fact_id": record["id"],
+                            "summary": record["summary"],
+                            "content_type": record["type"],
+                            "relation": record["relation"],
+                            "confidence": record["confidence"],
+                            "_source": "graph",
+                        })
+
+        return extra_facts
+    except Exception as e:
+        return []
+
+
+def _web_search_fallback(query: str, max_results: int = 3) -> list:
+    """使用 Brave Search API 搜索网络作为知识补充"""
+    import os
+    api_key = os.environ.get("BRAVE_API_KEY", "")
+    if not api_key:
+        return []
+
+    try:
+        import httpx
+        resp = httpx.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={"X-Subscription-Token": api_key, "Accept": "application/json"},
+            params={"q": query, "count": max_results, "freshness": "pw"},  # past week
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            return []
+
+        data = resp.json()
+        results = []
+        for item in data.get("web", {}).get("results", [])[:max_results]:
+            results.append({
+                "summary": f"[网络] {item.get('title', '')}: {item.get('description', '')}",
+                "content_type": "网络参考",
+                "fact_id": "web_" + item.get("url", "")[:20],
+                "_source": "web",
+            })
+        return results
+    except Exception:
+        return []
+
+
 def _safe_query(namespace: str, query_text: str, top_k: int = 5, min_score: float = 0.5) -> dict:
     """安全查询 — 空知识库/不存在的 collection 返回空结果而非崩溃"""
     try:
@@ -624,6 +691,25 @@ async def chat_stream(
         except Exception as e:
             # Collection 不存在或知识库为空
             vector_results = []
+
+        # 图谱推理扩展
+        if chat_config.get("enable_graph_reasoning") and vector_results:
+            try:
+                fact_ids = [f.get("fact_id", "") for f in vector_results if f.get("fact_id")]
+                graph_extra = _graph_reasoning(namespace, fact_ids)
+                if graph_extra:
+                    vector_results = vector_results + graph_extra
+            except Exception:
+                pass
+
+        # 网络搜索 fallback
+        if chat_config.get("enable_web_search") and len(vector_results) < 3:
+            try:
+                web_results = _web_search_fallback(message)
+                if web_results:
+                    vector_results = vector_results + web_results
+            except Exception:
+                pass
 
         yield f"data: {json.dumps({'type': 'meta', 'sources_count': len(vector_results)})}\n\n"
 

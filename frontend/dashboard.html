@@ -1067,6 +1067,23 @@
     </div>
 
     <script>
+        let _confirmResolve = null;
+        function showConfirmModal(title, message, confirmText, isDanger) {
+            return new Promise(resolve => {
+                _confirmResolve = resolve;
+                document.getElementById('confirmModalTitle').textContent = title;
+                document.getElementById('confirmModalBody').textContent = message;
+                const btn = document.getElementById('confirmModalBtn');
+                btn.textContent = confirmText || '确认';
+                btn.className = isDanger ? 'btn btn-danger' : 'btn btn-primary';
+                document.getElementById('confirmModal').classList.add('active');
+            });
+        }
+        function resolveConfirmModal(result) {
+            document.getElementById('confirmModal').classList.remove('active');
+            if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+        }
+
         let currentUser = null;
         let resolvingSimId = null;
         let selectedSimOutcome = null;
@@ -1352,7 +1369,8 @@
         }
 
         async function deleteAgent(agentId, name) {
-            if (!confirm(`确定要删除 Agent "${name}" 吗？此操作不可恢复。`)) {
+            const confirmed = await showConfirmModal('删除 Agent', `确定要删除 Agent "${name}" 吗？此操作不可恢复。`, '删除', true);
+            if (!confirmed) {
                 return;
             }
 
@@ -1752,7 +1770,8 @@
         }
 
         async function deleteSim(simId, title) {
-            if (!confirm(I18N.t('sim.delete_confirm').replace('%s', title))) return;
+            const confirmed = await showConfirmModal('删除模拟', I18N.t('sim.delete_confirm').replace('%s', title), I18N.t('common.delete'), true);
+            if (!confirmed) return;
             const token = localStorage.getItem('cog_token');
             try {
                 const res = await fetch(`/api/simulations/${simId}`, {
@@ -2137,7 +2156,8 @@
         }
 
         async function doCloseRoundSim(simId, roundNumber) {
-            if (!confirm(`确定要手动关闭第${roundNumber}轮吗？失败的 Agent 反应将不计入结果。`)) return;
+            const confirmed = await showConfirmModal('关闭轮次', `确定要手动关闭第${roundNumber}轮吗？失败的 Agent 反应将不计入结果。`, '关闭');
+            if (!confirmed) return;
             const token = localStorage.getItem('cog_token');
             try {
                 const res = await fetch(`/api/simulations/${simId}/rounds/${roundNumber}/close`, {
@@ -2750,5 +2770,16 @@
             loadMySimulations();
         }
     </script>
+<!-- 通用弹窗 -->
+<div class="modal" id="confirmModal" style="z-index:2000;">
+    <div class="modal-content" style="max-width:400px;">
+        <h2 id="confirmModalTitle">提示</h2>
+        <p id="confirmModalBody" style="color:var(--text-secondary);font-size:0.9em;line-height:1.6;margin-bottom:20px;"></p>
+        <div class="modal-buttons">
+            <button class="btn btn-secondary" onclick="resolveConfirmModal(false)">取消</button>
+            <button class="btn btn-primary" id="confirmModalBtn" onclick="resolveConfirmModal(true)">确认</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>
