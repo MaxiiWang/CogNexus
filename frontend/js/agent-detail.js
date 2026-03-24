@@ -434,7 +434,13 @@ const AgentDetail = (function() {
             // Toggle expand
             box.querySelectorAll('.abstract-card').forEach(card => {
                 card.querySelector('.abstract-header').addEventListener('click', () => {
-                    card.classList.toggle('expanded');
+                    const sf = card.querySelector('.source-facts');
+                    const arrow = card.querySelector('.expand-arrow');
+                    if (sf) {
+                        const isHidden = sf.style.display === 'none';
+                        sf.style.display = isHidden ? 'block' : 'none';
+                        if (arrow) arrow.textContent = isHidden ? '▾' : '▸';
+                    }
                 });
             });
 
@@ -464,7 +470,7 @@ const AgentDetail = (function() {
             '<span style="background:rgba(' + (statusClass === 'confirmed' ? '109,168,155' : '184,166,110') + ',0.15);color:' + (statusClass === 'confirmed' ? '#6da89b' : '#b8a66e') + ';padding:2px 8px;border-radius:4px;">' + statusLabel + '</span>' +
             '<span style="color:#6b665e;">来源: ' + (ab.source_count || facts.length) + ' 条事实</span></div>' +
             (ab.description ? '<div style="margin-top:10px;color:#a8a299;font-size:0.88em;line-height:1.6;">' + esc(ab.description.slice(0, 200)) + '</div>' : '') +
-            '</div><div style="color:#6b665e;font-size:1.2em;flex-shrink:0;margin-left:12px;">▸</div></div>' +
+            '</div><div class="expand-arrow" style="color:#6b665e;font-size:1.2em;flex-shrink:0;margin-left:12px;transition:transform 0.2s;">▸</div></div>' +
             '<div class="source-facts" style="border-top:1px solid rgba(255,255,255,0.06);padding:14px 20px;background:rgba(0,0,0,0.15);display:none;">' +
             '<div style="font-size:0.72em;color:#6b665e;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">来源事实</div>' +
             facts.map(f => {
