@@ -380,11 +380,69 @@ async def chat(
 async def chat_stream(
     namespace: str,
     q: str = Query(..., description="对话消息"),
+    session_id: str = Query(None, description="会话ID（可选，传入则保存消息+使用上下文）"),
     user: dict = Depends(verify_namespace),
 ):
     """流式对话端点（SSE）— 支持 slash 命令 + LLM 流式输出"""
 
     async def event_stream():
+        collected_response = []
+
+        # 加载会话上下文
+        context_messages = []
+        if session_id:
+            try:
+                conn_ctx = get_db()
+                cursor_ctx = conn_ctx.cursor()
+                # 验证 session 存在
+                cursor_ctx.execute(
+                    "SELECT session_id FROM chat_sessions WHERE session_id = ?",
+                    (session_id,)
+                )
+                if cursor_ctx.fetchone():
+                    # 获取最近 10 条消息作为上下文
+                    cursor_ctx.execute("""
+                        SELECT role, content FROM chat_messages
+                        WHERE session_id = ?
+                        ORDER BY created_at DESC LIMIT 10
+                    """, (session_id,))
+                    rows = cursor_ctx.fetchall()
+                    context_messages = [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+                conn_ctx.close()
+            except Exception:
+                pass
+
+        def save_messages():
+            """保存用户消息和 AI 回复到会话"""
+            if not session_id or not message:
+                return
+            try:
+                import uuid as _uuid
+                full_response = "".join(collected_response)
+                conn_save = get_db()
+                now = datetime.now().isoformat()
+                # 保存用户消息
+                conn_save.execute("""
+                    INSERT INTO chat_messages (message_id, session_id, role, content, created_at)
+                    VALUES (?, ?, 'user', ?, ?)
+                """, (f"msg_{_uuid.uuid4().hex[:12]}", session_id, message, now))
+                # 保存 AI 回复
+                if full_response:
+                    conn_save.execute("""
+                        INSERT INTO chat_messages (message_id, session_id, role, content, sources_count, created_at)
+                        VALUES (?, ?, 'assistant', ?, ?, ?)
+                    """, (f"msg_{_uuid.uuid4().hex[:12]}", session_id, full_response, 0, now))
+                # 更新 session
+                conn_save.execute("""
+                    UPDATE chat_sessions SET updated_at = ?, message_count = message_count + 2,
+                    title = CASE WHEN message_count = 0 THEN ? ELSE title END
+                    WHERE session_id = ?
+                """, (now, message[:20], session_id))
+                conn_save.commit()
+                conn_save.close()
+            except Exception:
+                pass  # 不影响对话
+
         message = q.strip()
 
         # Slash 命令不流式，直接返回
@@ -392,7 +450,9 @@ async def chat_stream(
             from cogmate_core.intent_handler import IntentHandler
             handler = IntentHandler(namespace=namespace)
             result = handler._handle_slash_command(message)
+            collected_response.append(result)
             yield f"data: {json.dumps({'type': 'content', 'text': result})}\n\n"
+            save_messages()
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -413,14 +473,18 @@ async def chat_stream(
 
         if not vector_results and not is_character:
             # Human Agent: 严格模式，必须有知识库来源
+            collected_response.append('📭 知识库中暂无相关内容。')
             yield f"data: {json.dumps({'type': 'content', 'text': '📭 知识库中暂无相关内容。'})}\n\n"
+            save_messages()
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
         if not vector_results and is_character:
             # Character Agent: 知识库为空时用 LLM + persona 直接回答
             if not llm_cfg.get("api_key"):
+                collected_response.append('⚠️ 请先在 Config 中配置 LLM API Key。')
                 yield f"data: {json.dumps({'type': 'content', 'text': '⚠️ 请先在 Config 中配置 LLM API Key。'})}\n\n"
+                save_messages()
                 yield f"data: {json.dumps({'type': 'done'})}\n\n"
                 return
 
@@ -477,6 +541,7 @@ async def chat_stream(
                             "model": llm_cfg.get("model", "gpt-4o-mini"),
                             "messages": [
                                 {"role": "system", "content": system_prompt},
+                                *context_messages,
                                 {"role": "user", "content": message},
                             ],
                             "stream": True,
@@ -501,6 +566,7 @@ async def chat_stream(
                                 delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
                                 text = delta.get("content", "")
                                 if text:
+                                    collected_response.append(text)
                                     yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
                             except Exception:
                                 pass
@@ -508,6 +574,7 @@ async def chat_stream(
             except Exception as e:
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
+            save_messages()
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -523,10 +590,12 @@ async def chat_stream(
                 override_endpoint=llm_cfg.get("endpoint"),
             )
             for chunk in stream_gen:
+                collected_response.append(chunk)
                 yield f"data: {json.dumps({'type': 'content', 'text': chunk})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
+        save_messages()
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

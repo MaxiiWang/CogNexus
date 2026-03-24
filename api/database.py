@@ -156,6 +156,38 @@ def migrate_knowledge_schema():
         )
     """)
 
+    # 对话会话表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+            session_id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            title TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            message_count INTEGER DEFAULT 0,
+            FOREIGN KEY (agent_id) REFERENCES agents(agent_id),
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        )
+    """)
+
+    # 对话消息表
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            message_id TEXT PRIMARY KEY,
+            session_id TEXT NOT NULL,
+            role TEXT NOT NULL,
+            content TEXT NOT NULL,
+            sources_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES chat_sessions(session_id)
+        )
+    """)
+
+    # 索引
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id, created_at)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_agent_user ON chat_sessions(agent_id, user_id, updated_at DESC)")
+
     conn.commit()
     conn.close()
 

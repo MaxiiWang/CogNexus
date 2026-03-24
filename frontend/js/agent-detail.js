@@ -4,6 +4,8 @@ const AgentDetail = (function() {
     let agentData = null;
     let currentView = null;
     let viewCleanup = null;
+    let currentSessionId = null;
+    let sessionsCache = [];
 
     function getToken() { return localStorage.getItem('cog_token'); }
     function hdrs() { return { 'Authorization': 'Bearer ' + getToken() }; }
@@ -628,21 +630,168 @@ const AgentDetail = (function() {
         box.style.height = '100%';
 
         box.innerHTML =
-            '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:12px;">' +
-            '<div style="width:48px;height:48px;border-radius:50%;background:rgba(109,168,155,0.12);display:flex;align-items:center;justify-content:center;font-size:1.4em;">💬</div>' +
-            '<div style="font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.95em;color:rgba(232,228,223,0.5);text-align:center;line-height:1.6;">与 <span style="color:rgba(226,185,106,0.8);font-weight:600;">' + esc(agentData ? agentData.name : '') + '</span> 的知识库对话<br><span style="font-size:0.85em;color:rgba(255,255,255,0.25);">基于已存储的知识进行问答</span></div>' +
-            '</div></div>' +
+            // Top bar: session selector + new button
+            '<div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.015);">' +
+            '<select id="sessionSelect" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 12px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.85em;outline:none;cursor:pointer;appearance:none;-webkit-appearance:none;background-image:url(\'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236b665e%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>\');background-repeat:no-repeat;background-position:right 10px center;">' +
+            '<option value="">加载中...</option></select>' +
+            '<button id="newSessionBtn" style="padding:8px 14px;border-radius:8px;background:rgba(109,168,155,0.12);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.82em;font-weight:600;white-space:nowrap;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);" onmouseover="this.style.background=\'rgba(109,168,155,0.2)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.12)\'">+ 新对话</button>' +
+            '<button id="deleteSessionBtn" style="padding:8px;border-radius:8px;background:none;color:#6b665e;border:1px solid rgba(255,255,255,0.06);cursor:pointer;font-size:0.82em;transition:all 0.15s;" onmouseover="this.style.color=\'#b8868a\';this.style.borderColor=\'rgba(184,134,138,0.3)\'" onmouseout="this.style.color=\'#6b665e\';this.style.borderColor=\'rgba(255,255,255,0.06)\'" title="删除当前会话">🗑️</button>' +
+            '</div>' +
+            // Messages area
+            '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;"></div>' +
+            // Input area
             '<div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);">' +
             '<div style="display:flex;gap:12px;align-items:flex-end;">' +
-            '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',\'Inter\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
-            '<button id="chatSendBtn" style="background:rgba(109,168,155,0.9);color:#fff;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:\'DM Sans\',\'Inter\',sans-serif;font-weight:600;font-size:0.88em;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);letter-spacing:0.02em;" onmouseover="this.style.background=\'rgba(109,168,155,1)\';this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.9)\';this.style.transform=\'none\'">发送</button>' +
+            '<input id="chatInput" type="text" placeholder="输入你的问题..." style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 16px;color:#e8e4df;font-family:\'DM Sans\',sans-serif;font-size:0.9em;outline:none;transition:border-color 0.15s cubic-bezier(0.16,1,0.3,1);" onfocus="this.style.borderColor=\'rgba(109,168,155,0.4)\'" onblur="this.style.borderColor=\'rgba(255,255,255,0.08)\'">' +
+            '<button id="chatSendBtn" style="background:rgba(109,168,155,0.9);color:#fff;border:none;border-radius:12px;padding:12px 20px;cursor:pointer;font-family:\'DM Sans\',sans-serif;font-weight:600;font-size:0.88em;transition:all 0.15s cubic-bezier(0.16,1,0.3,1);" onmouseover="this.style.background=\'rgba(109,168,155,1)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.9)\'">发送</button>' +
             '</div></div>';
 
         document.getElementById('chatSendBtn').addEventListener('click', sendChat);
         document.getElementById('chatInput').addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
         });
+        document.getElementById('newSessionBtn').addEventListener('click', createNewSession);
+        document.getElementById('deleteSessionBtn').addEventListener('click', deleteCurrentSession);
+        document.getElementById('sessionSelect').addEventListener('change', (e) => {
+            if (e.target.value) switchSession(e.target.value);
+        });
+
+        // Load sessions
+        loadSessions();
+    }
+
+    async function loadSessions() {
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/chat/sessions?limit=50', { headers: hdrs() });
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            sessionsCache = data.sessions || [];
+            renderSessionSelect();
+
+            if (sessionsCache.length > 0) {
+                // Load most recent session
+                switchSession(sessionsCache[0].session_id);
+            } else {
+                // Auto-create first session
+                await createNewSession();
+            }
+        } catch(e) {
+            console.error('Load sessions failed:', e);
+            // Still create a session even if load fails
+            await createNewSession();
+        }
+    }
+
+    function renderSessionSelect() {
+        const select = document.getElementById('sessionSelect');
+        if (!select) return;
+
+        if (sessionsCache.length === 0) {
+            select.innerHTML = '<option value="">暂无对话</option>';
+            return;
+        }
+
+        select.innerHTML = sessionsCache.map(s => {
+            const title = s.title || '新对话';
+            const preview = title.length > 25 ? title.slice(0, 25) + '...' : title;
+            const count = s.message_count || 0;
+            const label = preview + (count > 0 ? ' (' + count + '条)' : '');
+            return '<option value="' + esc(s.session_id) + '"' + (s.session_id === currentSessionId ? ' selected' : '') + '>' + esc(label) + '</option>';
+        }).join('');
+    }
+
+    async function switchSession(sessionId) {
+        currentSessionId = sessionId;
+        renderSessionSelect();
+        await loadMessages(sessionId);
+    }
+
+    async function loadMessages(sessionId) {
+        const msgs = document.getElementById('chatMessages');
+        if (!msgs) return;
+
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/chat/sessions/' + sessionId + '/messages?limit=100', { headers: hdrs() });
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            const messages = data.messages || [];
+
+            if (messages.length === 0) {
+                // Empty session welcome
+                const agentName = agentData ? agentData.name : 'AI';
+                msgs.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:12px;">' +
+                    '<div style="width:48px;height:48px;border-radius:50%;background:rgba(109,168,155,0.12);display:flex;align-items:center;justify-content:center;font-size:1.4em;">💬</div>' +
+                    '<div style="font-family:\'DM Sans\',sans-serif;font-size:0.95em;color:rgba(232,228,223,0.5);text-align:center;line-height:1.6;">与 <span style="color:rgba(226,185,106,0.8);font-weight:600;">' + esc(agentName) + '</span> 开始对话</div>' +
+                    '</div>';
+                return;
+            }
+
+            // Render all messages
+            const agentName = agentData ? agentData.name : 'AI';
+            msgs.innerHTML = messages.map(m => {
+                if (m.role === 'user') {
+                    return '<div style="align-self:flex-end;max-width:75%;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);">' +
+                        '<div style="background:rgba(109,168,155,0.12);color:rgba(232,228,223,0.95);padding:12px 16px;border-radius:16px 16px 4px 16px;font-family:\'DM Sans\',sans-serif;font-size:0.9em;line-height:1.6;">' + esc(m.content) + '</div></div>';
+                } else {
+                    return '<div style="align-self:flex-start;max-width:80%;">' +
+                        '<div style="font-size:0.72em;color:rgba(226,185,106,0.6);margin-bottom:6px;font-weight:600;letter-spacing:0.03em;">' + esc(agentName) + '</div>' +
+                        '<div style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);">' + esc(m.content).replace(/\n/g, '<br>') + '</div></div>';
+                }
+            }).join('');
+
+            msgs.scrollTop = msgs.scrollHeight;
+        } catch(e) {
+            msgs.innerHTML = '<div style="text-align:center;color:#b8868a;padding:20px;">加载消息失败</div>';
+        }
+    }
+
+    async function createNewSession() {
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/chat/sessions', {
+                method: 'POST', headers: jsonHdrs(),
+                body: JSON.stringify({})
+            });
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+
+            // Add to cache and switch
+            sessionsCache.unshift({
+                session_id: data.session_id,
+                title: data.title,
+                message_count: 0,
+                created_at: data.created_at,
+                updated_at: data.created_at,
+            });
+            switchSession(data.session_id);
+            toast('新对话已创建');
+        } catch(e) {
+            toast('创建失败', 'error');
+        }
+    }
+
+    async function deleteCurrentSession() {
+        if (!currentSessionId) return;
+        if (!confirm('确定删除当前对话？所有消息将被永久删除。')) return;
+
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/chat/sessions/' + currentSessionId, {
+                method: 'DELETE', headers: hdrs()
+            });
+            if (!r.ok) throw new Error();
+
+            // Remove from cache
+            sessionsCache = sessionsCache.filter(s => s.session_id !== currentSessionId);
+            currentSessionId = null;
+
+            if (sessionsCache.length > 0) {
+                switchSession(sessionsCache[0].session_id);
+            } else {
+                await createNewSession();
+            }
+            toast('对话已删除');
+        } catch(e) {
+            toast('删除失败', 'error');
+        }
     }
 
     async function sendChat() {
@@ -684,7 +833,7 @@ const AgentDetail = (function() {
         }
 
         try {
-            const url = '/api/knowledge/' + getNs() + '/chat/stream?q=' + encodeURIComponent(q);
+            const url = '/api/knowledge/' + getNs() + '/chat/stream?q=' + encodeURIComponent(q) + (currentSessionId ? '&session_id=' + currentSessionId : '');
             const resp = await fetch(url, { headers: hdrs() });
 
             if (!resp.ok) {
@@ -733,6 +882,16 @@ const AgentDetail = (function() {
             if (window.avatarCallback) window.avatarCallback('idle');
             btn.disabled = false;
             btn.textContent = '发送';
+            // Update session cache
+            if (currentSessionId) {
+                const s = sessionsCache.find(s => s.session_id === currentSessionId);
+                if (s) {
+                    s.message_count = (s.message_count || 0) + 2;
+                    if (s.title === '新对话' && q) s.title = q.slice(0, 20);
+                    s.updated_at = new Date().toISOString();
+                    renderSessionSelect();
+                }
+            }
             msgs.scrollTop = msgs.scrollHeight;
         }
     }
@@ -1287,5 +1446,5 @@ const AgentDetail = (function() {
         });
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession };
 })();
