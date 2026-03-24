@@ -799,6 +799,50 @@ async def add_agent_tokens(agent_id: str, data: AddTokensRequest, user: dict = D
     }
 
 
+class TokenGenerate(BaseModel):
+    scope: str = "qa_public"
+    scope_label: str = "公开问答"
+    qa_limit: int = 20
+
+
+@app.post("/api/agents/{agent_id}/tokens/generate")
+async def generate_token(agent_id: str, data: TokenGenerate = TokenGenerate(), user: dict = Depends(get_current_user)):
+    """自动生成 Agent Token"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT owner_id, namespace FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权修改")
+
+    token_id = f"tkn_{uuid.uuid4().hex[:12]}"
+    token_value = generate_agent_token()
+
+    cursor.execute("""
+        INSERT INTO agent_tokens (token_id, agent_id, token_value, permissions,
+                                 scope, scope_label, qa_limit, namespace, validated)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+    """, (token_id, agent_id, token_value, '["chat","read","react"]',
+          data.scope, data.scope_label, data.qa_limit, agent["namespace"]))
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "success": True,
+        "token_id": token_id,
+        "token_value": token_value,
+        "scope": data.scope,
+        "qa_limit": data.qa_limit,
+        "message": "Token 已生成",
+    }
+
+
 class TokenPricing(BaseModel):
     scope: str
     qa_limit: int

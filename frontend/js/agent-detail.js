@@ -199,21 +199,17 @@ const AgentDetail = (function() {
     }
 
     async function addTokens() {
-        const note = document.getElementById('ovTokenNote').value.trim();
-        // For CogNexus, we prompt user to paste token values
-        const tokenValue = prompt('请粘贴要添加的 Token 值（可粘贴多个，每行一个）：');
-        if (!tokenValue) return;
-        const tokens = tokenValue.split('\n').map(t => t.trim()).filter(Boolean);
-        if (!tokens.length) return;
+        // 自动生成 Token，无需用户输入
         try {
-            const r = await fetch('/api/agents/' + agentId + '/tokens', {
+            const r = await fetch('/api/agents/' + agentId + '/tokens/generate', {
                 method: 'POST', headers: jsonHdrs(),
-                body: JSON.stringify({ tokens: tokens })
+                body: JSON.stringify({})
             });
             if (!r.ok) throw new Error();
-            toast('Token 添加成功');
+            const d = await r.json();
+            toast('Token 已生成');
             loadTokens();
-        } catch { toast('添加失败', 'error'); }
+        } catch { toast('生成失败', 'error'); }
     }
 
     // ===== Profile Edit Modal =====
