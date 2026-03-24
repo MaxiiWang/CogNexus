@@ -1156,12 +1156,14 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
     if cursor.fetchone():
         namespace = f"{namespace}_{uuid.uuid4().hex[:6]}"
     
+    llm_config_str = data.llm_config if data.llm_config else "{}"
+
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type, 
-                           endpoint_url, avatar_url, tags, namespace)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           endpoint_url, avatar_url, tags, namespace, llm_config)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (agent_id, user["user_id"], data.name, data.description, 
-          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace))
+          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace, llm_config_str))
     
     # 存储用户提供的 Tokens
     token_count = 0
