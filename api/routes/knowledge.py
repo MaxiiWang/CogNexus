@@ -702,8 +702,8 @@ async def chat_stream(
             except Exception:
                 pass
 
-        # 网络搜索 fallback
-        if chat_config.get("enable_web_search") and len(vector_results) < 3:
+        # 网络搜索增强（开启后始终搜索，作为知识库的补充而非仅 fallback）
+        if chat_config.get("enable_web_search"):
             try:
                 web_results = _web_search_fallback(message)
                 if web_results:
