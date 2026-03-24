@@ -1071,7 +1071,8 @@
                     const statusClass = a.status === 'active' ? 'online' : 'offline';
                     const statusText = a.status === 'active' ? I18N.t('dash.online') : I18N.t('dash.offline');
                     const typeIcon = a.agent_type === 'human' ? '👤' : '🎭';
-                    const typeName = a.agent_type === 'human' ? 'Human' : 'Character';
+                    const typeName = a.agent_type === 'human' ? I18N.t('dash.type_human') : I18N.t('dash.type_character');
+                    const publishStatus = a.is_public === 1 ? '<span style="color:#6da89b;font-size:0.75em;margin-left:8px;">🌐 ' + I18N.t('dash.published') + '</span>' : '<span style="color:#6b665e;font-size:0.75em;margin-left:8px;">🔒 ' + I18N.t('dash.unpublished') + '</span>';
                     return `
                     <div class="agent-card ${typeClass}">
                         <div class="agent-card-info">
@@ -1081,17 +1082,15 @@
                                     <span class="status-dot ${statusClass}"></span>
                                     ${statusText}
                                 </span>
+                                ${publishStatus}
                             </h4>
                             <div class="agent-meta">
                                 <span class="type-badge ${a.agent_type}">${typeIcon} ${typeName}</span>
                                 &middot; ${a.description || I18N.t('market.no_desc')}
                             </div>
-                            <div class="agent-endpoint">${a.endpoint_url}</div>
                         </div>
                         <div class="agent-card-actions">
-                            <a href="/agent-detail?id=${a.agent_id}" class="btn btn-primary btn-small">Detail</a>
-                            <button class="btn btn-secondary btn-small" onclick="editAgent('${a.agent_id}')">${I18N.t('common.edit')}</button>
-                            <button class="btn btn-secondary btn-small" onclick="manageTokens('${a.agent_id}')">Token</button>
+                            <a href="/agent-detail?id=${a.agent_id}" class="btn btn-primary btn-small">${I18N.t('common.detail')}</a>
                             <button class="btn btn-danger btn-small" onclick="deleteAgent('${a.agent_id}', '${safeName}')">${I18N.t('common.delete')}</button>
                         </div>
                     </div>
