@@ -33,6 +33,7 @@ const I18N = {
             // Agent Detail
             'agent.back_to_agents': 'Back to Agents',
             'agent.tab_overview': 'Overview',
+            'agent.tab_chat': 'Chat',
             'agent.tab_knowledge': 'Knowledge',
             'agent.tab_config': 'Config',
             'agent.stat_facts': 'Facts',
@@ -549,6 +550,7 @@ const I18N = {
             // Agent 详情
             'agent.back_to_agents': '返回 Agent 列表',
             'agent.tab_overview': '概览',
+            'agent.tab_chat': '对话',
             'agent.tab_knowledge': '知识库',
             'agent.tab_config': '配置',
             'agent.stat_facts': '事实',

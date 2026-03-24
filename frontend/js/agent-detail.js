@@ -33,6 +33,8 @@ const AgentDetail = (function() {
         // configType already has inline onchange in HTML
     }
 
+    let chatInitialized = false;
+
     function setupTabs() {
         document.querySelectorAll('.detail-tab').forEach(tab => {
             tab.addEventListener('click', () => {
@@ -42,8 +44,15 @@ const AgentDetail = (function() {
                 const el = document.getElementById('tab-' + tab.dataset.tab);
                 if (el) el.classList.add('active');
                 if (tab.dataset.tab === 'knowledge' && !currentView) loadKnowledgeView('graph');
+                if (tab.dataset.tab === 'chat' && !chatInitialized) initChatTab();
             });
         });
+    }
+
+    function initChatTab() {
+        chatInitialized = true;
+        const box = document.getElementById('chatArea');
+        renderChat(box, {style:{}}, {style:{}});
     }
 
     function setupViewSwitcher() {
@@ -603,8 +612,11 @@ const AgentDetail = (function() {
 
     // ===== Chat View (like brain-visual/chat.html) =====
     function renderChat(box, ld, em) {
-        ld.style.display = 'none';
-        // Chat uses CSS class kv-chat for sizing
+        if (ld && ld.style) ld.style.display = 'none';
+
+        box.style.display = 'flex';
+        box.style.flexDirection = 'column';
+        box.style.height = '100%';
 
         box.innerHTML =
             '<div style="padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:10px;">' +
@@ -621,7 +633,6 @@ const AgentDetail = (function() {
         document.getElementById('chatInput').addEventListener('keydown', e => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
         });
-        viewCleanup = () => { box.innerHTML = ''; box.style.cssText = ''; };
     }
 
     async function sendChat() {

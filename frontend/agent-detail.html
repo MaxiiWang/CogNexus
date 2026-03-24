@@ -629,6 +629,9 @@
             <button class="detail-tab active" data-tab="overview">
                 <span data-i18n="agent.tab_overview">Overview</span>
             </button>
+            <button class="detail-tab" data-tab="chat">
+                <span>💬</span> <span data-i18n="agent.tab_chat">Chat</span>
+            </button>
             <button class="detail-tab" data-tab="knowledge">
                 <span data-i18n="agent.tab_knowledge">Knowledge</span>
             </button>
@@ -785,9 +788,6 @@
                     <button class="view-btn" data-view="timeline">
                         <span>📅</span> <span data-i18n="agent.view_timeline">Timeline</span>
                     </button>
-                    <button class="view-btn" data-view="chat">
-                        <span>💬</span> <span data-i18n="agent.view_chat">Chat</span>
-                    </button>
                 </div>
 
                 <div id="knowledgeView" class="knowledge-view"></div>
@@ -811,6 +811,13 @@
                     <div id="detailPanelContent" style="flex:1;overflow-y:auto;padding:20px;"></div>
                 </div>
                 <div id="detailPanelOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;" onclick="AgentDetail.closeDetail()"></div>
+            </div>
+        </div>
+
+        <!-- Chat Tab -->
+        <div class="tab-content" id="tab-chat">
+            <div class="knowledge-container" style="display:flex;flex-direction:column;height:calc(100vh - 200px);min-height:500px;">
+                <div id="chatArea" style="flex:1;display:flex;flex-direction:column;background:#1a1a22;border-radius:12px;border:1px solid rgba(255,255,255,0.06);overflow:hidden;"></div>
             </div>
         </div>
 
