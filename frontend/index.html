@@ -551,25 +551,26 @@
             .oss-header { flex-direction: column; align-items: flex-start; }
             .oss-badges { margin-left: 0; }
             .modal-content {
-                width: 95vw !important;
+                width: calc(100vw - 32px) !important;
                 max-width: none !important;
-                margin: 16px;
+                margin: 0 auto;
                 padding: 24px 20px !important;
                 border-radius: 16px;
-                max-height: 90vh;
+                max-height: 85vh;
                 overflow-y: auto;
+                box-sizing: border-box;
             }
-            .modal-content h2 {
-                font-size: 1.3em;
-            }
-            .modal-content .form-group label {
-                font-size: 0.85em;
+            .modal-content * {
+                box-sizing: border-box;
             }
             .modal-content .form-group input,
             .modal-content .form-group select,
             .modal-content .form-group textarea {
+                width: 100% !important;
+                max-width: 100% !important;
                 padding: 12px 14px;
                 font-size: 1em;
+                box-sizing: border-box;
             }
             .modal-buttons {
                 flex-direction: column;
@@ -579,12 +580,6 @@
                 width: 100%;
                 padding: 14px;
                 font-size: 1em;
-            }
-            .alert-toast, [class*="alert"] {
-                right: 16px !important;
-                left: 16px !important;
-                max-width: none !important;
-                text-align: center;
             }
         }
     </style>

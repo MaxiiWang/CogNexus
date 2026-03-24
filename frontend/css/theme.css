@@ -1132,7 +1132,7 @@ footer {
         padding: 20px 24px;
         gap: 12px;
         border-top: 1px solid rgba(255,255,255,0.06);
-        margin-top: auto;
+
     }
 
     .nav-links .auth-buttons:not([style*="none"]) {
@@ -1152,7 +1152,7 @@ footer {
     .nav-links .user-menu {
         padding: 0;
         border-top: 1px solid rgba(255,255,255,0.06);
-        margin-top: auto;
+
     }
 
     .nav-links .user-menu.active {
@@ -1208,5 +1208,12 @@ footer {
     .modal-content {
         padding: var(--space-lg);
         border-radius: var(--radius-lg);
+    }
+
+    .alert {
+        left: 16px !important;
+        right: 16px !important;
+        max-width: none !important;
+        text-align: center;
     }
 }
