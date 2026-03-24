@@ -633,6 +633,7 @@
                 </span>
             </div>
             <div class="agent-header-right">
+                <button id="publishBtn" class="btn" style="display:none;padding:8px 16px;border-radius:8px;font-size:0.82em;font-weight:600;cursor:pointer;transition:all 0.15s;" onclick="AgentDetail.togglePublish()">发布</button>
                 <span class="type-badge" id="agentTypeBadge">—</span>
                 <span class="tag" id="agentNamespace">—</span>
             </div>
@@ -651,6 +652,9 @@
             </button>
             <button class="detail-tab" data-tab="config">
                 <span data-i18n="agent.tab_config">Config</span>
+            </button>
+            <button class="detail-tab" data-tab="usage">
+                <span data-i18n="agent.tab_usage">Usage</span>
             </button>
         </div>
 
@@ -1033,6 +1037,33 @@
                 <button class="btn btn-danger" id="deleteAgentBtn" onclick="AgentDetail.deleteAgent()" style="margin-left:auto;">
                     <span data-i18n="agent.delete_agent">Delete Agent</span>
                 </button>
+            </div>
+        </div>
+
+        <!-- Usage Tab -->
+        <div class="tab-content" id="tab-usage">
+            <div class="config-section">
+                <div class="config-section-title">📊 使用统计</div>
+                <div style="display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:120px;padding:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;text-align:center;">
+                        <div id="usageTotalChats" style="font-family:'Playfair Display',serif;font-size:1.8em;font-weight:700;color:#e2b96a;">0</div>
+                        <div style="font-size:0.75em;color:#6b665e;margin-top:4px;">总对话次数</div>
+                    </div>
+                    <div style="flex:1;min-width:120px;padding:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;text-align:center;">
+                        <div id="usageTotalAtp" style="font-family:'Playfair Display',serif;font-size:1.8em;font-weight:700;color:#6da89b;">0</div>
+                        <div style="font-size:0.75em;color:#6b665e;margin-top:4px;">总收入 (ATP)</div>
+                    </div>
+                    <div style="flex:1;min-width:120px;padding:20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;text-align:center;">
+                        <div id="usageUniqueUsers" style="font-family:'Playfair Display',serif;font-size:1.8em;font-weight:700;color:#7eb8d4;">0</div>
+                        <div style="font-size:0.75em;color:#6b665e;margin-top:4px;">独立用户数</div>
+                    </div>
+                </div>
+            </div>
+            <div class="config-section">
+                <div class="config-section-title">📋 使用记录</div>
+                <div id="usageRecords" style="min-height:100px;">
+                    <div style="text-align:center;color:#6b665e;padding:20px;">加载中...</div>
+                </div>
             </div>
         </div>
     </main>

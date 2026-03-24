@@ -445,6 +445,38 @@ async def chat_stream(
 
         message = q.strip()
 
+        # 按次扣费（非所有者对话时）
+        user_id = user.get("user_id")
+        conn_fee = get_db()
+        cursor_fee = conn_fee.cursor()
+        cursor_fee.execute("SELECT owner_id, price_per_chat FROM agents WHERE namespace = ?", (namespace,))
+        agent_row = cursor_fee.fetchone()
+
+        if agent_row and agent_row["owner_id"] != user_id:
+            price = agent_row["price_per_chat"] or 0
+            if price > 0:
+                # 检查余额
+                cursor_fee.execute("SELECT atp_balance FROM users WHERE user_id = ?", (user_id,))
+                user_row = cursor_fee.fetchone()
+                balance = user_row["atp_balance"] if user_row else 0
+                if balance < price:
+                    conn_fee.close()
+                    yield f"data: {json.dumps({'type': 'error', 'message': f'ATP 余额不足，本次对话需要 {price} ATP，当前余额 {balance} ATP'})}\n\n"
+                    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                    return
+
+                # 扣费
+                import uuid as _uuid2
+                cursor_fee.execute("UPDATE users SET atp_balance = atp_balance - ? WHERE user_id = ?", (price, user_id))
+                cursor_fee.execute("UPDATE users SET atp_balance = atp_balance + ? WHERE user_id = ?", (price, agent_row["owner_id"]))
+                tx_id = f"tx_{_uuid2.uuid4().hex[:12]}"
+                cursor_fee.execute("""
+                    INSERT INTO transactions (tx_id, from_user_id, to_user_id, agent_id, atp_amount, tx_type, description)
+                    VALUES (?, ?, ?, (SELECT agent_id FROM agents WHERE namespace = ?), ?, 'chat_fee', ?)
+                """, (tx_id, user_id, agent_row["owner_id"], namespace, price, f"对话费用 {price} ATP"))
+                conn_fee.commit()
+        conn_fee.close()
+
         # Slash 命令不流式，直接返回
         if message.startswith('/'):
             from cogmate_core.intent_handler import IntentHandler

@@ -47,6 +47,7 @@ const AgentDetail = (function() {
                 if (el) el.classList.add('active');
                 if (tab.dataset.tab === 'knowledge' && !currentView) loadKnowledgeView('graph');
                 if (tab.dataset.tab === 'chat' && !chatInitialized) initChatTab();
+                if (tab.dataset.tab === 'usage') loadUsage();
             });
         });
     }
@@ -75,6 +76,7 @@ const AgentDetail = (function() {
             if (!r.ok) throw new Error();
             agentData = await r.json();
             renderHeader();
+            updatePublishButton();
             renderOverview();
             loadStats();
             fillConfig();
@@ -1586,5 +1588,111 @@ const AgentDetail = (function() {
         } catch(e) { toast('操作失败', 'error'); }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar };
+    // ===== Publish / Unpublish =====
+
+    function updatePublishButton() {
+        const btn = document.getElementById('publishBtn');
+        if (!btn || !agentData) return;
+        
+        // Only show for owner
+        try {
+            const token = getToken();
+            if (!token) return;
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userId = payload.sub || payload.user_id;
+            if (agentData.owner_id !== userId) return;
+        } catch { return; }
+        
+        btn.style.display = '';
+        if (agentData.is_public === 1) {
+            btn.textContent = '✅ 已发布';
+            btn.style.background = 'rgba(109,168,155,0.12)';
+            btn.style.color = '#6da89b';
+            btn.style.border = '1px solid rgba(109,168,155,0.3)';
+        } else {
+            btn.textContent = '🚀 发布';
+            btn.style.background = 'rgba(226,185,106,0.12)';
+            btn.style.color = '#e2b96a';
+            btn.style.border = '1px solid rgba(226,185,106,0.3)';
+        }
+    }
+
+    async function togglePublish() {
+        if (!agentData) return;
+        
+        if (agentData.is_public === 1) {
+            // Unpublish
+            if (!confirm('确定将此 Agent 设为私有？其他用户将无法访问。')) return;
+            try {
+                const r = await fetch('/api/agents/' + agentId + '/unpublish', { method: 'POST', headers: hdrs() });
+                if (!r.ok) throw new Error();
+                agentData.is_public = 0;
+                updatePublishButton();
+                toast('已设为私有');
+            } catch { toast('操作失败', 'error'); }
+        } else {
+            // Publish — ask for price
+            const priceStr = prompt('设置每次对话的 ATP 价格（0 = 免费）：', '1');
+            if (priceStr === null) return;
+            const price = parseInt(priceStr);
+            if (isNaN(price) || price < 0) { toast('请输入有效的价格', 'error'); return; }
+            
+            try {
+                const r = await fetch('/api/agents/' + agentId + '/publish', {
+                    method: 'POST', headers: jsonHdrs(),
+                    body: JSON.stringify({ price_per_chat: price })
+                });
+                if (!r.ok) throw new Error();
+                agentData.is_public = 1;
+                agentData.price_per_chat = price;
+                updatePublishButton();
+                toast('Agent 已发布' + (price > 0 ? '，每次对话 ' + price + ' ATP' : '（免费）'));
+            } catch { toast('发布失败', 'error'); }
+        }
+    }
+
+    // ===== Usage Tab =====
+
+    async function loadUsage() {
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/usage', { headers: hdrs() });
+            if (!r.ok) throw new Error();
+            const data = await r.json();
+            
+            document.getElementById('usageTotalChats').textContent = data.total_chats || 0;
+            document.getElementById('usageTotalAtp').textContent = data.total_atp || 0;
+            document.getElementById('usageUniqueUsers').textContent = data.unique_users || 0;
+            
+            const records = data.records || [];
+            const el = document.getElementById('usageRecords');
+            
+            if (!records.length) {
+                el.innerHTML = '<div style="text-align:center;color:#6b665e;padding:30px;font-size:0.9em;">暂无使用记录</div>';
+                return;
+            }
+            
+            el.innerHTML = '<table style="width:100%;border-collapse:collapse;">' +
+                '<thead><tr style="border-bottom:1px solid rgba(255,255,255,0.06);">' +
+                '<th style="text-align:left;padding:10px 12px;color:#6b665e;font-size:0.78em;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">用户</th>' +
+                '<th style="text-align:left;padding:10px 12px;color:#6b665e;font-size:0.78em;font-weight:600;">时间</th>' +
+                '<th style="text-align:right;padding:10px 12px;color:#6b665e;font-size:0.78em;font-weight:600;">ATP</th>' +
+                '</tr></thead><tbody>' +
+                records.map(r => {
+                    const username = r.username || '匿名';
+                    // 隐私保护：只显示首字 + 星号
+                    const masked = username.length > 1 ? username[0] + '***' + username[username.length - 1] : username[0] + '***';
+                    const time = (r.created_at || '').slice(0, 16).replace('T', ' ');
+                    return '<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">' +
+                        '<td style="padding:10px 12px;color:#a8a299;font-size:0.85em;">' + esc(masked) + '</td>' +
+                        '<td style="padding:10px 12px;color:#6b665e;font-size:0.82em;">' + esc(time) + '</td>' +
+                        '<td style="padding:10px 12px;text-align:right;color:#6da89b;font-size:0.85em;font-weight:600;">' + (r.atp_amount || 0) + '</td>' +
+                        '</tr>';
+                }).join('') +
+                '</tbody></table>';
+        } catch(e) {
+            document.getElementById('usageRecords').innerHTML = '<div style="color:#b8868a;padding:20px;text-align:center;">加载失败</div>';
+        }
+    }
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish };
 })();

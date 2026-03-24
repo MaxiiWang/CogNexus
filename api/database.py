@@ -99,7 +99,7 @@ def init_db():
             to_user_id TEXT,
             agent_id TEXT,
             atp_amount INTEGER NOT NULL,
-            tx_type TEXT CHECK (tx_type IN ('purchase', 'reward', 'topup', 'register')),
+            tx_type TEXT CHECK (tx_type IN ('purchase', 'reward', 'topup', 'register', 'chat_fee')),
             description TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
@@ -132,9 +132,11 @@ def migrate_knowledge_schema():
     if "llm_config" not in columns:
         cursor.execute("ALTER TABLE agents ADD COLUMN llm_config TEXT DEFAULT '{}'")
     if "is_public" not in columns:
-        cursor.execute("ALTER TABLE agents ADD COLUMN is_public INTEGER DEFAULT 1")
+        cursor.execute("ALTER TABLE agents ADD COLUMN is_public INTEGER DEFAULT 0")
     if "avatar_model_url" not in columns:
         cursor.execute("ALTER TABLE agents ADD COLUMN avatar_model_url TEXT")
+    if "price_per_chat" not in columns:
+        cursor.execute("ALTER TABLE agents ADD COLUMN price_per_chat INTEGER DEFAULT 0")
 
     # simulations 表扩展：is_public
     cursor.execute("PRAGMA table_info(simulations)")

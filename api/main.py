@@ -83,7 +83,7 @@ class AgentCreate(BaseModel):
     avatar_url: Optional[str] = None
     tags: Optional[List[str]] = []
     status: Optional[str] = "active"
-    is_public: Optional[int] = 1
+    is_public: Optional[int] = 0
     llm_config: Optional[str] = "{}"
     im_config: Optional[str] = "{}"
     price_chat: int = 10
@@ -174,8 +174,8 @@ async def register(request: Request, data: UserRegister):
 
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type,
-                           endpoint_url, namespace, status)
-        VALUES (?, ?, ?, ?, 'human', 'http://localhost:8081', ?, 'active')
+                           endpoint_url, namespace, status, is_public)
+        VALUES (?, ?, ?, ?, 'human', 'http://localhost:8081', ?, 'active', 0)
     """, (agent_id, user_id, data.username, '我的个人知识库', namespace))
 
     # 为该 Agent 创建默认的 browse_public Token
@@ -639,6 +639,53 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
     return {"success": True, "message": "Agent 更新成功"}
 
 
+class PublishRequest(BaseModel):
+    price_per_chat: int = 1  # 每次对话扣多少 ATP
+
+@app.post("/api/agents/{agent_id}/publish")
+async def publish_agent(agent_id: str, data: PublishRequest, user: dict = Depends(get_current_user)):
+    """发布 Agent（设为公开 + 设置对话价格）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT owner_id, is_public FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权操作")
+    if data.price_per_chat < 0:
+        conn.close()
+        raise HTTPException(status_code=400, detail="价格不能为负数")
+
+    conn.execute("""
+        UPDATE agents SET is_public = 1, price_per_chat = ?, updated_at = datetime('now')
+        WHERE agent_id = ?
+    """, (data.price_per_chat, agent_id))
+    conn.commit()
+    conn.close()
+    return {"success": True, "is_public": 1, "price_per_chat": data.price_per_chat, "message": "Agent 已发布"}
+
+@app.post("/api/agents/{agent_id}/unpublish")
+async def unpublish_agent(agent_id: str, user: dict = Depends(get_current_user)):
+    """取消发布 Agent（设为私有）"""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT owner_id FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权操作")
+    conn.execute("UPDATE agents SET is_public = 0, updated_at = datetime('now') WHERE agent_id = ?", (agent_id,))
+    conn.commit()
+    conn.close()
+    return {"success": True, "is_public": 0, "message": "Agent 已设为私有"}
+
+
 @app.delete("/api/agents/{agent_id}")
 async def delete_agent(agent_id: str, user: dict = Depends(get_current_user)):
     """删除 Agent"""
@@ -667,6 +714,48 @@ async def delete_agent(agent_id: str, user: dict = Depends(get_current_user)):
     conn.close()
     
     return {"success": True, "message": f"Agent '{agent['name']}' 已删除"}
+
+
+@app.get("/api/agents/{agent_id}/usage")
+async def get_agent_usage(agent_id: str, user: dict = Depends(get_current_user)):
+    """获取 Agent 的使用统计（仅所有者可见）"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT owner_id FROM agents WHERE agent_id = ?", (agent_id,))
+    agent = cursor.fetchone()
+    if not agent:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    if agent["owner_id"] != user["user_id"]:
+        conn.close()
+        raise HTTPException(status_code=403, detail="无权查看")
+
+    # 统计：从 transactions 表查 chat_fee 类型
+    cursor.execute("""
+        SELECT COUNT(*) as total_chats, COALESCE(SUM(atp_amount), 0) as total_atp,
+               COUNT(DISTINCT from_user_id) as unique_users
+        FROM transactions
+        WHERE agent_id = ? AND tx_type = 'chat_fee'
+    """, (agent_id,))
+    stats = dict(cursor.fetchone())
+
+    # 最近 50 条记录（脱敏）
+    cursor.execute("""
+        SELECT t.from_user_id, u.username, t.atp_amount, t.created_at
+        FROM transactions t
+        LEFT JOIN users u ON t.from_user_id = u.user_id
+        WHERE t.agent_id = ? AND t.tx_type = 'chat_fee'
+        ORDER BY t.created_at DESC
+        LIMIT 50
+    """, (agent_id,))
+    records = [dict(row) for row in cursor.fetchall()]
+    # 移除 user_id（只保留脱敏的 username）
+    for r in records:
+        r.pop("from_user_id", None)
+
+    conn.close()
+    return {**stats, "records": records}
 
 
 @app.get("/api/agents/{agent_id}/tokens")
