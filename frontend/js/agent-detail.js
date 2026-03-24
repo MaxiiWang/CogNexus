@@ -673,42 +673,14 @@ const AgentDetail = (function() {
 
         const el = document.getElementById(lid);
         let fullText = '';
+        let speaking = false;
+        let speakingTimer = null;
 
-        // Typewriter queue: characters arrive from SSE, rendered with delay
-        let charQueue = [];
-        let typewriterRunning = false;
-        let streamDone = false;
-
-        async function typewriterLoop() {
-            if (typewriterRunning) return;
-            typewriterRunning = true;
-            if (window.avatarCallback) window.avatarCallback('speaking');
-
-            while (charQueue.length > 0 || !streamDone) {
-                if (charQueue.length > 0) {
-                    // Render in small batches for efficiency
-                    const batchSize = Math.min(charQueue.length, 2);
-                    for (let i = 0; i < batchSize; i++) {
-                        fullText += charQueue.shift();
-                    }
-                    el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
-                    msgs.scrollTop = msgs.scrollHeight;
-                    await new Promise(r => setTimeout(r, 30));
-                } else {
-                    // Queue empty but stream not done, wait a bit
-                    await new Promise(r => setTimeout(r, 50));
-                }
-            }
-
-            // Drain remaining
-            if (charQueue.length > 0) {
-                fullText += charQueue.join('');
-                charQueue = [];
-                el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
-                msgs.scrollTop = msgs.scrollHeight;
-            }
-
-            typewriterRunning = false;
+        // Mark avatar speaking, auto-stop after 400ms of no new content
+        function markSpeaking() {
+            if (!speaking) { speaking = true; if (window.avatarCallback) window.avatarCallback('speaking'); }
+            clearTimeout(speakingTimer);
+            speakingTimer = setTimeout(() => { speaking = false; if (window.avatarCallback) window.avatarCallback('idle'); }, 400);
         }
 
         try {
@@ -716,7 +688,6 @@ const AgentDetail = (function() {
             const resp = await fetch(url, { headers: hdrs() });
 
             if (!resp.ok) {
-                // Fallback to non-stream
                 const r2 = await fetch('/api/knowledge/' + getNs() + '/chat', {
                     method: 'POST', headers: jsonHdrs(),
                     body: JSON.stringify({ message: q })
@@ -730,9 +701,6 @@ const AgentDetail = (function() {
             const decoder = new TextDecoder();
             let buffer = '';
 
-            // Start typewriter consumer
-            const typewriterPromise = typewriterLoop();
-
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
@@ -744,26 +712,24 @@ const AgentDetail = (function() {
                     if (!line.startsWith('data: ')) continue;
                     try {
                         const ev = JSON.parse(line.slice(6));
-                        if (ev.type === 'content') {
-                            // Push characters into queue
-                            for (const ch of ev.text) charQueue.push(ch);
+                        if (ev.type === 'content' && ev.text) {
+                            markSpeaking();
+                            fullText += ev.text;
+                            el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                            msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
                         }
                     } catch {}
                 }
             }
-
-            streamDone = true;
-            await typewriterPromise;
         } catch (e) {
-            streamDone = true;
             if (!fullText) {
                 el.style.color = '#b8868a';
                 el.textContent = '请求失败，请重试';
             }
         } finally {
-            streamDone = true;
+            clearTimeout(speakingTimer);
             if (window.avatarCallback) window.avatarCallback('idle');
             btn.disabled = false;
             btn.textContent = '发送';
