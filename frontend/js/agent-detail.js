@@ -69,15 +69,15 @@ const AgentDetail = (function() {
     }
 
     // ===== Init =====
-    function init() {
+    async function init() {
         if (!requireAuth()) return;
         const p = new URLSearchParams(location.search);
         agentId = p.get('id');
         if (!agentId) { location.href = '/dashboard'; return; }
         setupTabs();
         setupViewSwitcher();
-        loadAgent();
-        // Auto-switch tab if ?tab=xxx
+        await loadAgent();
+        // Auto-switch tab if ?tab=xxx (after agent data loaded)
         const initTab = p.get('tab');
         if (initTab) {
             const tabBtn = document.querySelector(`.detail-tab[data-tab="${initTab}"]`);
