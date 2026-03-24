@@ -152,6 +152,94 @@ def _get_agent_info(namespace: str) -> dict:
     return {"agent_type": "human", "name": "", "description": ""}
 
 
+def _get_chat_config(namespace: str) -> dict:
+    """获取 Agent 的对话行为配置"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT chat_config FROM agents WHERE namespace = ?", (namespace,))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            return json.loads(row[0]) if isinstance(row[0], str) else row[0]
+    except Exception:
+        pass
+    return {}
+
+
+def _build_dynamic_system_prompt(namespace: str, vector_results: list, chat_config: dict, context_messages: list = None) -> str:
+    """根据 chat_config 动态构建 system prompt"""
+    parts = []
+    
+    # 1. 加载 Persona
+    try:
+        from cogmate_core.profile_manager import ProfileManager
+        pm = ProfileManager()
+        profile = pm.load_profile_config(namespace)
+        if profile:
+            p = profile.get("persona", {})
+            identity = profile.get("identity", {})
+            if identity.get("name"):
+                parts.append(f"你是{identity['name']}。")
+            if p.get("background"):
+                parts.append(p["background"])
+            if p.get("speaking_style"):
+                parts.append(f"说话风格：{p['speaking_style']}")
+            if p.get("core_beliefs"):
+                parts.append("核心信念：" + "；".join(p["core_beliefs"][:5]))
+    except Exception:
+        pass
+    
+    if not parts:
+        agent_info = _get_agent_info(namespace)
+        name = agent_info.get("name", "AI助手")
+        desc = agent_info.get("description", "")
+        parts.append(f"你是{name}。{desc}")
+    
+    # 2. 认知画像 / Voice Profile
+    voice = chat_config.get("voice_profile", "")
+    if voice:
+        parts.append(f"\n回答风格：{voice}")
+    
+    # 3. 回答语气
+    tone = chat_config.get("tone", "")
+    tone_map = {
+        "formal": "请使用正式、专业的语气回答。",
+        "friendly": "请使用友好、亲切的语气回答。",
+        "academic": "请使用学术、严谨的语气回答，适当引用来源。",
+        "roleplay": "请完全以角色身份说话，保持角色一致性。",
+    }
+    if tone and tone in tone_map:
+        parts.append(tone_map[tone])
+    
+    # 4. 高维视角
+    if chat_config.get("enable_meta_thinking"):
+        parts.append("\n📐 高维视角规则：约 1/3 的回答中，在自然相关时附加一条高维视角洞察，来源于哲学、认知科学、复杂系统、信息论等领域。以「📐 高维视角:」为前缀。原则：不牵强附会，宁缺毋滥。")
+    
+    # 5. 推理链
+    if chat_config.get("enable_reasoning_chain"):
+        parts.append("\n🧠 推理链规则：当回答涉及多条知识的交叉推理时，展示推理链：\n🧠 [知识A] × [知识B] → [推理方向和关键逻辑]\n存疑点：[最薄弱环节]\n仅在需要跨知识推理时触发，简单问题不需要。")
+    
+    # 6. 矛盾检测
+    if chat_config.get("enable_contradiction"):
+        parts.append("\n⚡ 矛盾检测规则：如果检索到的知识之间存在矛盾、张力或不一致，主动指出并分析。矛盾不等于错误，矛盾是认知复杂性的体现。分类：机会vs风险 | 立场冲突 | 时间矛盾 | 条件矛盾。")
+    
+    # 7. 知识上下文
+    if vector_results:
+        context_parts = []
+        for i, fact in enumerate(vector_results, 1):
+            fact_type = fact.get('content_type', '信息')
+            summary = fact.get('summary', '')
+            context_parts.append(f"[{i}][{fact_type}] {summary}")
+        parts.append(f"\n知识库参考（基于这些知识回答，不要简单罗列，要整合分析）：\n" + "\n".join(context_parts))
+    
+    # 8. 通用规则
+    max_tokens = chat_config.get("max_tokens", 2000)
+    parts.append(f"\n回答要求：简洁自然，有洞察，不超过约{max_tokens}字。如果知识库中没有直接相关内容，坦诚说明。")
+    
+    return "\n".join(parts)
+
+
 def _safe_query(namespace: str, query_text: str, top_k: int = 5, min_score: float = 0.5) -> dict:
     """安全查询 — 空知识库/不存在的 collection 返回空结果而非崩溃"""
     try:
@@ -511,6 +599,9 @@ async def chat_stream(
                 conn_fee.commit()
         conn_fee.close()
 
+        # 提前加载 chat_config（后续多处复用）
+        chat_config = _get_chat_config(namespace)
+
         # Slash 命令不流式，直接返回
         if message.startswith('/'):
             from cogmate_core.intent_handler import IntentHandler
@@ -524,8 +615,10 @@ async def chat_stream(
 
         # 检索知识库（空知识库不应崩溃）
         try:
+            retrieval_top_k = chat_config.get("retrieval_top_k", 5)
+            retrieval_min_score = chat_config.get("retrieval_min_score", 0.5)
             cogmate = _get_cogmate(namespace)
-            results = cogmate.query(query_text=message, top_k=5, min_score=0.5)
+            results = cogmate.query(query_text=message, top_k=retrieval_top_k, min_score=retrieval_min_score)
             vector_results = results.get("vector_results", [])
         except Exception as e:
             # Collection 不存在或知识库为空
@@ -557,34 +650,7 @@ async def chat_stream(
             try:
                 import httpx as _httpx
 
-                # 加载 persona
-                persona_prompt = ""
-                try:
-                    from cogmate_core.profile_manager import ProfileManager
-                    pm = ProfileManager()
-                    profile = pm.load_profile_config(namespace)
-                    if profile:
-                        p = profile.get("persona", {})
-                        identity = profile.get("identity", {})
-                        persona_parts = []
-                        if identity.get("name"):
-                            persona_parts.append(f"你是{identity['name']}。")
-                        if p.get("background"):
-                            persona_parts.append(p["background"])
-                        if p.get("speaking_style"):
-                            persona_parts.append(f"说话风格：{p['speaking_style']}")
-                        if p.get("core_beliefs"):
-                            beliefs = p["core_beliefs"][:5]
-                            persona_parts.append("核心信念：" + "；".join(beliefs))
-                        if persona_parts:
-                            persona_prompt = "\n".join(persona_parts)
-                except Exception:
-                    pass
-
-                if not persona_prompt:
-                    persona_prompt = f"你是{agent_info.get('name', 'AI助手')}。{agent_info.get('description', '')}"
-
-                system_prompt = persona_prompt + "\n\n请用符合角色身份的方式回答用户的问题。保持角色一致性。"
+                system_prompt = _build_dynamic_system_prompt(namespace, [], chat_config, context_messages)
 
                 # 构建 LLM 请求
                 provider = llm_cfg.get("provider", "")
@@ -644,22 +710,71 @@ async def chat_stream(
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # 有知识库结果：使用知识增强回答（Human + Character 共用）
-        try:
-            from cogmate_core.llm_answer import generate_answer
-            stream_gen = generate_answer(
-                message, vector_results, stream=True,
-                namespace=namespace,
-                override_api_key=llm_cfg.get("api_key"),
-                override_model=llm_cfg.get("model"),
-                override_provider=llm_cfg.get("provider"),
-                override_endpoint=llm_cfg.get("endpoint"),
-            )
-            for chunk in stream_gen:
-                collected_response.append(chunk)
-                yield f"data: {json.dumps({'type': 'content', 'text': chunk})}\n\n"
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        # 有知识库结果：使用动态 prompt + LLM 流式回答
+        if not llm_cfg.get("api_key"):
+            # 无 LLM key，使用结构化输出
+            from cogmate_core.llm_answer import _structured_answer
+            try:
+                result = _structured_answer(message, vector_results, "\n".join([f.get("summary","") for f in vector_results]), namespace)
+                collected_response.append(result)
+                yield f"data: {json.dumps({'type': 'content', 'text': result})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+        else:
+            try:
+                import httpx as _httpx
+                system_prompt = _build_dynamic_system_prompt(namespace, vector_results, chat_config, context_messages)
+                
+                provider = llm_cfg.get("provider", "")
+                base_url = llm_cfg.get("endpoint", "")
+                if not base_url:
+                    provider_urls = {
+                        "openai": "https://api.openai.com/v1",
+                        "doubao": "https://ark.cn-beijing.volces.com/api/v3",
+                        "deepseek": "https://api.deepseek.com/v1",
+                        "moonshot": "https://api.moonshot.cn/v1",
+                    }
+                    base_url = provider_urls.get(provider, "https://api.openai.com/v1")
+                
+                max_tokens = chat_config.get("max_tokens", 2000)
+                
+                async with _httpx.AsyncClient(timeout=60.0) as client:
+                    async with client.stream(
+                        "POST",
+                        f"{base_url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
+                        json={
+                            "model": llm_cfg.get("model", "gpt-4o-mini"),
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                *context_messages,
+                                {"role": "user", "content": message},
+                            ],
+                            "stream": True,
+                            "max_tokens": max_tokens,
+                        },
+                    ) as resp:
+                        if resp.status_code != 200:
+                            await resp.aread()
+                            yield f"data: {json.dumps({'type': 'error', 'message': f'LLM 请求失败: {resp.status_code}'})}\n\n"
+                        else:
+                            async for line in resp.aiter_lines():
+                                if not line.startswith("data: "):
+                                    continue
+                                chunk_data = line[6:]
+                                if chunk_data.strip() == "[DONE]":
+                                    break
+                                try:
+                                    chunk_obj = json.loads(chunk_data)
+                                    delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
+                                    text = delta.get("content", "")
+                                    if text:
+                                        collected_response.append(text)
+                                        yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
+                                except Exception:
+                                    pass
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
         save_messages()
         yield f"data: {json.dumps({'type': 'done'})}\n\n"

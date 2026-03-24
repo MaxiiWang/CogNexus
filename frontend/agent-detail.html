@@ -1118,6 +1118,100 @@
                 </div>
             </div>
 
+            <!-- 🧠 对话行为 -->
+            <div class="config-section">
+                <div class="config-section-title">🧠 对话行为</div>
+                
+                <div class="form-group">
+                    <label>认知画像 / 回答风格</label>
+                    <textarea id="configVoiceProfile" rows="3" placeholder="描述 Agent 的说话风格、用词习惯、思维方式&#10;例: 简洁务实，喜欢用类比，偏好第一性原理分析"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>回答语气</label>
+                    <select id="configTone">
+                        <option value="">默认</option>
+                        <option value="friendly">友好亲切</option>
+                        <option value="formal">正式专业</option>
+                        <option value="academic">学术严谨</option>
+                        <option value="roleplay">角色扮演（完全以角色身份说话）</option>
+                    </select>
+                </div>
+                
+                <div style="margin-bottom:16px;">
+                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;display:block;">高级能力</label>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+                            <input type="checkbox" id="configMetaThinking" style="width:18px;height:18px;accent-color:#6da89b;">
+                            <div>
+                                <div style="font-size:0.88em;color:var(--text-primary);">📐 高维视角</div>
+                                <div style="font-size:0.75em;color:var(--text-muted);margin-top:2px;">约 1/3 的回答附加跨学科洞察（哲学、认知科学、复杂系统等）</div>
+                            </div>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+                            <input type="checkbox" id="configReasoningChain" style="width:18px;height:18px;accent-color:#6da89b;">
+                            <div>
+                                <div style="font-size:0.88em;color:var(--text-primary);">🧠 推理链展示</div>
+                                <div style="font-size:0.75em;color:var(--text-muted);margin-top:2px;">展示知识关联推理过程（知识A × 知识B → 推理方向）</div>
+                            </div>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+                            <input type="checkbox" id="configContradiction" style="width:18px;height:18px;accent-color:#6da89b;">
+                            <div>
+                                <div style="font-size:0.88em;color:var(--text-primary);">⚡ 矛盾检测</div>
+                                <div style="font-size:0.75em;color:var(--text-muted);margin-top:2px;">发现并标记知识间的矛盾与张力</div>
+                            </div>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:10px 14px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:8px;">
+                            <input type="checkbox" id="configWebSearch" style="width:18px;height:18px;accent-color:#6da89b;">
+                            <div>
+                                <div style="font-size:0.88em;color:var(--text-primary);">🌐 网络增强</div>
+                                <div style="font-size:0.75em;color:var(--text-muted);margin-top:2px;">知识库不足时搜索网络补充（需配置 Brave API Key）</div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                    <div class="form-group">
+                        <label>检索数量</label>
+                        <select id="configRetrievalTopK">
+                            <option value="3">3 条</option>
+                            <option value="5" selected>5 条</option>
+                            <option value="10">10 条</option>
+                            <option value="20">20 条</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>最小相关度</label>
+                        <select id="configRetrievalMinScore">
+                            <option value="0.3">0.3 (宽松)</option>
+                            <option value="0.5" selected>0.5 (标准)</option>
+                            <option value="0.7">0.7 (严格)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>最大回答长度</label>
+                        <select id="configMaxTokens">
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                            <option value="2000" selected>2000</option>
+                            <option value="4000">4000</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>上下文轮数</label>
+                    <select id="configContextRounds">
+                        <option value="5">5 轮</option>
+                        <option value="10" selected>10 轮</option>
+                        <option value="20">20 轮</option>
+                        <option value="50">50 轮</option>
+                    </select>
+                </div>
+            </div>
+
             <!-- IM Connection Config -->
             <div class="config-section">
                 <div class="config-section-title" data-i18n="agent.config_im">💬 IM Connection</div>

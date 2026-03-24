@@ -1029,6 +1029,18 @@ const AgentDetail = (function() {
         const tg = im.telegram || {};
         document.getElementById('configTgToken').value = tg.bot_token || '';
         document.getElementById('configTgChatId').value = tg.chat_id || '';
+        // Chat config
+        const chatCfg = typeof a.chat_config === 'string' ? JSON.parse(a.chat_config || '{}') : (a.chat_config || {});
+        document.getElementById('configVoiceProfile').value = chatCfg.voice_profile || '';
+        document.getElementById('configTone').value = chatCfg.tone || '';
+        document.getElementById('configMetaThinking').checked = !!chatCfg.enable_meta_thinking;
+        document.getElementById('configReasoningChain').checked = !!chatCfg.enable_reasoning_chain;
+        document.getElementById('configContradiction').checked = !!chatCfg.enable_contradiction;
+        document.getElementById('configWebSearch').checked = !!chatCfg.enable_web_search;
+        document.getElementById('configRetrievalTopK').value = chatCfg.retrieval_top_k || '5';
+        document.getElementById('configRetrievalMinScore').value = chatCfg.retrieval_min_score || '0.5';
+        document.getElementById('configMaxTokens').value = chatCfg.max_tokens || '2000';
+        document.getElementById('configContextRounds').value = chatCfg.context_rounds || '10';
         // Load persona
         loadPersona();
         loadPresetAvatars();
@@ -1084,6 +1096,19 @@ const AgentDetail = (function() {
         };
         const llmKey = document.getElementById('configLlmKey').value;
         if (llmKey) llmConfig.api_key = llmKey;  // Only send if changed
+        // Build chat_config
+        const chatConfig = {
+            voice_profile: document.getElementById('configVoiceProfile').value.trim(),
+            tone: document.getElementById('configTone').value,
+            enable_meta_thinking: document.getElementById('configMetaThinking').checked,
+            enable_reasoning_chain: document.getElementById('configReasoningChain').checked,
+            enable_contradiction: document.getElementById('configContradiction').checked,
+            enable_web_search: document.getElementById('configWebSearch').checked,
+            retrieval_top_k: parseInt(document.getElementById('configRetrievalTopK').value) || 5,
+            retrieval_min_score: parseFloat(document.getElementById('configRetrievalMinScore').value) || 0.5,
+            max_tokens: parseInt(document.getElementById('configMaxTokens').value) || 2000,
+            context_rounds: parseInt(document.getElementById('configContextRounds').value) || 10,
+        };
         try {
             const r = await fetch('/api/agents/' + agentId, {
                 method: 'PUT', headers: jsonHdrs(),
@@ -1096,7 +1121,8 @@ const AgentDetail = (function() {
                     description: document.getElementById('configDescription').value,
                     is_public: document.getElementById('configIsPublic').checked ? 1 : 0,
                     llm_config: JSON.stringify(llmConfig),
-                    im_config: JSON.stringify({ telegram: { bot_token: document.getElementById('configTgToken').value, chat_id: document.getElementById('configTgChatId').value } })
+                    im_config: JSON.stringify({ telegram: { bot_token: document.getElementById('configTgToken').value, chat_id: document.getElementById('configTgChatId').value } }),
+                    chat_config: JSON.stringify(chatConfig)
                 })
             });
             if (!r.ok) throw new Error();

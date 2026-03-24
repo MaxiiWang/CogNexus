@@ -85,6 +85,7 @@ class AgentCreate(BaseModel):
     status: Optional[str] = "active"
     is_public: Optional[int] = 0
     llm_config: Optional[str] = "{}"
+    chat_config: Optional[str] = "{}"
     im_config: Optional[str] = "{}"
     price_chat: int = 10
     price_read: int = 5
@@ -599,13 +600,14 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
         UPDATE agents SET name = ?, description = ?, agent_type = ?, 
                          endpoint_url = ?, avatar_url = ?, tags = ?,
                          status = ?, namespace = ?, is_public = ?,
-                         llm_config = ?, im_config = ?,
+                         llm_config = ?, im_config = ?, chat_config = ?,
                          updated_at = datetime('now')
         WHERE agent_id = ?
     """, (data.name, data.description, data.agent_type, 
           data.endpoint_url, data.avatar_url, tags_str,
           data.status, data.namespace, data.is_public,
-          llm_config_str, data.im_config, agent_id))
+          llm_config_str, data.im_config, data.chat_config or "{}",
+          agent_id))
     
     # 更新定价
     cursor.execute("""
@@ -1160,10 +1162,11 @@ async def create_agent(data: AgentCreate, user: dict = Depends(get_current_user)
 
     cursor.execute("""
         INSERT INTO agents (agent_id, owner_id, name, description, agent_type, 
-                           endpoint_url, avatar_url, tags, namespace, llm_config, is_public)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                           endpoint_url, avatar_url, tags, namespace, llm_config, is_public, chat_config)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
     """, (agent_id, user["user_id"], data.name, data.description, 
-          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace, llm_config_str))
+          data.agent_type, data.endpoint_url, data.avatar_url, tags_str, namespace, llm_config_str,
+          data.chat_config or "{}"))
     
     # 存储用户提供的 Tokens
     token_count = 0
