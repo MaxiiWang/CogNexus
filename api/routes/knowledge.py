@@ -105,6 +105,24 @@ def _get_cogmate(namespace: str):
     return CogmateAgent(namespace=namespace)
 
 
+def _get_agent_info(namespace: str) -> dict:
+    """获取 namespace 对应的 Agent 基本信息（type、name、description）"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT agent_type, name, description FROM agents WHERE namespace = ?",
+            (namespace,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row:
+            return {"agent_type": row[0], "name": row[1], "description": row[2]}
+    except Exception:
+        pass
+    return {"agent_type": "human", "name": "", "description": ""}
+
+
 def _safe_query(namespace: str, query_text: str, top_k: int = 5, min_score: float = 0.5) -> dict:
     """安全查询 — 空知识库/不存在的 collection 返回空结果而非崩溃"""
     try:
@@ -389,15 +407,111 @@ async def chat_stream(
 
         yield f"data: {json.dumps({'type': 'meta', 'sources_count': len(vector_results)})}\n\n"
 
-        if not vector_results:
+        agent_info = _get_agent_info(namespace)
+        is_character = agent_info.get("agent_type") == "character"
+        llm_cfg = _get_agent_llm_config(namespace)
+
+        if not vector_results and not is_character:
+            # Human Agent: 严格模式，必须有知识库来源
             yield f"data: {json.dumps({'type': 'content', 'text': '📭 知识库中暂无相关内容。'})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # 流式 LLM 生成
+        if not vector_results and is_character:
+            # Character Agent: 知识库为空时用 LLM + persona 直接回答
+            if not llm_cfg.get("api_key"):
+                yield f"data: {json.dumps({'type': 'content', 'text': '⚠️ 请先在 Config 中配置 LLM API Key。'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                return
+
+            try:
+                import httpx as _httpx
+
+                # 加载 persona
+                persona_prompt = ""
+                try:
+                    from cogmate_core.profile_manager import ProfileManager
+                    pm = ProfileManager()
+                    profile = pm.load_profile_config(namespace)
+                    if profile:
+                        p = profile.get("persona", {})
+                        identity = profile.get("identity", {})
+                        persona_parts = []
+                        if identity.get("name"):
+                            persona_parts.append(f"你是{identity['name']}。")
+                        if p.get("background"):
+                            persona_parts.append(p["background"])
+                        if p.get("speaking_style"):
+                            persona_parts.append(f"说话风格：{p['speaking_style']}")
+                        if p.get("core_beliefs"):
+                            beliefs = p["core_beliefs"][:5]
+                            persona_parts.append("核心信念：" + "；".join(beliefs))
+                        if persona_parts:
+                            persona_prompt = "\n".join(persona_parts)
+                except Exception:
+                    pass
+
+                if not persona_prompt:
+                    persona_prompt = f"你是{agent_info.get('name', 'AI助手')}。{agent_info.get('description', '')}"
+
+                system_prompt = persona_prompt + "\n\n请用符合角色身份的方式回答用户的问题。保持角色一致性。"
+
+                # 构建 LLM 请求
+                provider = llm_cfg.get("provider", "")
+                base_url = llm_cfg.get("endpoint", "")
+                if not base_url:
+                    provider_urls = {
+                        "openai": "https://api.openai.com/v1",
+                        "doubao": "https://ark.cn-beijing.volces.com/api/v3",
+                        "deepseek": "https://api.deepseek.com/v1",
+                        "moonshot": "https://api.moonshot.cn/v1",
+                    }
+                    base_url = provider_urls.get(provider, "https://api.openai.com/v1")
+
+                async with _httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        f"{base_url.rstrip('/')}/chat/completions",
+                        headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
+                        json={
+                            "model": llm_cfg.get("model", "gpt-4o-mini"),
+                            "messages": [
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": message},
+                            ],
+                            "stream": True,
+                        },
+                    )
+
+                    if resp.status_code != 200:
+                        yield f"data: {json.dumps({'type': 'error', 'message': f'LLM 请求失败: {resp.status_code}'})}\n\n"
+                        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                        return
+
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        chunk_data = line[6:]
+                        if chunk_data.strip() == "[DONE]":
+                            break
+                        try:
+                            import json as _json
+                            chunk_obj = _json.loads(chunk_data)
+                            delta = chunk_obj.get("choices", [{}])[0].get("delta", {})
+                            text = delta.get("content", "")
+                            if text:
+                                yield f"data: {json.dumps({'type': 'content', 'text': text})}\n\n"
+                        except Exception:
+                            pass
+
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
+
+        # 有知识库结果：使用知识增强回答（Human + Character 共用）
         try:
             from cogmate_core.llm_answer import generate_answer
-            llm_cfg = _get_agent_llm_config(namespace)
             stream_gen = generate_answer(
                 message, vector_results, stream=True,
                 namespace=namespace,
