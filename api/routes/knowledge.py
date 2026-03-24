@@ -31,7 +31,7 @@ async def verify_namespace(
     """路由级别的 namespace 权限验证依赖
     
     所有者：完全访问
-    其他已登录用户：仅限公开 Agent 的 chat/stream 和 stats
+    其他已登录用户：仅限公开 Agent 的对话和统计（不能直接读取知识库原文）
     """
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="未登录")
@@ -69,6 +69,12 @@ async def verify_namespace(
         return payload
 
     raise HTTPException(status_code=403, detail="无权访问此 namespace")
+
+
+def _require_public_chat_only(user: dict):
+    """非所有者只能使用对话和统计，不能直接读取知识库原文"""
+    if not user.get("_is_owner"):
+        raise HTTPException(status_code=403, detail="知识库详情仅所有者可访问，请通过对话功能提问")
 
 
 # ==================== 请求模型 ====================
@@ -217,6 +223,7 @@ async def get_graph(
     user: dict = Depends(verify_namespace),
 ):
     """获取知识图谱数据"""
+    _require_public_chat_only(user)
     from cogmate_core import get_neo4j
 
     driver = get_neo4j()
@@ -276,6 +283,7 @@ async def get_node(
     user: dict = Depends(verify_namespace),
 ):
     """获取单个节点详情"""
+    _require_public_chat_only(user)
     cogmate = _get_cogmate(namespace)
     fact = cogmate.get_fact(node_id)
 
@@ -298,6 +306,7 @@ async def get_tree(
     user: dict = Depends(verify_namespace),
 ):
     """获取抽象层树形结构"""
+    _require_public_chat_only(user)
     from cogmate_core.abstraction import list_abstracts
 
     abstracts = list_abstracts(namespace=namespace)
@@ -328,6 +337,7 @@ async def get_timeline(
     user: dict = Depends(verify_namespace),
 ):
     """获取时间线数据"""
+    _require_public_chat_only(user)
     conn = _get_cogmate_sqlite(namespace)
     cursor = conn.cursor()
 
@@ -368,6 +378,7 @@ async def search(
     user: dict = Depends(verify_namespace),
 ):
     """知识语义搜索"""
+    _require_public_chat_only(user)
     results = _safe_query(namespace, q, top_k=20)
 
     vector_results = results.get("vector_results", [])[:10]
@@ -681,6 +692,7 @@ async def get_health(
     user: dict = Depends(verify_namespace),
 ):
     """获取知识图谱健康度"""
+    _require_public_chat_only(user)
     from cogmate_core.graph_health import get_graph_metrics, evaluate_health
 
     metrics = get_graph_metrics()
@@ -910,6 +922,7 @@ async def get_fact(
     user: dict = Depends(verify_namespace),
 ):
     """获取单条 fact 详情"""
+    _require_public_chat_only(user)
     cogmate = _get_cogmate(namespace)
     fact = cogmate.get_fact(fact_id)
     if not fact:
