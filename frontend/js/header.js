@@ -99,6 +99,28 @@
     // Auto-init auth state in header
     window._headerInitAuth && window._headerInitAuth();
 
+    // 实时余额刷新
+    window.refreshAtpBalance = async function() {
+        const token = localStorage.getItem('cog_token');
+        if (!token) return;
+        try {
+            const r = await fetch('/api/balance', { headers: { 'Authorization': 'Bearer ' + token } });
+            if (!r.ok) return;
+            const d = await r.json();
+            const balance = d.atp_balance || 0;
+            // 更新 header 显示
+            const atp = document.getElementById('atpBalance');
+            if (atp) atp.textContent = balance + ' ATP';
+            // 更新 localStorage
+            const user = JSON.parse(localStorage.getItem('cog_user') || '{}');
+            user.atp_balance = balance;
+            localStorage.setItem('cog_user', JSON.stringify(user));
+            // 更新 chat 页面的余额显示
+            const chatBalance = document.getElementById('chatBalanceAmount');
+            if (chatBalance) chatBalance.textContent = balance;
+        } catch(e) {}
+    };
+
     // Re-apply i18n to header if I18N is loaded
     if (typeof I18N !== 'undefined' && I18N.apply) {
         I18N.apply();

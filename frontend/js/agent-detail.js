@@ -700,6 +700,24 @@ const AgentDetail = (function() {
             '</div>' +
             // Messages area
             '<div id="chatMessages" style="flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:16px;"></div>' +
+            // Price + balance info (non-owner only)
+            (function() {
+                try {
+                    const token = getToken();
+                    if (!token) return '';
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const userId = payload.sub || payload.user_id;
+                    if (agentData && agentData.owner_id === userId) return '';
+                    const price = agentData ? (agentData.price_per_chat || 0) : 0;
+                    const user = JSON.parse(localStorage.getItem('cog_user') || '{}');
+                    const balance = user.atp_balance || 0;
+                    if (price <= 0) return '';
+                    return '<div id="chatPriceBar" style="padding:8px 20px;border-top:1px solid rgba(255,255,255,0.03);display:flex;justify-content:space-between;align-items:center;font-size:0.78em;">' +
+                        '<span style="color:rgba(226,185,106,0.7);">⚡ 每次对话 ' + price + ' ATP</span>' +
+                        '<span style="color:rgba(109,168,155,0.7);">余额: <span id="chatBalanceAmount">' + balance + '</span> ATP</span>' +
+                        '</div>';
+                } catch(e) { return ''; }
+            })() +
             // Input area
             '<div style="padding:16px 20px;border-top:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.015);">' +
             '<div style="display:flex;gap:12px;align-items:flex-end;">' +
@@ -944,6 +962,8 @@ const AgentDetail = (function() {
             if (window.avatarCallback) window.avatarCallback('idle');
             btn.disabled = false;
             btn.textContent = '发送';
+            // 刷新余额（header + chat 页面）
+            if (window.refreshAtpBalance) window.refreshAtpBalance();
             // Update session cache
             if (currentSessionId) {
                 const s = sessionsCache.find(s => s.session_id === currentSessionId);
