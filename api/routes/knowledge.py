@@ -1243,10 +1243,10 @@ async def store_suggestion(
     """存入建议的知识条目（带去重检查）"""
     _require_owner(user)
     
-    # 去重检查：向量相似度 > 0.85 视为重复
+    # 去重检查：向量相似度 > 0.92 视为重复（高阈值避免误判）
     try:
         cogmate = _get_cogmate(namespace)
-        existing = cogmate.query(query_text=request.summary, top_k=1, min_score=0.85)
+        existing = cogmate.query(query_text=request.summary, top_k=1, min_score=0.92)
         if existing.get("vector_results"):
             similar = existing["vector_results"][0]
             return {
