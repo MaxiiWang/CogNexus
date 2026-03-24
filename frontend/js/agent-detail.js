@@ -1108,12 +1108,15 @@ const AgentDetail = (function() {
         const canvas = document.getElementById('avatarCanvas');
         if (!container || !canvas) return;
 
-        // Load pixi.js + pixi-live2d-display via CDN
+        // Load Cubism 4 Core + pixi.js + pixi-live2d-display (order matters!)
+        if (!window.Live2DCubismCore) {
+            await loadScript('https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js');
+        }
         if (!window.PIXI) {
             await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js');
         }
         if (!window.PIXI.live2d) {
-            await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/index.min.js');
+            await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js');
         }
 
         try {
