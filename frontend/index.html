@@ -930,6 +930,11 @@
                     localStorage.setItem('cog_user', JSON.stringify({ user_id: result.user_id, username: result.username, atp_balance: result.atp_balance }));
                     showAlert('success', typeof I18N !== 'undefined' ? I18N.t('auth.login_success') : 'Logged in!');
                     hideModal(); checkAuth();
+                    // Redirect back if ?redirect= param exists
+                    const redirectUrl = new URLSearchParams(window.location.search).get('redirect');
+                    if (redirectUrl && redirectUrl.startsWith('/')) {
+                        setTimeout(() => { window.location.href = redirectUrl; }, 500);
+                    }
                 } else {
                     showAlert('error', result.detail || 'Login failed');
                 }
@@ -984,6 +989,14 @@
         checkAuth();
         loadStats();
         loadTrending();
+
+        // Auto-open login modal if ?login=1
+        const _params = new URLSearchParams(window.location.search);
+        if (_params.get('login') === '1') {
+            showModal('login');
+        } else if (_params.get('register') === '1') {
+            showModal('register');
+        }
     </script>
 
     <!-- Google tag (gtag.js) -->

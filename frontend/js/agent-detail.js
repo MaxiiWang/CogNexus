@@ -10,7 +10,7 @@ const AgentDetail = (function() {
     function getToken() { return localStorage.getItem('cog_token'); }
     function hdrs() { return { 'Authorization': 'Bearer ' + getToken() }; }
     function jsonHdrs() { return { ...hdrs(), 'Content-Type': 'application/json' }; }
-    function requireAuth() { if (!getToken()) { location.href = '/?login=1'; return false; } return true; }
+    function requireAuth() { if (!getToken()) { location.href = '/?login=1&redirect=' + encodeURIComponent(location.pathname + location.search); return false; } return true; }
     function getNs() { return (agentData && agentData.namespace) || 'default'; }
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
