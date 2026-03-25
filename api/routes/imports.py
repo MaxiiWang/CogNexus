@@ -31,8 +31,76 @@ DATA_DIR = Path(__file__).parent.parent.parent / "data" / "imports"
 
 # ==================== Parsers ====================
 
-def parse_markdown(content: str) -> list:
-    """Split markdown by ## headings into chunks."""
+def _extract_front_matter(content: str) -> tuple:
+    """Extract YAML front matter from markdown. Returns (front_matter_dict, remaining_content)."""
+    if not content.startswith('---'):
+        return {}, content
+    try:
+        end = content.index('---', 3)
+        fm_raw = content[3:end].strip()
+        remaining = content[end + 3:].strip()
+        # Simple YAML parse (key: value pairs)
+        fm = {}
+        for line in fm_raw.split('\n'):
+            if ':' in line:
+                key, val = line.split(':', 1)
+                key = key.strip().lower()
+                val = val.strip().strip('"').strip("'")
+                if val.startswith('[') and val.endswith(']'):
+                    val = [v.strip().strip('"').strip("'") for v in val[1:-1].split(',')]
+                fm[key] = val
+        return fm, remaining
+    except (ValueError, Exception):
+        return {}, content
+
+
+def _extract_wikilinks(content: str) -> list:
+    """Extract [[wikilinks]] and [[page|alias]] from markdown. Returns list of linked page names."""
+    links = []
+    for m in re.finditer(r'\[\[([^\]]+)\]\]', content):
+        link_text = m.group(1)
+        # Handle [[page|alias]] format
+        page_name = link_text.split('|')[0].strip()
+        # Remove heading anchors like [[page#heading]]
+        page_name = page_name.split('#')[0].strip()
+        if page_name:
+            links.append(page_name)
+    return links
+
+
+def _clean_obsidian_markdown(content: str) -> str:
+    """Convert Obsidian-specific markdown to readable text."""
+    # Convert ![[embed]] FIRST (before wikilink stripping)
+    content = re.sub(r'!\[\[([^\]]+)\]\]', r'（引用: \1）', content)
+    # Convert [[page|alias]] to alias, [[page]] to page
+    content = re.sub(r'\[\[([^\]|]+)\|([^\]]+)\]\]', r'\2', content)
+    content = re.sub(r'\[\[([^\]]+)\]\]', r'\1', content)
+    # Convert Obsidian callouts > [!note] to text
+    content = re.sub(r'>\s*\[!(\w+)\]\s*', r'[\1] ', content)
+    # Strip #tags but keep the tag name for context
+    content = re.sub(r'(?<!\w)#([a-zA-Z\u4e00-\u9fff][\w/\u4e00-\u9fff-]*)', r'(标签:\1)', content)
+    return content
+
+
+def parse_markdown(content: str, obsidian_mode: bool = False) -> list:
+    """Split markdown by ## headings into chunks. Optionally handle Obsidian syntax."""
+    # Extract front matter
+    front_matter, content = _extract_front_matter(content)
+    fm_context = ''
+    if front_matter:
+        tags = front_matter.get('tags', [])
+        if isinstance(tags, str):
+            tags = [tags]
+        if tags:
+            fm_context = '标签: ' + ', '.join(tags) + '\n'
+        title = front_matter.get('title', '')
+        if title:
+            fm_context = f'标题: {title}\n' + fm_context
+
+    # Clean Obsidian syntax if needed
+    if obsidian_mode:
+        content = _clean_obsidian_markdown(content)
+
     sections = re.split(r'\n(?=##\s)', content)
     if len(sections) <= 1:
         # No headings — split by paragraphs
@@ -59,6 +127,11 @@ def parse_markdown(content: str) -> list:
                 chunks.append(buf.strip())
         else:
             chunks.append(s)
+
+    # Prepend front matter context to first chunk
+    if fm_context and chunks:
+        chunks[0] = fm_context + chunks[0]
+
     return [c for c in chunks if len(c.strip()) >= 10]
 
 
@@ -113,6 +186,69 @@ def parse_pdf(file_path: str) -> list:
     return chunks
 
 
+def _parse_canvas_file(raw_json: str, all_md_files: dict = None) -> tuple:
+    """Parse JSON Canvas (.canvas) file.
+    Returns (text_content, relationships) where relationships is list of (from_node, to_node, label)."""
+    try:
+        canvas = json.loads(raw_json)
+    except Exception:
+        return '', []
+
+    nodes = canvas.get('nodes', [])
+    edges = canvas.get('edges', [])
+    node_map = {}  # id -> label/text
+    texts = []
+    relationships = []
+
+    for node in nodes:
+        nid = node.get('id', '')
+        ntype = node.get('type', '')
+
+        if ntype == 'text':
+            text = node.get('text', '').strip()
+            if text:
+                texts.append(text)
+                node_map[nid] = text[:60]
+
+        elif ntype == 'file':
+            file_path = node.get('file', '')
+            node_map[nid] = file_path
+            # If we have the referenced md file content, include it
+            if all_md_files and file_path in all_md_files:
+                texts.append(f"[引用: {file_path}]\n{all_md_files[file_path][:500]}")
+
+        elif ntype == 'link':
+            url = node.get('url', '')
+            if url:
+                texts.append(f"链接: {url}")
+                node_map[nid] = url
+
+        elif ntype == 'group':
+            label = node.get('label', '')
+            if label:
+                node_map[nid] = label
+
+    # Extract edge relationships
+    for edge in edges:
+        from_id = edge.get('fromNode', '')
+        to_id = edge.get('toNode', '')
+        label = edge.get('label', '')
+        from_name = node_map.get(from_id, from_id)
+        to_name = node_map.get(to_id, to_id)
+        if from_name and to_name:
+            relationships.append((from_name, to_name, label))
+
+    combined = '\n\n'.join(texts)
+    if relationships:
+        rel_text = '\n关系:\n' + '\n'.join(
+            f'- {r[0][:40]} → {r[1][:40]}' + (f' ({r[2]})' if r[2] else '')
+            for r in relationships[:20]
+        )
+        combined += rel_text
+
+    return combined, relationships
+
+
 def parse_zip(file_path: str) -> tuple:
     """Parse zip file, detect type (Notion/Obsidian/archive), extract text files."""
     detected_type = 'archive'
@@ -120,6 +256,9 @@ def parse_zip(file_path: str) -> tuple:
 
     with zipfile.ZipFile(file_path, 'r') as zf:
         names = zf.namelist()
+
+        # Skip directories and hidden files
+        skip_prefixes = ('.obsidian/', '.trash/', '.git/', '__MACOSX/')
 
         # Detect type
         has_obsidian = any('.obsidian/' in n for n in names)
@@ -131,22 +270,60 @@ def parse_zip(file_path: str) -> tuple:
         elif has_notion_uuids:
             detected_type = 'notion_export'
 
+        # For Obsidian: first pass to collect all md files for canvas cross-referencing
+        all_md_files = {}
+        if detected_type == 'obsidian':
+            for name in names:
+                if any(name.startswith(p) or ('/' + p) in name for p in skip_prefixes):
+                    continue
+                if name.lower().endswith('.md'):
+                    try:
+                        content = zf.read(name).decode('utf-8', errors='replace')
+                        # Use relative filename without extension as key
+                        key = name.rsplit('.', 1)[0]
+                        # Also store with just the filename (no path) for wikilink matching
+                        basename = key.split('/')[-1]
+                        all_md_files[name] = content
+                        all_md_files[key] = content
+                        all_md_files[basename] = content
+                    except Exception:
+                        pass
+
         for name in names:
+            # Skip hidden/config directories
+            if any(name.startswith(p) or ('/' + p) in name for p in skip_prefixes):
+                continue
+            if name.endswith('/'):
+                continue
+
             lower = name.lower()
-            if lower.endswith(('.md', '.txt', '.csv')):
+
+            if lower.endswith('.md'):
+                try:
+                    content = zf.read(name).decode('utf-8', errors='replace')
+                    if content.strip():
+                        # For Obsidian, add folder path as context
+                        if detected_type == 'obsidian' and '/' in name:
+                            folder_path = '/'.join(name.split('/')[:-1])
+                            content = f"[路径: {folder_path}]\n\n{content}"
+                        files.append((name, content))
+                except Exception:
+                    pass
+
+            elif lower.endswith(('.txt', '.csv')):
                 try:
                     content = zf.read(name).decode('utf-8', errors='replace')
                     if content.strip():
                         files.append((name, content))
                 except Exception:
                     pass
+
             elif lower.endswith('.canvas'):
                 try:
                     raw = zf.read(name).decode('utf-8', errors='replace')
-                    canvas = json.loads(raw)
-                    texts = [n.get('text', '') for n in canvas.get('nodes', []) if n.get('text')]
-                    if texts:
-                        files.append((name, '\n\n'.join(texts)))
+                    canvas_text, _ = _parse_canvas_file(raw, all_md_files)
+                    if canvas_text.strip():
+                        files.append((name, f"[Canvas: {name}]\n\n{canvas_text}"))
                 except Exception:
                     pass
 
@@ -256,13 +433,22 @@ def _process_import_sync(import_id: str, namespace: str, file_path: str, source_
         elif source_type in ('notion_export', 'obsidian', 'archive', 'zip'):
             detected_type, files = parse_zip(file_path)
             conn.execute("UPDATE knowledge_imports SET source_type = ? WHERE id = ?", (detected_type, import_id))
-            # Flatten all files into chunks
+            is_obsidian = detected_type == 'obsidian'
+            # Flatten all files into chunks, using folder path as context
             chunks = []
             for fname, content in files:
                 if fname.lower().endswith('.csv'):
                     chunks.extend(parse_csv_content(content))
                 elif fname.lower().endswith('.md'):
-                    chunks.extend(parse_markdown(content))
+                    file_chunks = parse_markdown(content, obsidian_mode=is_obsidian)
+                    # Extract wikilinks for context enrichment
+                    if is_obsidian:
+                        links = _extract_wikilinks(content)
+                        if links and file_chunks:
+                            file_chunks[0] = f"相关笔记: {', '.join(links[:10])}\n\n{file_chunks[0]}"
+                    chunks.extend(file_chunks)
+                elif fname.lower().endswith('.canvas'):
+                    chunks.extend(parse_text(content))
                 else:
                     chunks.extend(parse_text(content))
             source_type = detected_type
@@ -288,7 +474,9 @@ def _process_import_sync(import_id: str, namespace: str, file_path: str, source_
         conn.commit()
 
         total_suggestions = 0
-        source_context = f"导入自 {source_name}" if source_name else f"导入文件({source_type})"
+        type_labels = {'obsidian': 'Obsidian Vault', 'notion_export': 'Notion 导出', 'markdown': 'Markdown', 'archive': '压缩包'}
+        source_label = type_labels.get(source_type, source_type)
+        source_context = f"导入自 {source_name}（{source_label}）" if source_name else f"导入文件（{source_label}）"
 
         for i, chunk in enumerate(chunks):
             try:
