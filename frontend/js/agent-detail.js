@@ -1808,16 +1808,15 @@ const AgentDetail = (function() {
         kePanelOpen = true;
         const panel = document.createElement('div');
         panel.id = 'ke-panel';
-        panel.style.cssText = 'position:absolute;top:44px;left:50%;transform:translateX(-50%);z-index:101;width:min(420px,90vw);max-height:60vh;overflow-y:auto;background:rgba(22,22,30,0.97);border:1px solid rgba(212,160,84,0.2);border-radius:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+        panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1001;width:min(560px,92vw);max-height:70vh;overflow-y:auto;background:rgba(22,22,30,0.98);border:1px solid rgba(212,160,84,0.2);border-radius:14px;backdrop-filter:blur(16px);box-shadow:0 12px 48px rgba(0,0,0,0.5);';
 
-        // Place relative to notification
-        const notif = document.getElementById('ke-notification');
-        if (notif && notif.parentNode) {
-            notif.parentNode.appendChild(panel);
-            const notifRect = notif.getBoundingClientRect();
-            const parentRect = notif.parentNode.getBoundingClientRect();
-            panel.style.top = (notifRect.bottom - parentRect.top + 6) + 'px';
-        }
+        // Add backdrop overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'ke-overlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:1000;';
+        overlay.addEventListener('click', closeKEPanel);
+        document.body.appendChild(overlay);
+        document.body.appendChild(panel);
 
         renderKEPanel();
 
@@ -1839,6 +1838,8 @@ const AgentDetail = (function() {
         kePanelOpen = false;
         const panel = document.getElementById('ke-panel');
         if (panel) panel.remove();
+        const overlay = document.getElementById('ke-overlay');
+        if (overlay) overlay.remove();
         document.removeEventListener('click', _kePanelOutsideClick);
     }
 
@@ -1863,8 +1864,8 @@ const AgentDetail = (function() {
                 '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
                 '<span style="font-size:0.68em;padding:1px 6px;border-radius:3px;background:rgba(109,168,155,0.1);color:rgba(109,168,155,0.7);">' + esc(ctype) + '</span>' +
                 '</div>' +
-                '<div style="font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;margin-bottom:4px;">' + esc(summary) + '</div>' +
-                (reason ? '<div style="font-size:0.72em;color:rgba(168,162,153,0.5);line-height:1.4;margin-bottom:8px;">💡 ' + esc(reason) + '</div>' : '') +
+                '<div style="font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;margin-bottom:4px;word-break:break-word;overflow-wrap:break-word;">' + esc(summary) + '</div>' +
+                (reason ? '<div style="font-size:0.72em;color:rgba(168,162,153,0.5);line-height:1.4;margin-bottom:8px;word-break:break-word;">💡 ' + esc(reason) + '</div>' : '') +
                 '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
                 '<button data-sug-accept="' + esc(s.id) + '" style="padding:4px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;transition:all 0.15s;" onmouseover="this.style.background=\'rgba(109,168,155,0.25)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.15)\'">存入</button>' +
                 '<button data-sug-dismiss="' + esc(s.id) + '" style="padding:4px 12px;border-radius:6px;background:none;color:rgba(168,162,153,0.6);border:1px solid rgba(255,255,255,0.06);cursor:pointer;font-size:0.75em;transition:all 0.15s;" onmouseover="this.style.color=\'rgba(184,134,138,0.7)\';this.style.borderColor=\'rgba(184,134,138,0.2)\'" onmouseout="this.style.color=\'rgba(168,162,153,0.6)\';this.style.borderColor=\'rgba(255,255,255,0.06)\'">忽略</button>' +
