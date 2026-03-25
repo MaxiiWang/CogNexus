@@ -10,8 +10,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/css/theme.css?v=20260324b">
-    <link rel="stylesheet" href="/static/css/knowledge.css?v=20260324b">
+    <link rel="stylesheet" href="/static/css/theme.css?v=20260325a">
+    <link rel="stylesheet" href="/static/css/knowledge.css?v=20260325a">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         /* ===== Agent Detail Page ===== */
         .agent-header {
@@ -713,6 +714,60 @@
                 grid-template-columns: repeat(2, 1fr) !important;
             }
         }
+        /* ===== Markdown in chat bubbles ===== */
+        .md-content { line-height: 1.7; }
+        .md-content h1, .md-content h2, .md-content h3,
+        .md-content h4, .md-content h5, .md-content h6 {
+            color: var(--text-primary, rgba(232,228,223,0.95));
+            margin: 0.8em 0 0.4em; font-weight: 600;
+        }
+        .md-content h1 { font-size: 1.3em; }
+        .md-content h2 { font-size: 1.15em; }
+        .md-content h3 { font-size: 1.05em; }
+        .md-content p { margin: 0.4em 0; }
+        .md-content ul, .md-content ol {
+            padding-left: 1.5em; margin: 0.4em 0;
+        }
+        .md-content li { margin: 0.2em 0; }
+        .md-content li > p { margin: 0.1em 0; }
+        .md-content strong { color: rgba(226,185,106,0.95); font-weight: 600; }
+        .md-content em { color: rgba(232,228,223,0.75); font-style: italic; }
+        .md-content code {
+            font-family: 'JetBrains Mono', monospace; font-size: 0.88em;
+            background: rgba(255,255,255,0.06); padding: 1px 5px;
+            border-radius: 3px; color: rgba(109,168,155,0.9);
+        }
+        .md-content pre {
+            background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px; padding: 12px; margin: 0.6em 0;
+            overflow-x: auto;
+        }
+        .md-content pre code {
+            background: none; padding: 0; color: rgba(232,228,223,0.8);
+        }
+        .md-content blockquote {
+            border-left: 3px solid rgba(212,160,84,0.4);
+            margin: 0.5em 0; padding: 0.3em 0.8em;
+            color: rgba(232,228,223,0.6); background: rgba(212,160,84,0.04);
+            border-radius: 0 6px 6px 0;
+        }
+        .md-content hr {
+            border: none; border-top: 1px solid rgba(255,255,255,0.08);
+            margin: 0.8em 0;
+        }
+        .md-content table {
+            width: 100%; border-collapse: collapse; margin: 0.5em 0;
+            font-size: 0.9em;
+        }
+        .md-content th, .md-content td {
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 6px 10px; text-align: left;
+        }
+        .md-content th {
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary, rgba(232,228,223,0.95));
+        }
+        .md-content a { color: rgba(109,168,155,0.9); text-decoration: underline; }
     </style>
     <script type="importmap">
     {

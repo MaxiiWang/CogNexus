@@ -13,6 +13,15 @@ const AgentDetail = (function() {
     function requireAuth() { if (!getToken()) { location.href = '/?login=1&redirect=' + encodeURIComponent(location.pathname + location.search); return false; } return true; }
     function getNs() { return (agentData && agentData.namespace) || 'default'; }
     function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function renderMarkdown(text) {
+        if (typeof marked !== 'undefined' && marked.parse) {
+            try {
+                marked.setOptions({ breaks: true, gfm: true, sanitize: false });
+                return marked.parse(text);
+            } catch(e) {}
+        }
+        return esc(text).replace(/\n/g, '<br>');
+    }
 
     // ===== 通用自定义弹窗 =====
     let _modalResolve = null;
@@ -842,7 +851,7 @@ const AgentDetail = (function() {
                 } else {
                     return '<div style="align-self:flex-start;max-width:80%;">' +
                         '<div style="font-size:0.72em;color:rgba(226,185,106,0.6);margin-bottom:6px;font-weight:600;letter-spacing:0.03em;">' + esc(agentName) + '</div>' +
-                        '<div style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);">' + esc(m.content).replace(/\n/g, '<br>') + '</div></div>';
+                        '<div class="md-content" style="background:rgba(255,255,255,0.03);color:rgba(232,228,223,0.9);padding:14px 18px;border-radius:4px 16px 16px 16px;font-family:\'DM Sans\',sans-serif;font-size:0.9em;line-height:1.7;border:1px solid rgba(255,255,255,0.04);">' + renderMarkdown(m.content) + '</div></div>';
                 }
             }).join('');
 
@@ -950,7 +959,8 @@ const AgentDetail = (function() {
                     body: JSON.stringify({ message: q })
                 });
                 const d = await r2.json();
-                el.innerHTML = esc(d.response || d.answer || '').replace(/\n/g, '<br>');
+                el.innerHTML = renderMarkdown(d.response || d.answer || '');
+                el.classList.add('md-content');
                 return;
             }
 
@@ -976,7 +986,8 @@ const AgentDetail = (function() {
                             markSpeaking();
                             if (!fullText) el.innerHTML = ''; // clear thinking indicator
                             fullText += ev.text;
-                            el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
+                            el.innerHTML = renderMarkdown(fullText);
+                            el.classList.add('md-content');
                             msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
