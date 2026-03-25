@@ -1441,7 +1441,7 @@ async def store_suggestion(
         result = cogmate.store(
             request.summary,
             content_type=request.content_type,
-            source_type="web_suggested",
+            source_type="user_confirmed_web",
         )
         return {
             "success": True,
