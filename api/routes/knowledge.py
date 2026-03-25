@@ -275,6 +275,113 @@ def _graph_reasoning(namespace: str, fact_ids: list, max_hops: int = 2) -> list:
         return []
 
 
+async def _extract_knowledge_suggestions(
+    user_message: str,
+    ai_response: str,
+    web_results: list,
+    namespace: str,
+    llm_cfg: dict,
+    context_messages: list = None,
+    existing_knowledge: str = "",
+) -> list:
+    """
+    LLM-powered knowledge extraction from conversation.
+    Analyzes user message + AI response + web results to suggest knowledge items worth storing.
+    Returns list of dicts: [{"summary": "...", "content_type": "事实|观点|决策|情绪|资讯|洞察", "reason": "..."}]
+    """
+    try:
+        import httpx as _httpx
+
+        provider = llm_cfg.get("provider", "")
+        base_url = llm_cfg.get("endpoint", "")
+        if not base_url:
+            provider_urls = {
+                "openai": "https://api.openai.com/v1",
+                "doubao": "https://ark.cn-beijing.volces.com/api/v3",
+                "deepseek": "https://api.deepseek.com/v1",
+                "moonshot": "https://api.moonshot.cn/v1",
+            }
+            base_url = provider_urls.get(provider, "https://api.openai.com/v1")
+
+        # Build existing knowledge string for dedup
+        if not existing_knowledge and context_messages:
+            existing_knowledge = "\n".join(
+                m.get("content", "")[:200] for m in context_messages if m.get("role") == "assistant"
+            )[-500:]
+
+        web_results_text = "\n".join(
+            item.get("summary", "") for item in (web_results or [])
+        ) or "无"
+
+        extraction_prompt = f"""你是知识提取引擎。分析以下对话，提取值得长期保存的知识条目。
+
+规则：
+1. 从用户发言中提取：个人观点、判断、决策、情绪、经历、新发现
+2. 从 AI 回答中提取：对用户有价值的事实性内容、关键分析结论
+3. 从网络搜索结果中提取：高质量、有时效性的信息
+4. 跳过：纯问候、闲聊、已在知识库中的重复内容、太泛的内容
+5. 每条知识应该是独立的、自包含的句子或段落
+6. content_type 取值：事实、观点、决策、情绪、资讯、洞察
+
+已有知识库内容（避免重复）：
+{existing_knowledge}
+
+用户消息：{user_message}
+AI 回答：{ai_response[:2000]}
+网络搜索结果：{web_results_text[:1000]}
+
+输出格式（严格 JSON 数组，无其他文字）：
+[{{"summary": "...", "content_type": "...", "reason": "..."}}]
+
+如果没有值得存储的内容，输出空数组 []"""
+
+        async with _httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"{base_url.rstrip('/')}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {llm_cfg['api_key']}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": llm_cfg.get("model", "gpt-4o-mini"),
+                    "messages": [
+                        {"role": "system", "content": "你是知识提取引擎，只输出 JSON 数组，不要输出任何其他文字。"},
+                        {"role": "user", "content": extraction_prompt},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1000,
+                },
+            )
+
+            if resp.status_code != 200:
+                return []
+
+            data = resp.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+
+            # Parse JSON from response (handle markdown code blocks)
+            if content.startswith("```"):
+                content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+            suggestions = json.loads(content)
+            if not isinstance(suggestions, list):
+                return []
+
+            # Validate each item
+            valid = []
+            for item in suggestions:
+                if isinstance(item, dict) and item.get("summary"):
+                    valid.append({
+                        "summary": str(item["summary"])[:500],
+                        "content_type": str(item.get("content_type", "事实"))[:10],
+                        "reason": str(item.get("reason", ""))[:200],
+                    })
+            return valid[:5]  # Max 5 suggestions
+
+    except Exception:
+        return []
+
+
 def _web_search_fallback(query: str, max_results: int = 3) -> list:
     """使用 Brave Search API 搜索网络作为知识补充"""
     import os
@@ -678,9 +785,6 @@ async def chat_stream(
             collected_response.append(result)
             yield f"data: {json.dumps({'type': 'content', 'text': result})}\n\n"
             save_messages()
-            sg = yield_suggestions()
-            if sg:
-                yield sg
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -705,15 +809,6 @@ async def chat_stream(
             except Exception:
                 pass
 
-        def yield_suggestions():
-            """生成网络搜索建议存入事件（仅 owner 与自己的 Human Agent 对话时）"""
-            if not web_suggestions:
-                return ""
-            # 只有 owner 才能存入知识
-            if not user.get("_is_owner"):
-                return ""
-            return f"data: {json.dumps({'type': 'suggestions', 'items': web_suggestions}, ensure_ascii=False)}\n\n"
-
         # 网络搜索增强（开启后始终搜索，作为知识库的补充而非仅 fallback）
         web_suggestions = []
         if chat_config.get("enable_web_search"):
@@ -737,9 +832,6 @@ async def chat_stream(
             collected_response.append('📭 知识库中暂无相关内容。')
             yield f"data: {json.dumps({'type': 'content', 'text': '📭 知识库中暂无相关内容。'})}\n\n"
             save_messages()
-            sg = yield_suggestions()
-            if sg:
-                yield sg
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -812,9 +904,24 @@ async def chat_stream(
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
             save_messages()
-            sg = yield_suggestions()
-            if sg:
-                yield sg
+
+            # Knowledge extraction for character agent (empty KB path)
+            if user.get("_is_owner") and llm_cfg.get("api_key"):
+                try:
+                    full_response = "".join(collected_response)
+                    suggestions = await _extract_knowledge_suggestions(
+                        user_message=message,
+                        ai_response=full_response,
+                        web_results=web_suggestions,
+                        namespace=namespace,
+                        llm_cfg=llm_cfg,
+                        context_messages=context_messages,
+                    )
+                    if suggestions:
+                        yield f"data: {json.dumps({'type': 'suggestions', 'items': suggestions}, ensure_ascii=False)}\n\n"
+                except Exception:
+                    pass
+
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
@@ -913,9 +1020,29 @@ async def chat_stream(
                 yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
 
         save_messages()
-        sg = yield_suggestions()
-        if sg:
-            yield sg
+
+        # Knowledge extraction: LLM analyzes conversation for storable knowledge
+        # Only for owner chatting with their own agent
+        if user.get("_is_owner") and llm_cfg.get("api_key"):
+            try:
+                full_response = "".join(collected_response)
+                existing_knowledge = "\n".join([f.get("summary", "") for f in vector_results[:5]]) if vector_results else ""
+
+                suggestions = await _extract_knowledge_suggestions(
+                    user_message=message,
+                    ai_response=full_response,
+                    web_results=web_suggestions,
+                    namespace=namespace,
+                    llm_cfg=llm_cfg,
+                    context_messages=context_messages,
+                    existing_knowledge=existing_knowledge,
+                )
+
+                if suggestions:
+                    yield f"data: {json.dumps({'type': 'suggestions', 'items': suggestions}, ensure_ascii=False)}\n\n"
+            except Exception:
+                pass
+
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")

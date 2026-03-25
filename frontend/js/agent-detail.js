@@ -975,17 +975,56 @@ const AgentDetail = (function() {
                         } else if (ev.type === 'suggestions' && ev.items && ev.items.length > 0) {
                             // Render suggestion cards after the AI bubble
                             const sugId = 'sug-' + Date.now();
-                            msgs.innerHTML += '<div id="' + sugId + '" style="align-self:flex-start;max-width:85%;margin-top:4px;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);">' +
-                                '<div style="font-size:0.75em;color:rgba(226,185,106,0.6);margin-bottom:8px;">📰 发现新信息，是否存入知识库？</div>' +
-                                ev.items.map((item, i) => {
-                                    const text = (item.summary || '').replace(/^\[网络\]\s*/, '');
-                                    const sugIdx = 'sug_item_' + Date.now() + '_' + i;
-                                    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(226,185,106,0.06);border:1px solid rgba(226,185,106,0.15);border-radius:8px;margin-bottom:6px;">' +
-                                        '<div style="flex:1;font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;" id="' + sugIdx + '">' + esc(text) + '</div>' +
-                                        '<button onclick="AgentDetail.storeSuggestion(this,document.getElementById(\'' + sugIdx + '\').textContent)" style="flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;">存入</button>' +
-                                        '</div>';
-                                }).join('') +
-                                '</div>';
+                            const sugContainer = document.createElement('div');
+                            sugContainer.id = sugId;
+                            sugContainer.style.cssText = 'align-self:flex-start;max-width:85%;margin-top:4px;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);';
+                            
+                            const header = document.createElement('div');
+                            header.style.cssText = 'font-size:0.75em;color:rgba(226,185,106,0.6);margin-bottom:8px;';
+                            header.textContent = '🧠 发现值得保存的知识，是否存入？';
+                            sugContainer.appendChild(header);
+
+                            ev.items.forEach((item, i) => {
+                                const text = (item.summary || '').replace(/^\[网络\]\s*/, '');
+                                const reason = item.reason || '';
+                                const ctype = item.content_type || '资讯';
+
+                                const card = document.createElement('div');
+                                card.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(226,185,106,0.06);border:1px solid rgba(226,185,106,0.15);border-radius:8px;margin-bottom:6px;';
+
+                                const info = document.createElement('div');
+                                info.style.cssText = 'flex:1;';
+                                
+                                const textEl = document.createElement('div');
+                                textEl.style.cssText = 'font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;';
+                                textEl.textContent = text;
+                                info.appendChild(textEl);
+
+                                if (reason) {
+                                    const reasonEl = document.createElement('div');
+                                    reasonEl.style.cssText = 'font-size:0.72em;color:rgba(168,162,153,0.6);margin-top:4px;line-height:1.4;';
+                                    reasonEl.textContent = '💡 ' + reason;
+                                    info.appendChild(reasonEl);
+                                }
+
+                                const typeTag = document.createElement('span');
+                                typeTag.style.cssText = 'display:inline-block;margin-top:4px;font-size:0.68em;padding:1px 6px;border-radius:3px;background:rgba(109,168,155,0.1);color:rgba(109,168,155,0.7);';
+                                typeTag.textContent = ctype;
+                                info.appendChild(typeTag);
+
+                                const storeBtn = document.createElement('button');
+                                storeBtn.style.cssText = 'flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;align-self:center;';
+                                storeBtn.textContent = '存入';
+                                storeBtn.addEventListener('click', function() {
+                                    AgentDetail.storeSuggestion(this, text, ctype);
+                                });
+
+                                card.appendChild(info);
+                                card.appendChild(storeBtn);
+                                sugContainer.appendChild(card);
+                            });
+
+                            msgs.appendChild(sugContainer);
                             msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
@@ -1728,13 +1767,13 @@ const AgentDetail = (function() {
         input.value = '';
     }
 
-    async function storeSuggestion(btn, summary) {
+    async function storeSuggestion(btn, summary, contentType) {
         btn.disabled = true;
         btn.textContent = '...';
         try {
             const r = await fetch('/api/knowledge/' + getNs() + '/store-suggestion', {
                 method: 'POST', headers: jsonHdrs(),
-                body: JSON.stringify({ summary: summary, content_type: '资讯' })
+                body: JSON.stringify({ summary: summary, content_type: contentType || '资讯' })
             });
             const d = await r.json();
             if (d.success) {
