@@ -275,7 +275,7 @@ def _graph_reasoning(namespace: str, fact_ids: list, max_hops: int = 2) -> list:
         return []
 
 
-async def _extract_knowledge_suggestions(
+def _extract_knowledge_suggestions_sync(
     user_message: str,
     ai_response: str,
     web_results: list,
@@ -285,7 +285,7 @@ async def _extract_knowledge_suggestions(
     existing_knowledge: str = "",
 ) -> list:
     """
-    LLM-powered knowledge extraction from conversation.
+    LLM-powered knowledge extraction from conversation (synchronous).
     Analyzes user message + AI response + web results to suggest knowledge items worth storing.
     Returns list of dicts: [{"summary": "...", "content_type": "事实|观点|决策|情绪|资讯|洞察", "reason": "..."}]
     """
@@ -294,7 +294,7 @@ async def _extract_knowledge_suggestions(
         import httpx as _httpx
 
         provider = llm_cfg.get("provider", "")
-        base_url = llm_cfg.get("endpoint", "")
+        base_url = llm_cfg.get("endpoint", "") or llm_cfg.get("base_url", "")
         if not base_url:
             provider_urls = {
                 "openai": "https://api.openai.com/v1",
@@ -337,55 +337,77 @@ AI 回答：{ai_response[:2000]}
 
 如果没有值得存储的内容，输出空数组 []"""
 
-        async with _httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(
-                f"{base_url.rstrip('/')}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {llm_cfg['api_key']}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": llm_cfg.get("model", "gpt-4o-mini"),
-                    "messages": [
-                        {"role": "system", "content": "你是知识提取引擎，只输出 JSON 数组，不要输出任何其他文字。"},
-                        {"role": "user", "content": extraction_prompt},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 1000,
-                },
-            )
+        resp = _httpx.post(
+            f"{base_url.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {llm_cfg['api_key']}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": llm_cfg.get("model", "gpt-4o-mini"),
+                "messages": [
+                    {"role": "system", "content": "你是知识提取引擎，只输出 JSON 数组，不要输出任何其他文字。"},
+                    {"role": "user", "content": extraction_prompt},
+                ],
+                "temperature": 0.3,
+                "max_tokens": 1000,
+            },
+            timeout=15.0,
+        )
 
-            if resp.status_code != 200:
-                print(f"[KE] LLM call failed: status={resp.status_code}, body={resp.text[:300]}", file=_sys.stderr, flush=True)
-                return []
+        if resp.status_code != 200:
+            print(f"[KE] LLM call failed: status={resp.status_code}, body={resp.text[:300]}", file=_sys.stderr, flush=True)
+            return []
 
-            data = resp.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        data = resp.json()
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        print(f"[KE] raw LLM response: {content[:200]}", file=_sys.stderr, flush=True)
 
-            # Parse JSON from response (handle markdown code blocks)
-            if content.startswith("```"):
-                content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        # Parse JSON from response (handle markdown code blocks)
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
 
-            suggestions = json.loads(content)
-            if not isinstance(suggestions, list):
-                return []
+        suggestions = json.loads(content)
+        if not isinstance(suggestions, list):
+            return []
 
-            # Validate each item
-            valid = []
-            for item in suggestions:
-                if isinstance(item, dict) and item.get("summary"):
-                    valid.append({
-                        "summary": str(item["summary"])[:500],
-                        "content_type": str(item.get("content_type", "事实"))[:10],
-                        "reason": str(item.get("reason", ""))[:200],
-                    })
-            print(f"[KE] parsed: {len(valid)} valid suggestions from LLM", file=_sys.stderr, flush=True)
-            return valid[:5]  # Max 5 suggestions
+        # Validate each item
+        valid = []
+        for item in suggestions:
+            if isinstance(item, dict) and item.get("summary"):
+                valid.append({
+                    "summary": str(item["summary"])[:500],
+                    "content_type": str(item.get("content_type", "事实"))[:10],
+                    "reason": str(item.get("reason", ""))[:200],
+                })
+        print(f"[KE] parsed: {len(valid)} valid suggestions from LLM", file=_sys.stderr, flush=True)
+        return valid[:5]  # Max 5 suggestions
 
     except Exception as _e:
         import traceback as _tb
         print(f"[KE] exception: {_e}\n{_tb.format_exc()}", file=_sys.stderr, flush=True)
         return []
+
+
+async def _extract_knowledge_suggestions(
+    user_message: str,
+    ai_response: str,
+    web_results: list,
+    namespace: str,
+    llm_cfg: dict,
+    context_messages: list = None,
+    existing_knowledge: str = "",
+) -> list:
+    """Async wrapper that runs sync extraction in executor to avoid event loop issues."""
+    import asyncio
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(
+        None,
+        lambda: _extract_knowledge_suggestions_sync(
+            user_message, ai_response, web_results,
+            namespace, llm_cfg, context_messages, existing_knowledge,
+        )
+    )
 
 
 def _web_search_fallback(query: str, max_results: int = 3) -> list:
