@@ -414,10 +414,20 @@ def notion_get_page_content(token: str, page_id: str) -> str:
                 if text:
                     texts.append(text)
 
-                if block.get("has_children") and block["type"] not in ("child_page", "child_database"):
-                    child_text = fetch_blocks(block["id"], depth + 1)
-                    if child_text:
-                        texts.append(child_text)
+                # Recurse into children — including child_page (to get sub-page content)
+                if block.get("has_children"):
+                    if block["type"] == "child_page":
+                        # Sub-page: add heading with title, then recurse into page content
+                        title = block.get("child_page", {}).get("title", "")
+                        if title:
+                            texts.append(f"\n## {title}")
+                        child_text = fetch_blocks(block["id"], depth + 1)
+                        if child_text:
+                            texts.append(child_text)
+                    elif block["type"] != "child_database":
+                        child_text = fetch_blocks(block["id"], depth + 1)
+                        if child_text:
+                            texts.append(child_text)
 
             if not data.get("has_more"):
                 break
