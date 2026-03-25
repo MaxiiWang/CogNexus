@@ -188,9 +188,26 @@ def migrate_knowledge_schema():
         )
     """)
 
+    # Knowledge suggestions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_suggestions (
+            id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            session_id TEXT,
+            summary TEXT NOT NULL,
+            content_type TEXT DEFAULT '事实',
+            reason TEXT,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'dismissed')),
+            created_at TEXT NOT NULL,
+            processed_at TEXT
+        )
+    """)
+
     # 索引
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id, created_at)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_agent_user ON chat_sessions(agent_id, user_id, updated_at DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_ns_status ON knowledge_suggestions(namespace, status)")
 
     conn.commit()
     conn.close()

@@ -117,7 +117,11 @@ const AgentDetail = (function() {
                 const el = document.getElementById('tab-' + tab.dataset.tab);
                 if (el) el.classList.add('active');
                 if (tab.dataset.tab === 'knowledge' && !currentView) loadKnowledgeView('graph');
-                if (tab.dataset.tab === 'chat' && !chatInitialized) initChatTab();
+                if (tab.dataset.tab === 'chat') {
+                    if (!chatInitialized) initChatTab();
+                    else if (isCurrentUserOwner()) startKEPolling();
+                }
+                if (tab.dataset.tab !== 'chat') stopKEPolling();
                 if (tab.dataset.tab === 'usage') loadUsage();
             });
         });
@@ -128,6 +132,8 @@ const AgentDetail = (function() {
         const box = document.getElementById('chatArea');
         renderChat(box, {style:{}}, {style:{}});
         initLive2D();
+        // Start knowledge suggestion polling for owners
+        if (isCurrentUserOwner()) startKEPolling();
     }
 
     function setupViewSwitcher() {
@@ -972,80 +978,11 @@ const AgentDetail = (function() {
                             fullText += ev.text;
                             el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
                             msgs.scrollTop = msgs.scrollHeight;
-                        } else if (ev.type === 'extracting') {
-                            // Show extraction indicator
-                            let extEl = document.getElementById('ke-extracting');
-                            if (!extEl) {
-                                extEl = document.createElement('div');
-                                extEl.id = 'ke-extracting';
-                                extEl.style.cssText = 'align-self:flex-start;font-size:0.75em;color:rgba(226,185,106,0.5);padding:6px 0;animation:fadeUp 0.2s;';
-                                extEl.textContent = '🧠 ' + (ev.text || '正在分析知识...');
-                                msgs.appendChild(extEl);
-                                msgs.scrollTop = msgs.scrollHeight;
-                            }
-                        } else if (ev.type === 'suggestions' && ev.items && ev.items.length > 0) {
-                            // Remove extracting indicator
-                            const extEl = document.getElementById('ke-extracting');
-                            if (extEl) extEl.remove();
-                            // Render suggestion cards after the AI bubble
-                            const sugId = 'sug-' + Date.now();
-                            const sugContainer = document.createElement('div');
-                            sugContainer.id = sugId;
-                            sugContainer.style.cssText = 'align-self:flex-start;max-width:85%;margin-top:4px;animation:fadeUp 0.2s cubic-bezier(0.16,1,0.3,1);';
-                            
-                            const header = document.createElement('div');
-                            header.style.cssText = 'font-size:0.75em;color:rgba(226,185,106,0.6);margin-bottom:8px;';
-                            header.textContent = '🧠 发现值得保存的知识，是否存入？';
-                            sugContainer.appendChild(header);
-
-                            ev.items.forEach((item, i) => {
-                                const text = (item.summary || '').replace(/^\[网络\]\s*/, '');
-                                const reason = item.reason || '';
-                                const ctype = item.content_type || '资讯';
-
-                                const card = document.createElement('div');
-                                card.style.cssText = 'display:flex;align-items:flex-start;gap:10px;padding:10px 14px;background:rgba(226,185,106,0.06);border:1px solid rgba(226,185,106,0.15);border-radius:8px;margin-bottom:6px;';
-
-                                const info = document.createElement('div');
-                                info.style.cssText = 'flex:1;';
-                                
-                                const textEl = document.createElement('div');
-                                textEl.style.cssText = 'font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;';
-                                textEl.textContent = text;
-                                info.appendChild(textEl);
-
-                                if (reason) {
-                                    const reasonEl = document.createElement('div');
-                                    reasonEl.style.cssText = 'font-size:0.72em;color:rgba(168,162,153,0.6);margin-top:4px;line-height:1.4;';
-                                    reasonEl.textContent = '💡 ' + reason;
-                                    info.appendChild(reasonEl);
-                                }
-
-                                const typeTag = document.createElement('span');
-                                typeTag.style.cssText = 'display:inline-block;margin-top:4px;font-size:0.68em;padding:1px 6px;border-radius:3px;background:rgba(109,168,155,0.1);color:rgba(109,168,155,0.7);';
-                                typeTag.textContent = ctype;
-                                info.appendChild(typeTag);
-
-                                const storeBtn = document.createElement('button');
-                                storeBtn.style.cssText = 'flex-shrink:0;padding:5px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;white-space:nowrap;align-self:center;';
-                                storeBtn.textContent = '存入';
-                                storeBtn.addEventListener('click', function() {
-                                    AgentDetail.storeSuggestion(this, text, ctype);
-                                });
-
-                                card.appendChild(info);
-                                card.appendChild(storeBtn);
-                                sugContainer.appendChild(card);
-                            });
-
-                            msgs.appendChild(sugContainer);
-                            msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
                         } else if (ev.type === 'done') {
-                            // Clean up extracting indicator if still present
-                            const extEl2 = document.getElementById('ke-extracting');
-                            if (extEl2) extEl2.remove();
+                            // Trigger a suggestion poll after chat completes
+                            if (typeof pollSuggestions === 'function') setTimeout(pollSuggestions, 3000);
                         }
                     } catch {}
                 }
@@ -1785,34 +1722,217 @@ const AgentDetail = (function() {
         input.value = '';
     }
 
-    async function storeSuggestion(btn, summary, contentType) {
-        btn.disabled = true;
-        btn.textContent = '...';
+    // ===== Knowledge Suggestion Notification System =====
+    let kePollingTimer = null;
+    let keSuggestions = [];
+    let kePanelOpen = false;
+
+    function isCurrentUserOwner() {
         try {
-            const r = await fetch('/api/knowledge/' + getNs() + '/store-suggestion', {
-                method: 'POST', headers: jsonHdrs(),
-                body: JSON.stringify({ summary: summary, content_type: contentType || '资讯' })
+            const token = getToken();
+            if (!token || !agentData) return false;
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userId = payload.sub || payload.user_id;
+            return agentData.owner_id && agentData.owner_id === userId;
+        } catch { return false; }
+    }
+
+    function startKEPolling() {
+        if (kePollingTimer) return;
+        pollSuggestions(); // immediate first poll
+        kePollingTimer = setInterval(pollSuggestions, 15000);
+    }
+
+    function stopKEPolling() {
+        if (kePollingTimer) { clearInterval(kePollingTimer); kePollingTimer = null; }
+    }
+
+    async function pollSuggestions() {
+        if (!agentData || !isCurrentUserOwner()) return;
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions?status=pending', {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
             });
-            const d = await r.json();
-            if (d.success) {
-                btn.textContent = '✅ 已存入';
-                btn.style.background = 'rgba(109,168,155,0.3)';
-                btn.style.cursor = 'default';
-            } else if (d.duplicate) {
-                btn.textContent = '⚠️ 已有相似';
-                btn.style.background = 'rgba(226,185,106,0.2)';
-                btn.style.color = '#e2b96a';
-                btn.title = d.similar_fact || '';
-                btn.style.cursor = 'default';
-            } else {
-                btn.textContent = '❌ 失败';
-                btn.disabled = false;
+            if (!resp.ok) return;
+            const data = await resp.json();
+            keSuggestions = data.suggestions || [];
+            updateKEBadge();
+        } catch {}
+    }
+
+    function ensureKENotification() {
+        if (document.getElementById('ke-notification')) return;
+        const notif = document.createElement('div');
+        notif.id = 'ke-notification';
+        notif.style.cssText = 'display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:100;';
+        notif.innerHTML =
+            '<div id="ke-badge" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(212,160,84,0.12);border:1px solid rgba(212,160,84,0.25);border-radius:20px;font-size:0.8em;color:rgba(226,185,106,0.9);transition:all 0.3s;backdrop-filter:blur(8px);">' +
+            '🧠 <span id="ke-count">0</span>条新知识</div>';
+        notif.querySelector('#ke-badge').addEventListener('click', toggleKEPanel);
+
+        // Place in avatar panel if avatar present, otherwise in chatMessages parent
+        const avatarPanel = document.getElementById('avatarPanel');
+        if (avatarPanel && agentData && agentData.avatar_model_url) {
+            avatarPanel.appendChild(notif);
+            notif.style.top = '12px';
+        } else {
+            const chatArea = document.getElementById('chatArea');
+            if (chatArea) {
+                chatArea.style.position = 'relative';
+                chatArea.appendChild(notif);
+                notif.style.top = '56px'; // below session bar
             }
-        } catch(e) {
-            btn.textContent = '❌ 失败';
-            btn.disabled = false;
         }
     }
+
+    function updateKEBadge() {
+        ensureKENotification();
+        const notif = document.getElementById('ke-notification');
+        const count = document.getElementById('ke-count');
+        if (!notif) return;
+        if (keSuggestions.length > 0) {
+            count.textContent = keSuggestions.length;
+            notif.style.display = 'block';
+        } else {
+            notif.style.display = 'none';
+            if (kePanelOpen) closeKEPanel();
+        }
+    }
+
+    function toggleKEPanel() {
+        if (kePanelOpen) { closeKEPanel(); } else { openKEPanel(); }
+    }
+
+    function openKEPanel() {
+        closeKEPanel(); // remove existing
+        kePanelOpen = true;
+        const panel = document.createElement('div');
+        panel.id = 'ke-panel';
+        panel.style.cssText = 'position:absolute;top:44px;left:50%;transform:translateX(-50%);z-index:101;width:min(420px,90vw);max-height:60vh;overflow-y:auto;background:rgba(22,22,30,0.97);border:1px solid rgba(212,160,84,0.2);border-radius:12px;backdrop-filter:blur(12px);box-shadow:0 8px 32px rgba(0,0,0,0.4);';
+
+        // Place relative to notification
+        const notif = document.getElementById('ke-notification');
+        if (notif && notif.parentNode) {
+            notif.parentNode.appendChild(panel);
+            const notifRect = notif.getBoundingClientRect();
+            const parentRect = notif.parentNode.getBoundingClientRect();
+            panel.style.top = (notifRect.bottom - parentRect.top + 6) + 'px';
+        }
+
+        renderKEPanel();
+
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', _kePanelOutsideClick);
+        }, 100);
+    }
+
+    function _kePanelOutsideClick(e) {
+        const panel = document.getElementById('ke-panel');
+        const badge = document.getElementById('ke-badge');
+        if (panel && !panel.contains(e.target) && badge && !badge.contains(e.target)) {
+            closeKEPanel();
+        }
+    }
+
+    function closeKEPanel() {
+        kePanelOpen = false;
+        const panel = document.getElementById('ke-panel');
+        if (panel) panel.remove();
+        document.removeEventListener('click', _kePanelOutsideClick);
+    }
+
+    function renderKEPanel() {
+        const panel = document.getElementById('ke-panel');
+        if (!panel) return;
+
+        if (keSuggestions.length === 0) {
+            panel.innerHTML = '<div style="padding:20px;text-align:center;color:rgba(168,162,153,0.6);font-size:0.85em;">暂无待处理知识</div>';
+            return;
+        }
+
+        let html = '<div style="padding:12px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.06);">' +
+            '<span style="font-size:0.85em;color:rgba(226,185,106,0.9);font-weight:600;">🧠 待处理知识</span>' +
+            '<button id="ke-dismiss-all" style="font-size:0.72em;color:rgba(168,162,153,0.6);background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:4px;transition:all 0.15s;" onmouseover="this.style.color=\'rgba(184,134,138,0.8)\';this.style.background=\'rgba(184,134,138,0.1)\'" onmouseout="this.style.color=\'rgba(168,162,153,0.6)\';this.style.background=\'none\'">全部忽略</button></div>';
+
+        keSuggestions.forEach(s => {
+            const ctype = s.content_type || '事实';
+            const summary = s.summary || '';
+            const reason = s.reason || '';
+            html += '<div style="padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.03);">' +
+                '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">' +
+                '<span style="font-size:0.68em;padding:1px 6px;border-radius:3px;background:rgba(109,168,155,0.1);color:rgba(109,168,155,0.7);">' + esc(ctype) + '</span>' +
+                '</div>' +
+                '<div style="font-size:0.82em;color:rgba(232,228,223,0.8);line-height:1.5;margin-bottom:4px;">' + esc(summary) + '</div>' +
+                (reason ? '<div style="font-size:0.72em;color:rgba(168,162,153,0.5);line-height:1.4;margin-bottom:8px;">💡 ' + esc(reason) + '</div>' : '') +
+                '<div style="display:flex;gap:8px;justify-content:flex-end;">' +
+                '<button data-sug-accept="' + esc(s.id) + '" style="padding:4px 12px;border-radius:6px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-size:0.75em;font-weight:600;transition:all 0.15s;" onmouseover="this.style.background=\'rgba(109,168,155,0.25)\'" onmouseout="this.style.background=\'rgba(109,168,155,0.15)\'">存入</button>' +
+                '<button data-sug-dismiss="' + esc(s.id) + '" style="padding:4px 12px;border-radius:6px;background:none;color:rgba(168,162,153,0.6);border:1px solid rgba(255,255,255,0.06);cursor:pointer;font-size:0.75em;transition:all 0.15s;" onmouseover="this.style.color=\'rgba(184,134,138,0.7)\';this.style.borderColor=\'rgba(184,134,138,0.2)\'" onmouseout="this.style.color=\'rgba(168,162,153,0.6)\';this.style.borderColor=\'rgba(255,255,255,0.06)\'">忽略</button>' +
+                '</div></div>';
+        });
+
+        panel.innerHTML = html;
+
+        // Bind events
+        panel.querySelector('#ke-dismiss-all').addEventListener('click', dismissAllSuggestions);
+        panel.querySelectorAll('[data-sug-accept]').forEach(btn => {
+            btn.addEventListener('click', () => acceptSuggestion(btn.dataset.sugAccept));
+        });
+        panel.querySelectorAll('[data-sug-dismiss]').forEach(btn => {
+            btn.addEventListener('click', () => dismissSuggestion(btn.dataset.sugDismiss));
+        });
+    }
+
+    async function acceptSuggestion(sugId) {
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions/' + sugId + '/accept', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            if (resp.ok) {
+                keSuggestions = keSuggestions.filter(s => s.id !== sugId);
+                updateKEBadge();
+                renderKEPanel();
+            }
+        } catch {}
+    }
+
+    async function dismissSuggestion(sugId) {
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions/' + sugId + '/dismiss', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            if (resp.ok) {
+                keSuggestions = keSuggestions.filter(s => s.id !== sugId);
+                updateKEBadge();
+                renderKEPanel();
+            }
+        } catch {}
+    }
+
+    async function dismissAllSuggestions() {
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions/dismiss-all', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            if (resp.ok) {
+                keSuggestions = [];
+                updateKEBadge();
+                renderKEPanel();
+            }
+        } catch {}
+    }
+
+    // Visibility change: pause/resume polling
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopKEPolling();
+        } else if (chatInitialized && isCurrentUserOwner()) {
+            startKEPolling();
+        }
+    });
 
     async function clearAvatar() {
         const confirmed = await showModal({ title: '移除虚拟形象', message: '确定移除当前虚拟形象？' });
@@ -1936,5 +2056,5 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, storeSuggestion };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar };
 })();

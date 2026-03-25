@@ -411,6 +411,39 @@ async def _extract_knowledge_suggestions(
         executor.shutdown(wait=False)
 
 
+async def _background_extract_knowledge(
+    user_message, ai_response, web_results, namespace, llm_cfg,
+    context_messages, existing_knowledge, user_id, session_id
+):
+    """Background task: extract knowledge and save to suggestions table."""
+    import sys as _sys
+    try:
+        suggestions = await _extract_knowledge_suggestions(
+            user_message=user_message,
+            ai_response=ai_response,
+            web_results=web_results,
+            namespace=namespace,
+            llm_cfg=llm_cfg,
+            context_messages=context_messages,
+            existing_knowledge=existing_knowledge,
+        )
+        if suggestions:
+            import uuid as _uuid
+            conn = get_db()
+            now = datetime.now().isoformat()
+            for item in suggestions:
+                sug_id = f"sug_{_uuid.uuid4().hex[:12]}"
+                conn.execute("""
+                    INSERT INTO knowledge_suggestions (id, namespace, user_id, session_id, summary, content_type, reason, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+                """, (sug_id, namespace, user_id, session_id, item["summary"], item.get("content_type", "事实"), item.get("reason", ""), now))
+            conn.commit()
+            conn.close()
+            print(f"[KE] saved {len(suggestions)} suggestions to DB", file=_sys.stderr, flush=True)
+    except Exception as e:
+        print(f"[KE] background error: {e}", file=_sys.stderr, flush=True)
+
+
 def _web_search_fallback(query: str, max_results: int = 3) -> list:
     """使用 Brave Search API 搜索网络作为知识补充"""
     import os
@@ -934,22 +967,18 @@ async def chat_stream(
 
             save_messages()
 
-            # Knowledge extraction for character agent (empty KB path)
+            # Fire-and-forget: extract knowledge in background
             if user.get("_is_owner") and llm_cfg.get("api_key"):
-                try:
-                    full_response = "".join(collected_response)
-                    suggestions = await _extract_knowledge_suggestions(
-                        user_message=message,
-                        ai_response=full_response,
-                        web_results=web_suggestions,
-                        namespace=namespace,
-                        llm_cfg=llm_cfg,
-                        context_messages=context_messages,
-                    )
-                    if suggestions:
-                        yield f"data: {json.dumps({'type': 'suggestions', 'items': suggestions}, ensure_ascii=False)}\n\n"
-                except Exception:
-                    pass
+                full_response = "".join(collected_response)
+                if len(message) + len(full_response) > 50:
+                    import asyncio as _bg_asyncio
+                    _bg_asyncio.create_task(_background_extract_knowledge(
+                        user_message=message, ai_response=full_response,
+                        web_results=web_suggestions, namespace=namespace,
+                        llm_cfg=llm_cfg, context_messages=context_messages,
+                        existing_knowledge="", user_id=user.get("user_id", ""),
+                        session_id=session_id or "",
+                    ))
 
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
@@ -1050,36 +1079,23 @@ async def chat_stream(
 
         save_messages()
 
-        # Knowledge extraction: LLM analyzes conversation for storable knowledge
-        # Only for owner chatting with their own agent
-        import sys as _sys
-        _ke_should_run = user.get("_is_owner") and llm_cfg.get("api_key")
-        print(f"[KE] check: _is_owner={user.get('_is_owner')}, has_api_key={bool(llm_cfg.get('api_key'))}", file=_sys.stderr, flush=True)
-
-        if _ke_should_run:
-            # Send heartbeat to keep SSE alive during extraction
-            yield f"data: {json.dumps({'type': 'extracting', 'text': '正在分析知识...'})}\n\n"
-            try:
-                full_response = "".join(collected_response)
-                existing_knowledge = "\n".join([f.get("summary", "") for f in vector_results[:5]]) if vector_results else ""
-
-                print(f"[KE] calling extraction: msg_len={len(message)}, resp_len={len(full_response)}, web_len={len(web_suggestions)}", file=_sys.stderr, flush=True)
-                suggestions = await _extract_knowledge_suggestions(
+        # Fire-and-forget: extract knowledge in background
+        if user.get("_is_owner") and llm_cfg.get("api_key"):
+            full_response = "".join(collected_response)
+            # Skip extraction for short/trivial conversations
+            if len(message) + len(full_response) > 50:
+                import asyncio as _bg_asyncio
+                _bg_asyncio.create_task(_background_extract_knowledge(
                     user_message=message,
                     ai_response=full_response,
                     web_results=web_suggestions,
                     namespace=namespace,
                     llm_cfg=llm_cfg,
                     context_messages=context_messages,
-                    existing_knowledge=existing_knowledge,
-                )
-
-                print(f"[KE] result: {len(suggestions)} suggestions", file=_sys.stderr, flush=True)
-                if suggestions:
-                    yield f"data: {json.dumps({'type': 'suggestions', 'items': suggestions}, ensure_ascii=False)}\n\n"
-            except Exception as _ke_err:
-                import traceback as _tb
-                print(f"[KE] error: {_ke_err}\n{_tb.format_exc()}", file=_sys.stderr, flush=True)
+                    existing_knowledge="\n".join([f.get("summary", "") for f in vector_results[:5]]) if vector_results else "",
+                    user_id=user.get("user_id", ""),
+                    session_id=session_id or "",
+                ))
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
@@ -1422,52 +1438,139 @@ async def update_fact(
         raise HTTPException(status_code=500, detail=f"更新失败: {str(e)}")
 
 
-class StoreSuggestionRequest(BaseModel):
-    summary: str
-    content_type: str = "资讯"
+# ==================== 知识建议（异步提取 + 通知系统） ====================
 
-
-@router.post("/store-suggestion")
-async def store_suggestion(
+@router.get("/suggestions")
+async def get_suggestions(
     namespace: str,
-    request: StoreSuggestionRequest,
+    status: str = Query("pending", description="过滤状态: pending/accepted/dismissed"),
+    limit: int = Query(20, ge=1, le=100),
     user: dict = Depends(verify_namespace),
 ):
-    """存入建议的知识条目（带去重检查）"""
+    """获取知识建议列表"""
     _require_owner(user)
-    
-    # 去重检查：向量相似度 > 0.92 视为重复（高阈值避免误判）
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, namespace, user_id, session_id, summary, content_type, reason, status, created_at, processed_at
+        FROM knowledge_suggestions
+        WHERE namespace = ? AND status = ?
+        ORDER BY created_at DESC
+        LIMIT ?
+    """, (namespace, status, limit))
+    rows = cursor.fetchall()
+    conn.close()
+    return {
+        "suggestions": [
+            {
+                "id": r["id"],
+                "summary": r["summary"],
+                "content_type": r["content_type"],
+                "reason": r["reason"],
+                "status": r["status"],
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.post("/suggestions/{suggestion_id}/accept")
+async def accept_suggestion(
+    namespace: str,
+    suggestion_id: str,
+    user: dict = Depends(verify_namespace),
+):
+    """接受建议：存入知识库 + 更新状态"""
+    _require_owner(user)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, summary, content_type FROM knowledge_suggestions WHERE id = ? AND namespace = ? AND status = 'pending'",
+        (suggestion_id, namespace)
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="建议不存在或已处理")
+
+    # 去重检查
     try:
         cogmate = _get_cogmate(namespace)
-        existing = cogmate.query(query_text=request.summary, top_k=1, min_score=0.92)
+        existing = cogmate.query(query_text=row["summary"], top_k=1, min_score=0.92)
         if existing.get("vector_results"):
-            similar = existing["vector_results"][0]
-            return {
-                "success": False,
-                "duplicate": True,
-                "similar_fact": similar.get("summary", "")[:80],
-                "message": "知识库中已有相似内容，跳过存入",
-            }
+            # Mark as accepted anyway (user intended it)
+            pass
     except Exception:
         pass
-    
-    # 存入三库
+
+    # 存入三库 (map content_type to valid CHECK values)
+    _ct_map = {"事实": "资讯", "洞察": "观点", "事件": "事件", "观点": "观点", "情绪": "情绪", "资讯": "资讯", "决策": "决策"}
+    store_ct = _ct_map.get(row["content_type"], "观点")
     try:
         cogmate = _get_cogmate(namespace)
         result = cogmate.store(
-            request.summary,
-            content_type=request.content_type,
+            row["summary"],
+            content_type=store_ct,
             source_type="user_confirmed_web",
         )
-        # result may be a string (fact_id) or dict
         fact_id = result.get("fact_id", "") if isinstance(result, dict) else str(result)
-        return {
-            "success": True,
-            "fact_id": fact_id,
-            "message": "已存入知识库",
-        }
     except Exception as e:
+        conn.close()
         raise HTTPException(status_code=500, detail=f"存入失败: {str(e)}")
+
+    # 更新状态
+    now = datetime.now().isoformat()
+    cursor.execute(
+        "UPDATE knowledge_suggestions SET status = 'accepted', processed_at = ? WHERE id = ?",
+        (now, suggestion_id)
+    )
+    conn.commit()
+    conn.close()
+    return {"success": True, "fact_id": fact_id}
+
+
+@router.post("/suggestions/{suggestion_id}/dismiss")
+async def dismiss_suggestion(
+    namespace: str,
+    suggestion_id: str,
+    user: dict = Depends(verify_namespace),
+):
+    """忽略建议"""
+    _require_owner(user)
+    conn = get_db()
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+    cursor.execute(
+        "UPDATE knowledge_suggestions SET status = 'dismissed', processed_at = ? WHERE id = ? AND namespace = ? AND status = 'pending'",
+        (now, suggestion_id, namespace)
+    )
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+    if affected == 0:
+        raise HTTPException(status_code=404, detail="建议不存在或已处理")
+    return {"success": True}
+
+
+@router.post("/suggestions/dismiss-all")
+async def dismiss_all_suggestions(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+):
+    """忽略所有 pending 建议"""
+    _require_owner(user)
+    conn = get_db()
+    cursor = conn.cursor()
+    now = datetime.now().isoformat()
+    cursor.execute(
+        "UPDATE knowledge_suggestions SET status = 'dismissed', processed_at = ? WHERE namespace = ? AND status = 'pending'",
+        (now, namespace)
+    )
+    count = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return {"success": True, "dismissed_count": count}
 
 
 @router.delete("/fact/{fact_id}")
