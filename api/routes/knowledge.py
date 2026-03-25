@@ -315,27 +315,16 @@ def _extract_knowledge_suggestions_sync(
             item.get("summary", "") for item in (web_results or [])
         ) or "无"
 
-        extraction_prompt = f"""你是知识提取引擎。分析以下对话，提取值得长期保存的知识条目。
+        extraction_prompt = f"""提取值得保存的知识。跳过闲聊和重复内容。content_type: 事实/观点/决策/情绪/资讯/洞察
 
-规则：
-1. 从用户发言中提取：个人观点、判断、决策、情绪、经历、新发现
-2. 从 AI 回答中提取：对用户有价值的事实性内容、关键分析结论
-3. 从网络搜索结果中提取：高质量、有时效性的信息
-4. 跳过：纯问候、闲聊、已在知识库中的重复内容、太泛的内容
-5. 每条知识应该是独立的、自包含的句子或段落
-6. content_type 取值：事实、观点、决策、情绪、资讯、洞察
+已有知识（勿重复）：{existing_knowledge[:300]}
 
-已有知识库内容（避免重复）：
-{existing_knowledge}
+用户：{user_message}
+AI：{ai_response[:1500]}
+网络：{web_results_text[:500]}
 
-用户消息：{user_message}
-AI 回答：{ai_response[:2000]}
-网络搜索结果：{web_results_text[:1000]}
-
-输出格式（严格 JSON 数组，无其他文字）：
-[{{"summary": "...", "content_type": "...", "reason": "..."}}]
-
-如果没有值得存储的内容，输出空数组 []"""
+输出JSON数组：[{{"summary":"知识内容","content_type":"类型","reason":"存储理由"}}]
+无则输出[]"""
 
         resp = _httpx.post(
             f"{base_url.rstrip('/')}/chat/completions",
@@ -352,7 +341,7 @@ AI 回答：{ai_response[:2000]}
                 "temperature": 0.3,
                 "max_tokens": 1000,
             },
-            timeout=15.0,
+            timeout=30.0,
         )
 
         if resp.status_code != 200:
