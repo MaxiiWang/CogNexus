@@ -45,12 +45,12 @@ def parse_markdown(content: str) -> list:
             continue
         if len(s) < 50 and chunks:
             chunks[-1] += '\n' + s
-        elif len(s) > 2000:
-            # Split long sections at sentence boundaries
+        elif len(s) > 3000:
+            # Split very long sections at sentence boundaries
             sentences = re.split(r'(?<=[。！？.!?\n])\s*', s)
             buf = ''
             for sent in sentences:
-                if len(buf) + len(sent) > 500 and buf:
+                if len(buf) + len(sent) > 1500 and buf:
                     chunks.append(buf.strip())
                     buf = sent
                 else:
@@ -71,7 +71,7 @@ def parse_text(content: str) -> list:
         p = p.strip()
         if not p:
             continue
-        if len(buf) + len(p) < 500:
+        if len(buf) + len(p) < 1500:
             buf += ('\n\n' if buf else '') + p
         else:
             if buf:
@@ -170,12 +170,20 @@ def _extract_from_chunk(chunk_text: str, source_context: str, llm_cfg: dict) -> 
         }
         base_url = provider_urls.get(provider, "https://api.openai.com/v1")
 
-    extraction_prompt = f"""提取知识条目。每条应独立、自包含。content_type: 事实/观点/决策/资讯/洞察
+    extraction_prompt = f"""从以下内容中提取值得长期保存的知识条目。
+
+提取原则：
+- 保持知识完整性：一个完整的概念、流程、对比关系不要拆开，宁可一条长一点也不要碎片化
+- 保留上下文：专业术语要带必要的解释和背景
+- 合并相关内容：如果多个小点属于同一个主题（如"三种计价方法"），合并为一条
+- 跳过：目录、空洞的标题、纯格式内容
+- content_type: 事实（客观知识）/观点（判断分析）/决策（行动方案）/资讯（时事动态）/洞察（深层规律）
 
 来源: {source_context}
-内容: {chunk_text[:1500]}
+内容:
+{chunk_text[:2500]}
 
-输出JSON数组: [{{"summary":"..","content_type":"..","reason":".."}}]
+输出JSON数组: [{{"summary":"完整的知识内容","content_type":"类型","reason":"提取理由"}}]
 无则输出[]"""
 
     try:
@@ -188,11 +196,11 @@ def _extract_from_chunk(chunk_text: str, source_context: str, llm_cfg: dict) -> 
             json={
                 "model": llm_cfg.get("model", "gpt-4o-mini"),
                 "messages": [
-                    {"role": "system", "content": "你是知识提取引擎。只输出JSON数组。无内容则输出[]。不要输出任何其他文字。"},
+                    {"role": "system", "content": "你是知识提取引擎。提取完整的、有上下文的知识条目，不要碎片化。只输出JSON数组，无内容则输出[]。"},
                     {"role": "user", "content": extraction_prompt},
                 ],
                 "temperature": 0.3,
-                "max_tokens": 1000,
+                "max_tokens": 2000,
             },
             timeout=45.0,
         )
@@ -219,7 +227,7 @@ def _extract_from_chunk(chunk_text: str, source_context: str, llm_cfg: dict) -> 
                     "content_type": str(item.get("content_type", "事实"))[:10],
                     "reason": str(item.get("reason", ""))[:200],
                 })
-        return valid[:5]
+        return valid[:8]
 
     except Exception as e:
         print(f"[Import] extraction error: {e}", file=sys.stderr, flush=True)
