@@ -2425,7 +2425,7 @@ const AgentDetail = (function() {
             </div>
             <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:20px;">
                 <div style="font-size:0.82em;color:#a8a299;line-height:1.8;">
-                    <div style="margin-bottom:8px;"><span style="color:#e2b96a;font-weight:600;">步骤 1</span>　前往 <a href="https://www.notion.so/profile/integrations" target="_blank" style="color:#6da89b;text-decoration:underline;">Notion → Settings → Integrations</a></div>
+                    <div style="margin-bottom:8px;"><span style="color:#e2b96a;font-weight:600;">步骤 1</span>　前往 <a href="https://www.notion.com/my-integrations" target="_blank" style="color:#6da89b;text-decoration:underline;">notion.com/my-integrations</a> 创建 Internal Integration</div>
                     <div style="margin-bottom:8px;padding-left:52px;">→ 点击 <b>New integration</b>，创建 Internal Integration</div>
                     <div style="margin-bottom:8px;"><span style="color:#e2b96a;font-weight:600;">步骤 2</span>　复制 Integration Token（以 <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;font-size:0.9em;">secret_</code> 开头）</div>
                     <div><span style="color:#e2b96a;font-weight:600;">步骤 3</span>　在 Notion 中打开要导入的页面 → <b>Share</b> → 将该 Integration 添加为连接</div>
