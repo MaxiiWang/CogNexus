@@ -335,13 +335,13 @@ AI：{ai_response[:1500]}
             json={
                 "model": llm_cfg.get("model", "gpt-4o-mini"),
                 "messages": [
-                    {"role": "system", "content": "你是知识提取引擎，只输出 JSON 数组，不要输出任何其他文字。"},
+                    {"role": "system", "content": "你是知识提取引擎。只输出JSON数组，格式[{\"summary\":\"内容\",\"content_type\":\"类型\",\"reason\":\"理由\"}]。无内容则输出[]。不要输出任何其他文字。"},
                     {"role": "user", "content": extraction_prompt},
                 ],
                 "temperature": 0.3,
                 "max_tokens": 1000,
             },
-            timeout=30.0,
+            timeout=45.0,
         )
 
         if resp.status_code != 200:
