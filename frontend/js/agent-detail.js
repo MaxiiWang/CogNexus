@@ -1896,6 +1896,8 @@ const AgentDetail = (function() {
     }
 
     async function acceptSuggestion(sugId) {
+        const btn = document.querySelector('[data-sug-accept="' + sugId + '"]');
+        if (btn) { btn.disabled = true; btn.textContent = '存入中...'; btn.style.opacity = '0.6'; }
         try {
             const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions/' + sugId + '/accept', {
                 method: 'POST',
@@ -1905,11 +1907,15 @@ const AgentDetail = (function() {
                 keSuggestions = keSuggestions.filter(s => s.id !== sugId);
                 updateKEBadge();
                 renderKEPanel();
+            } else {
+                if (btn) { btn.disabled = false; btn.textContent = '重试'; btn.style.opacity = '1'; }
             }
-        } catch {}
+        } catch { if (btn) { btn.disabled = false; btn.textContent = '重试'; btn.style.opacity = '1'; } }
     }
 
     async function dismissSuggestion(sugId) {
+        const btn = document.querySelector('[data-sug-dismiss="' + sugId + '"]');
+        if (btn) { btn.disabled = true; btn.textContent = '忽略中...'; btn.style.opacity = '0.6'; }
         try {
             const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions/' + sugId + '/dismiss', {
                 method: 'POST',
@@ -1919,8 +1925,10 @@ const AgentDetail = (function() {
                 keSuggestions = keSuggestions.filter(s => s.id !== sugId);
                 updateKEBadge();
                 renderKEPanel();
+            } else {
+                if (btn) { btn.disabled = false; btn.textContent = '忽略'; btn.style.opacity = '1'; }
             }
-        } catch {}
+        } catch { if (btn) { btn.disabled = false; btn.textContent = '忽略'; btn.style.opacity = '1'; } }
     }
 
     async function dismissAllSuggestions() {
@@ -2224,13 +2232,17 @@ const AgentDetail = (function() {
         }, 3000);
     }
 
+    let _currentImportId = null;
+
     function _updateImportProgress(data) {
         const statusEl = document.getElementById('importUploadStatus');
         if (!statusEl) return;
         statusEl.style.display = 'block';
+        _currentImportId = data.id || _currentImportId;
 
         if (data.status === 'completed') {
             statusEl.innerHTML = '<div style="background:rgba(109,168,155,0.08);border:1px solid rgba(109,168,155,0.2);border-radius:8px;padding:12px 16px;color:#6da89b;font-size:0.85em;">✅ 导入完成！提取了 <b>' + data.total_suggestions + '</b> 条知识建议</div>';
+            _loadImportSuggestions(_currentImportId);
         } else if (data.status === 'failed') {
             statusEl.innerHTML = '<div style="background:rgba(184,134,138,0.08);border:1px solid rgba(184,134,138,0.2);border-radius:8px;padding:12px 16px;color:#b8868a;font-size:0.85em;">❌ ' + esc(data.error_message || '处理失败') + '</div>';
         } else {
@@ -2246,7 +2258,77 @@ const AgentDetail = (function() {
                         <div style="background:linear-gradient(90deg,#e2b96a,#d4a85a);height:100%;width:${pct}%;transition:width 0.3s;border-radius:4px;"></div>
                     </div>
                 </div>`;
+            // Fetch suggestions in real-time during extraction
+            if (data.total_suggestions > 0) {
+                _loadImportSuggestions(_currentImportId);
+            }
         }
+    }
+
+    async function _loadImportSuggestions(importId) {
+        if (!importId) return;
+        let container = document.getElementById('importSuggestionsPanel');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'importSuggestionsPanel';
+            container.style.cssText = 'margin-top:12px;max-height:300px;overflow-y:auto;';
+            const statusEl = document.getElementById('importUploadStatus');
+            if (statusEl) statusEl.parentNode.insertBefore(container, statusEl.nextSibling);
+        }
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/suggestions?status=pending&limit=50', { headers: hdrs() });
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const items = (data.suggestions || []).filter(function(s) { return s.import_id === importId; });
+            if (!items.length) { container.innerHTML = ''; return; }
+
+            let html = '<div style="border:1px solid rgba(226,185,106,0.15);border-radius:10px;background:rgba(226,185,106,0.03);overflow:hidden;">';
+            html += '<div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center;">';
+            html += '<span style="font-size:0.8em;color:rgba(226,185,106,0.8);font-weight:600;">🧠 已提取 ' + items.length + ' 条知识</span>';
+            html += '<div style="display:flex;gap:8px;">';
+            html += '<button id="impAcceptAll" style="font-size:0.72em;padding:3px 10px;border-radius:4px;background:rgba(109,168,155,0.12);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;">全部存入</button>';
+            html += '<button id="impDismissAll" style="font-size:0.72em;padding:3px 10px;border-radius:4px;background:none;color:rgba(168,162,153,0.5);border:1px solid rgba(255,255,255,0.06);cursor:pointer;">全部忽略</button>';
+            html += '</div></div>';
+
+            items.forEach(function(s) {
+                html += '<div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.02);">';
+                html += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">';
+                html += '<span style="font-size:0.65em;padding:1px 5px;border-radius:3px;background:rgba(109,168,155,0.1);color:rgba(109,168,155,0.7);">' + esc(s.content_type || '事实') + '</span>';
+                html += '</div>';
+                html += '<div style="font-size:0.8em;color:rgba(232,228,223,0.8);line-height:1.5;word-break:break-word;">' + esc(s.summary) + '</div>';
+                if (s.reason) html += '<div style="font-size:0.7em;color:rgba(168,162,153,0.45);margin-top:3px;word-break:break-word;">💡 ' + esc(s.reason) + '</div>';
+                html += '<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px;">';
+                html += '<button data-imp-accept="' + esc(s.id) + '" style="font-size:0.7em;padding:3px 10px;border-radius:5px;background:rgba(109,168,155,0.12);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;">存入</button>';
+                html += '<button data-imp-dismiss="' + esc(s.id) + '" style="font-size:0.7em;padding:3px 10px;border-radius:5px;background:none;color:rgba(168,162,153,0.5);border:1px solid rgba(255,255,255,0.06);cursor:pointer;">忽略</button>';
+                html += '</div></div>';
+            });
+            html += '</div>';
+            container.innerHTML = html;
+
+            // Bind events
+            container.querySelectorAll('[data-imp-accept]').forEach(function(btn) {
+                btn.addEventListener('click', function() { acceptSuggestion(btn.dataset.impAccept); setTimeout(function(){ _loadImportSuggestions(importId); }, 1000); });
+            });
+            container.querySelectorAll('[data-imp-dismiss]').forEach(function(btn) {
+                btn.addEventListener('click', function() { dismissSuggestion(btn.dataset.impDismiss); setTimeout(function(){ _loadImportSuggestions(importId); }, 1000); });
+            });
+            const acceptAllBtn = container.querySelector('#impAcceptAll');
+            if (acceptAllBtn) acceptAllBtn.addEventListener('click', async function() {
+                acceptAllBtn.disabled = true; acceptAllBtn.textContent = '存入中...';
+                for (const s of items) {
+                    try { await fetch('/api/knowledge/' + getNs() + '/suggestions/' + s.id + '/accept', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() } }); } catch {}
+                }
+                _loadImportSuggestions(importId);
+                pollSuggestions();
+            });
+            const dismissAllBtn = container.querySelector('#impDismissAll');
+            if (dismissAllBtn) dismissAllBtn.addEventListener('click', async function() {
+                dismissAllBtn.disabled = true; dismissAllBtn.textContent = '忽略中...';
+                try { await fetch('/api/knowledge/' + getNs() + '/suggestions/dismiss-all', { method: 'POST', headers: { 'Authorization': 'Bearer ' + getToken() } }); } catch {}
+                _loadImportSuggestions(importId);
+                pollSuggestions();
+            });
+        } catch {}
     }
 
     async function _loadImportHistory() {

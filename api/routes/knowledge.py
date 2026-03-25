@@ -1452,7 +1452,7 @@ async def get_suggestions(
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT id, namespace, user_id, session_id, summary, content_type, reason, status, created_at, processed_at
+        SELECT id, namespace, user_id, session_id, summary, content_type, reason, status, created_at, processed_at, import_id
         FROM knowledge_suggestions
         WHERE namespace = ? AND status = ?
         ORDER BY created_at DESC
@@ -1469,6 +1469,7 @@ async def get_suggestions(
                 "reason": r["reason"],
                 "status": r["status"],
                 "created_at": r["created_at"],
+                "import_id": r["import_id"] if "import_id" in r.keys() else None,
             }
             for r in rows
         ]
