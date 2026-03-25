@@ -1459,9 +1459,11 @@ async def store_suggestion(
             content_type=request.content_type,
             source_type="user_confirmed_web",
         )
+        # result may be a string (fact_id) or dict
+        fact_id = result.get("fact_id", "") if isinstance(result, dict) else str(result)
         return {
             "success": True,
-            "fact_id": result.get("fact_id", ""),
+            "fact_id": fact_id,
             "message": "已存入知识库",
         }
     except Exception as e:
