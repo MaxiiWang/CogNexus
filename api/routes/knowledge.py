@@ -389,14 +389,26 @@ async def _extract_knowledge_suggestions(
 ) -> list:
     """Async wrapper that runs sync extraction in executor to avoid event loop issues."""
     import asyncio
+    import concurrent.futures
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None,
-        lambda: _extract_knowledge_suggestions_sync(
-            user_message, ai_response, web_results,
-            namespace, llm_cfg, context_messages, existing_knowledge,
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        return await asyncio.wait_for(
+            loop.run_in_executor(
+                executor,
+                lambda: _extract_knowledge_suggestions_sync(
+                    user_message, ai_response, web_results,
+                    namespace, llm_cfg, context_messages, existing_knowledge,
+                )
+            ),
+            timeout=50.0,
         )
-    )
+    except asyncio.TimeoutError:
+        import sys as _sys
+        print("[KE] async wrapper timed out at 50s", file=_sys.stderr, flush=True)
+        return []
+    finally:
+        executor.shutdown(wait=False)
 
 
 def _web_search_fallback(query: str, max_results: int = 3) -> list:
@@ -1041,8 +1053,12 @@ async def chat_stream(
         # Knowledge extraction: LLM analyzes conversation for storable knowledge
         # Only for owner chatting with their own agent
         import sys as _sys
-        print(f"[KE] check: _is_owner={user.get('_is_owner')}, has_api_key={bool(llm_cfg.get('api_key'))}, llm_cfg_keys={list(llm_cfg.keys()) if llm_cfg else 'empty'}", file=_sys.stderr, flush=True)
-        if user.get("_is_owner") and llm_cfg.get("api_key"):
+        _ke_should_run = user.get("_is_owner") and llm_cfg.get("api_key")
+        print(f"[KE] check: _is_owner={user.get('_is_owner')}, has_api_key={bool(llm_cfg.get('api_key'))}", file=_sys.stderr, flush=True)
+
+        if _ke_should_run:
+            # Send heartbeat to keep SSE alive during extraction
+            yield f"data: {json.dumps({'type': 'extracting', 'text': '正在分析知识...'})}\n\n"
             try:
                 full_response = "".join(collected_response)
                 existing_knowledge = "\n".join([f.get("summary", "") for f in vector_results[:5]]) if vector_results else ""

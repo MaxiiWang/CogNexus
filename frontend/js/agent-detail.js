@@ -972,7 +972,21 @@ const AgentDetail = (function() {
                             fullText += ev.text;
                             el.innerHTML = esc(fullText).replace(/\n/g, '<br>');
                             msgs.scrollTop = msgs.scrollHeight;
+                        } else if (ev.type === 'extracting') {
+                            // Show extraction indicator
+                            let extEl = document.getElementById('ke-extracting');
+                            if (!extEl) {
+                                extEl = document.createElement('div');
+                                extEl.id = 'ke-extracting';
+                                extEl.style.cssText = 'align-self:flex-start;font-size:0.75em;color:rgba(226,185,106,0.5);padding:6px 0;animation:fadeUp 0.2s;';
+                                extEl.textContent = '🧠 ' + (ev.text || '正在分析知识...');
+                                msgs.appendChild(extEl);
+                                msgs.scrollTop = msgs.scrollHeight;
+                            }
                         } else if (ev.type === 'suggestions' && ev.items && ev.items.length > 0) {
+                            // Remove extracting indicator
+                            const extEl = document.getElementById('ke-extracting');
+                            if (extEl) extEl.remove();
                             // Render suggestion cards after the AI bubble
                             const sugId = 'sug-' + Date.now();
                             const sugContainer = document.createElement('div');
@@ -1028,6 +1042,10 @@ const AgentDetail = (function() {
                             msgs.scrollTop = msgs.scrollHeight;
                         } else if (ev.type === 'error') {
                             el.innerHTML += '<br><span style="color:#b8868a;">' + esc(ev.message) + '</span>';
+                        } else if (ev.type === 'done') {
+                            // Clean up extracting indicator if still present
+                            const extEl2 = document.getElementById('ke-extracting');
+                            if (extEl2) extEl2.remove();
                         }
                     } catch {}
                 }
