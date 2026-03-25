@@ -981,18 +981,20 @@
         <!-- Knowledge Tab -->
         <div class="tab-content" id="tab-knowledge">
             <div class="knowledge-container">
-                <div class="view-switcher" id="viewSwitcher" style="display:flex;align-items:center;">
-                    <button class="view-btn active" data-view="graph">
-                        <span>🕸️</span> <span data-i18n="agent.view_graph">Graph</span>
-                    </button>
-                    <button class="view-btn" data-view="tree">
-                        <span>🌳</span> <span data-i18n="agent.view_tree">Tree</span>
-                    </button>
-                    <button class="view-btn" data-view="timeline">
-                        <span>📅</span> <span data-i18n="agent.view_timeline">Timeline</span>
-                    </button>
-                    <button class="view-btn" onclick="AgentDetail.openImportModal()" style="margin-left:auto;" title="导入外部知识">
-                        📥 导入
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-sm,8px);">
+                    <div class="view-switcher" id="viewSwitcher">
+                        <button class="view-btn active" data-view="graph">
+                            <span>🕸️</span> <span data-i18n="agent.view_graph">Graph</span>
+                        </button>
+                        <button class="view-btn" data-view="tree">
+                            <span>🌳</span> <span data-i18n="agent.view_tree">Tree</span>
+                        </button>
+                        <button class="view-btn" data-view="timeline">
+                            <span>📅</span> <span data-i18n="agent.view_timeline">Timeline</span>
+                        </button>
+                    </div>
+                    <button onclick="AgentDetail.openImportModal()" style="padding:6px 14px;border-radius:8px;background:rgba(212,160,84,0.1);color:rgba(226,185,106,0.9);border:1px solid rgba(212,160,84,0.2);cursor:pointer;font-size:0.82em;font-weight:500;transition:all 0.2s;white-space:nowrap;" onmouseover="this.style.background='rgba(212,160,84,0.18)';this.style.borderColor='rgba(212,160,84,0.35)'" onmouseout="this.style.background='rgba(212,160,84,0.1)';this.style.borderColor='rgba(212,160,84,0.2)'" title="导入外部知识">
+                        📥 导入知识
                     </button>
                 </div>
 
