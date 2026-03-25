@@ -289,8 +289,7 @@ async def _extract_knowledge_suggestions(
     Analyzes user message + AI response + web results to suggest knowledge items worth storing.
     Returns list of dicts: [{"summary": "...", "content_type": "事实|观点|决策|情绪|资讯|洞察", "reason": "..."}]
     """
-    import logging as _logging
-    _ke_log = _logging.getLogger("knowledge_extraction")
+    import sys as _sys
     try:
         import httpx as _httpx
 
@@ -304,7 +303,7 @@ async def _extract_knowledge_suggestions(
                 "moonshot": "https://api.moonshot.cn/v1",
             }
             base_url = provider_urls.get(provider, "https://api.openai.com/v1")
-        _ke_log.info(f"KE func: provider={provider}, base_url={base_url}, model={llm_cfg.get('model')}")
+        print(f"[KE] func: provider={provider}, base_url={base_url}, model={llm_cfg.get('model')}", file=_sys.stderr, flush=True)
 
         # Build existing knowledge string for dedup
         if not existing_knowledge and context_messages:
@@ -357,7 +356,7 @@ AI 回答：{ai_response[:2000]}
             )
 
             if resp.status_code != 200:
-                _ke_log.error(f"KE LLM call failed: status={resp.status_code}, body={resp.text[:300]}")
+                print(f"[KE] LLM call failed: status={resp.status_code}, body={resp.text[:300]}", file=_sys.stderr, flush=True)
                 return []
 
             data = resp.json()
@@ -380,11 +379,12 @@ AI 回答：{ai_response[:2000]}
                         "content_type": str(item.get("content_type", "事实"))[:10],
                         "reason": str(item.get("reason", ""))[:200],
                     })
-            _ke_log.info(f"KE parsed: {len(valid)} valid suggestions from LLM")
+            print(f"[KE] parsed: {len(valid)} valid suggestions from LLM", file=_sys.stderr, flush=True)
             return valid[:5]  # Max 5 suggestions
 
     except Exception as _e:
-        _ke_log.error(f"KE exception: {_e}", exc_info=True)
+        import traceback as _tb
+        print(f"[KE] exception: {_e}\n{_tb.format_exc()}", file=_sys.stderr, flush=True)
         return []
 
 
@@ -1029,15 +1029,14 @@ async def chat_stream(
 
         # Knowledge extraction: LLM analyzes conversation for storable knowledge
         # Only for owner chatting with their own agent
-        import logging as _logging
-        _ke_log = _logging.getLogger("knowledge_extraction")
-        _ke_log.info(f"KE check: _is_owner={user.get('_is_owner')}, has_api_key={bool(llm_cfg.get('api_key'))}, llm_cfg_keys={list(llm_cfg.keys()) if llm_cfg else 'empty'}")
+        import sys as _sys
+        print(f"[KE] check: _is_owner={user.get('_is_owner')}, has_api_key={bool(llm_cfg.get('api_key'))}, llm_cfg_keys={list(llm_cfg.keys()) if llm_cfg else 'empty'}", file=_sys.stderr, flush=True)
         if user.get("_is_owner") and llm_cfg.get("api_key"):
             try:
                 full_response = "".join(collected_response)
                 existing_knowledge = "\n".join([f.get("summary", "") for f in vector_results[:5]]) if vector_results else ""
 
-                _ke_log.info(f"KE calling extraction: msg_len={len(message)}, resp_len={len(full_response)}, web_len={len(web_suggestions)}")
+                print(f"[KE] calling extraction: msg_len={len(message)}, resp_len={len(full_response)}, web_len={len(web_suggestions)}", file=_sys.stderr, flush=True)
                 suggestions = await _extract_knowledge_suggestions(
                     user_message=message,
                     ai_response=full_response,
@@ -1048,11 +1047,12 @@ async def chat_stream(
                     existing_knowledge=existing_knowledge,
                 )
 
-                _ke_log.info(f"KE result: {len(suggestions)} suggestions")
+                print(f"[KE] result: {len(suggestions)} suggestions", file=_sys.stderr, flush=True)
                 if suggestions:
                     yield f"data: {json.dumps({'type': 'suggestions', 'items': suggestions}, ensure_ascii=False)}\n\n"
             except Exception as _ke_err:
-                _ke_log.error(f"KE error: {_ke_err}", exc_info=True)
+                import traceback as _tb
+                print(f"[KE] error: {_ke_err}\n{_tb.format_exc()}", file=_sys.stderr, flush=True)
 
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
