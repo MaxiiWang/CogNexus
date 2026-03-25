@@ -204,6 +204,32 @@ def migrate_knowledge_schema():
         )
     """)
 
+    # Migration: add import_id column to knowledge_suggestions
+    try:
+        cursor.execute("ALTER TABLE knowledge_suggestions ADD COLUMN import_id TEXT")
+    except Exception:
+        pass  # Column already exists
+
+    # Knowledge imports table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS knowledge_imports (
+            id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            source_type TEXT NOT NULL,
+            source_name TEXT,
+            source_meta TEXT,
+            status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'extracting', 'completed', 'failed')),
+            total_chunks INTEGER DEFAULT 0,
+            processed_chunks INTEGER DEFAULT 0,
+            total_suggestions INTEGER DEFAULT 0,
+            error_message TEXT,
+            created_at TEXT NOT NULL,
+            completed_at TEXT
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_imports_ns ON knowledge_imports(namespace, created_at DESC)")
+
     # 索引
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_messages_session ON chat_messages(session_id, created_at)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_agent_user ON chat_sessions(agent_id, user_id, updated_at DESC)")

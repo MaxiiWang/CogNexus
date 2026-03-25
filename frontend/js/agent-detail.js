@@ -2068,5 +2068,244 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar };
+    // ==================== Knowledge Import ====================
+
+    let _importModal = null;
+    let _importPollTimer = null;
+
+    function openImportModal() {
+        if (_importModal) { _importModal.remove(); }
+
+        const overlay = document.createElement('div');
+        overlay.id = 'importModalOverlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1002;display:flex;align-items:center;justify-content:center;';
+
+        const panel = document.createElement('div');
+        panel.style.cssText = 'background:#1e2025;border:1px solid rgba(255,255,255,0.08);border-radius:16px;width:560px;max-width:92vw;max-height:85vh;overflow-y:auto;padding:0;box-shadow:0 24px 80px rgba(0,0,0,0.5);';
+
+        panel.innerHTML = `
+            <div style="padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-family:var(--font-display);font-weight:700;color:#e2b96a;font-size:1.1em;">📥 导入外部知识</span>
+                <button onclick="AgentDetail.closeImportModal()" style="background:none;border:none;color:#6b665e;font-size:1.3em;cursor:pointer;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">×</button>
+            </div>
+            <div style="padding:20px 24px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;">
+                    <div class="import-src-card" onclick="document.getElementById('importFileInput').click()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
+                        <div style="font-size:1.8em;margin-bottom:6px;">📄</div>
+                        <div style="font-size:0.82em;color:#a8a299;font-weight:600;">文件</div>
+                        <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">.md .txt .csv .pdf</div>
+                    </div>
+                    <div class="import-src-card" onclick="document.getElementById('importZipInput').click()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
+                        <div style="font-size:1.8em;margin-bottom:6px;">📓</div>
+                        <div style="font-size:0.82em;color:#a8a299;font-weight:600;">Notion</div>
+                        <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">.zip 导出包</div>
+                    </div>
+                    <div class="import-src-card" onclick="document.getElementById('importZipInput').click()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
+                        <div style="font-size:1.8em;margin-bottom:6px;">💎</div>
+                        <div style="font-size:0.82em;color:#a8a299;font-weight:600;">Obsidian</div>
+                        <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">.zip 导出包</div>
+                    </div>
+                </div>
+
+                <div id="importDropZone" style="border:2px dashed rgba(255,255,255,0.1);border-radius:12px;padding:40px;text-align:center;transition:all 0.2s;margin-bottom:20px;cursor:pointer;" onclick="document.getElementById('importFileInput').click()">
+                    <div style="font-size:2em;margin-bottom:8px;opacity:0.5;">📂</div>
+                    <div style="color:#6b665e;font-size:0.85em;">拖拽文件到这里，或点击选择</div>
+                    <div style="color:#4a4640;font-size:0.72em;margin-top:6px;">支持 .md, .txt, .csv, .pdf, .json, .zip</div>
+                </div>
+
+                <input type="file" id="importFileInput" accept=".md,.txt,.csv,.pdf,.json" style="display:none;" onchange="AgentDetail._handleImportFile(this)">
+                <input type="file" id="importZipInput" accept=".zip" style="display:none;" onchange="AgentDetail._handleImportZip(this)">
+
+                <div id="importUploadStatus" style="display:none;margin-bottom:16px;"></div>
+
+                <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:16px;">
+                    <div style="font-size:0.82em;color:#6b665e;font-weight:600;margin-bottom:10px;">导入历史</div>
+                    <div id="importHistoryList" style="max-height:240px;overflow-y:auto;">
+                        <div style="text-align:center;color:#4a4640;font-size:0.8em;padding:20px;">加载中...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        overlay.appendChild(panel);
+        overlay.addEventListener('click', function(e) { if (e.target === overlay) closeImportModal(); });
+        document.body.appendChild(overlay);
+        _importModal = overlay;
+
+        // Setup drag-and-drop
+        const dropZone = document.getElementById('importDropZone');
+        dropZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#e2b96a';
+            this.style.background = 'rgba(226,185,106,0.05)';
+        });
+        dropZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = 'rgba(255,255,255,0.1)';
+            this.style.background = 'none';
+        });
+        dropZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = 'rgba(255,255,255,0.1)';
+            this.style.background = 'none';
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.name.endsWith('.zip')) {
+                    _uploadImportFile(file, true);
+                } else {
+                    _uploadImportFile(file, false);
+                }
+            }
+        });
+
+        _loadImportHistory();
+    }
+
+    function closeImportModal() {
+        if (_importPollTimer) { clearInterval(_importPollTimer); _importPollTimer = null; }
+        if (_importModal) { _importModal.remove(); _importModal = null; }
+    }
+
+    function _handleImportFile(input) {
+        if (input.files.length > 0) _uploadImportFile(input.files[0], false);
+        input.value = '';
+    }
+
+    function _handleImportZip(input) {
+        if (input.files.length > 0) _uploadImportFile(input.files[0], true);
+        input.value = '';
+    }
+
+    async function _uploadImportFile(file, isZip) {
+        const statusEl = document.getElementById('importUploadStatus');
+        if (!statusEl) return;
+        statusEl.style.display = 'block';
+        statusEl.innerHTML = '<div style="background:rgba(226,185,106,0.08);border:1px solid rgba(226,185,106,0.2);border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;"><div class="loading-spinner" style="width:16px;height:16px;border-width:2px;"></div><span style="color:#e2b96a;font-size:0.85em;">正在上传 ' + esc(file.name) + '...</span></div>';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const endpoint = isZip ? 'upload-zip' : 'upload';
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/imports/' + endpoint, {
+                method: 'POST',
+                headers: hdrs(),
+                body: formData,
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                statusEl.innerHTML = '<div style="background:rgba(184,134,138,0.08);border:1px solid rgba(184,134,138,0.2);border-radius:8px;padding:12px 16px;color:#b8868a;font-size:0.85em;">❌ ' + esc(data.detail || '上传失败') + '</div>';
+                return;
+            }
+            statusEl.innerHTML = '<div style="background:rgba(109,168,155,0.08);border:1px solid rgba(109,168,155,0.2);border-radius:8px;padding:12px 16px;color:#6da89b;font-size:0.85em;">✅ 已上传，正在处理...</div>';
+
+            // Start polling
+            _startImportPoll(data.import_id);
+            _loadImportHistory();
+        } catch (e) {
+            statusEl.innerHTML = '<div style="background:rgba(184,134,138,0.08);border:1px solid rgba(184,134,138,0.2);border-radius:8px;padding:12px 16px;color:#b8868a;font-size:0.85em;">❌ 网络错误</div>';
+        }
+    }
+
+    function _startImportPoll(importId) {
+        if (_importPollTimer) clearInterval(_importPollTimer);
+        _importPollTimer = setInterval(async function() {
+            try {
+                const resp = await fetch('/api/knowledge/' + getNs() + '/imports/' + importId, { headers: hdrs() });
+                if (!resp.ok) return;
+                const data = await resp.json();
+                _updateImportProgress(data);
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(_importPollTimer);
+                    _importPollTimer = null;
+                    _loadImportHistory();
+                }
+            } catch(e) {}
+        }, 3000);
+    }
+
+    function _updateImportProgress(data) {
+        const statusEl = document.getElementById('importUploadStatus');
+        if (!statusEl) return;
+        statusEl.style.display = 'block';
+
+        if (data.status === 'completed') {
+            statusEl.innerHTML = '<div style="background:rgba(109,168,155,0.08);border:1px solid rgba(109,168,155,0.2);border-radius:8px;padding:12px 16px;color:#6da89b;font-size:0.85em;">✅ 导入完成！提取了 <b>' + data.total_suggestions + '</b> 条知识建议</div>';
+        } else if (data.status === 'failed') {
+            statusEl.innerHTML = '<div style="background:rgba(184,134,138,0.08);border:1px solid rgba(184,134,138,0.2);border-radius:8px;padding:12px 16px;color:#b8868a;font-size:0.85em;">❌ ' + esc(data.error_message || '处理失败') + '</div>';
+        } else {
+            const pct = data.total_chunks > 0 ? Math.round(data.processed_chunks / data.total_chunks * 100) : 0;
+            const label = data.status === 'extracting' ? '提取知识中' : '解析文件中';
+            statusEl.innerHTML = `
+                <div style="background:rgba(226,185,106,0.08);border:1px solid rgba(226,185,106,0.2);border-radius:8px;padding:12px 16px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                        <span style="color:#e2b96a;font-size:0.82em;">${esc(label)}</span>
+                        <span style="color:#6b665e;font-size:0.78em;">${data.processed_chunks}/${data.total_chunks} chunks · ${data.total_suggestions} 条建议</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.06);border-radius:4px;height:6px;overflow:hidden;">
+                        <div style="background:linear-gradient(90deg,#e2b96a,#d4a85a);height:100%;width:${pct}%;transition:width 0.3s;border-radius:4px;"></div>
+                    </div>
+                </div>`;
+        }
+    }
+
+    async function _loadImportHistory() {
+        const el = document.getElementById('importHistoryList');
+        if (!el) return;
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/imports', { headers: hdrs() });
+            if (!resp.ok) { el.innerHTML = '<div style="color:#b8868a;font-size:0.8em;text-align:center;padding:10px;">加载失败</div>'; return; }
+            const data = await resp.json();
+            const imports = data.imports || [];
+            if (!imports.length) {
+                el.innerHTML = '<div style="color:#4a4640;font-size:0.8em;text-align:center;padding:20px;">暂无导入记录</div>';
+                return;
+            }
+            el.innerHTML = imports.map(function(imp) {
+                const statusColors = { pending: '#6b665e', processing: '#e2b96a', extracting: '#e2b96a', completed: '#6da89b', failed: '#b8868a' };
+                const statusLabels = { pending: '等待中', processing: '解析中', extracting: '提取中', completed: '已完成', failed: '失败' };
+                const color = statusColors[imp.status] || '#6b665e';
+                const label = statusLabels[imp.status] || imp.status;
+                const time = (imp.created_at || '').slice(0, 16).replace('T', ' ');
+                const pct = imp.total_chunks > 0 ? Math.round(imp.processed_chunks / imp.total_chunks * 100) : 0;
+                const isActive = imp.status === 'processing' || imp.status === 'extracting';
+
+                let progressBar = '';
+                if (isActive || imp.status === 'completed') {
+                    progressBar = '<div style="background:rgba(255,255,255,0.06);border-radius:3px;height:4px;overflow:hidden;margin-top:6px;"><div style="background:' + color + ';height:100%;width:' + (imp.status === 'completed' ? 100 : pct) + '%;border-radius:3px;transition:width 0.3s;"></div></div>';
+                }
+
+                return '<div style="padding:10px 12px;border-bottom:1px solid rgba(255,255,255,0.03);display:flex;align-items:flex-start;gap:10px;">' +
+                    '<div style="flex:1;min-width:0;">' +
+                        '<div style="display:flex;align-items:center;gap:8px;">' +
+                            '<span style="font-size:0.82em;color:#a8a299;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;" title="' + esc(imp.source_name || '') + '">' + esc(imp.source_name || '未知文件') + '</span>' +
+                            '<span style="font-size:0.68em;color:' + color + ';background:' + color + '18;padding:1px 6px;border-radius:4px;white-space:nowrap;">' + esc(label) + '</span>' +
+                        '</div>' +
+                        '<div style="font-size:0.72em;color:#4a4640;margin-top:3px;">' + esc(time) + (imp.total_suggestions > 0 ? ' · ' + imp.total_suggestions + ' 条建议' : '') + '</div>' +
+                        progressBar +
+                    '</div>' +
+                    '<button onclick="AgentDetail._deleteImport(\'' + esc(imp.id) + '\')" style="background:none;border:none;color:#4a4640;cursor:pointer;font-size:0.8em;padding:4px;flex-shrink:0;" title="删除" onmouseover="this.style.color=\'#b8868a\'" onmouseout="this.style.color=\'#4a4640\'">🗑</button>' +
+                '</div>';
+            }).join('');
+
+            // If any active imports, start polling
+            const active = imports.find(function(i) { return i.status === 'processing' || i.status === 'extracting'; });
+            if (active && !_importPollTimer) _startImportPoll(active.id);
+        } catch(e) {
+            el.innerHTML = '<div style="color:#b8868a;font-size:0.8em;text-align:center;padding:10px;">加载失败</div>';
+        }
+    }
+
+    async function _deleteImport(importId) {
+        if (!confirm('删除此导入记录及其待处理的建议？')) return;
+        try {
+            await fetch('/api/knowledge/' + getNs() + '/imports/' + importId, {
+                method: 'DELETE',
+                headers: hdrs(),
+            });
+            _loadImportHistory();
+        } catch(e) {}
+    }
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport };
 })();

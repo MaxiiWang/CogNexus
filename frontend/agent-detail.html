@@ -981,7 +981,7 @@
         <!-- Knowledge Tab -->
         <div class="tab-content" id="tab-knowledge">
             <div class="knowledge-container">
-                <div class="view-switcher" id="viewSwitcher">
+                <div class="view-switcher" id="viewSwitcher" style="display:flex;align-items:center;">
                     <button class="view-btn active" data-view="graph">
                         <span>🕸️</span> <span data-i18n="agent.view_graph">Graph</span>
                     </button>
@@ -990,6 +990,9 @@
                     </button>
                     <button class="view-btn" data-view="timeline">
                         <span>📅</span> <span data-i18n="agent.view_timeline">Timeline</span>
+                    </button>
+                    <button class="view-btn" onclick="AgentDetail.openImportModal()" style="margin-left:auto;" title="导入外部知识">
+                        📥 导入
                     </button>
                 </div>
 
