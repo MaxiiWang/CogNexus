@@ -17,7 +17,7 @@ import concurrent.futures
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, Body
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -330,6 +330,168 @@ def parse_zip(file_path: str) -> tuple:
     return detected_type, files
 
 
+# ==================== Notion API Helpers ====================
+
+NOTION_API_BASE = "https://api.notion.com/v1"
+NOTION_VERSION = "2022-06-28"
+
+
+def _notion_headers(token: str) -> dict:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Notion-Version": NOTION_VERSION,
+        "Content-Type": "application/json",
+    }
+
+
+def notion_search_pages(token: str) -> list:
+    """Search all pages accessible to this integration token."""
+    import httpx
+    pages = []
+    start_cursor = None
+    while True:
+        body = {"filter": {"value": "page", "property": "object"}, "page_size": 100}
+        if start_cursor:
+            body["start_cursor"] = start_cursor
+        resp = httpx.post(
+            f"{NOTION_API_BASE}/search",
+            headers=_notion_headers(token),
+            json=body,
+            timeout=15.0,
+        )
+        if resp.status_code != 200:
+            break
+        data = resp.json()
+        for page in data.get("results", []):
+            title = ""
+            props = page.get("properties", {})
+            for prop in props.values():
+                if prop.get("type") == "title":
+                    title_parts = prop.get("title", [])
+                    title = "".join(t.get("plain_text", "") for t in title_parts)
+                    break
+            if not title:
+                title = "Untitled"
+            pages.append({
+                "id": page["id"],
+                "title": title,
+                "url": page.get("url", ""),
+                "last_edited": page.get("last_edited_time", ""),
+                "icon": page.get("icon", {}).get("emoji", "📄") if page.get("icon") else "📄",
+            })
+        if not data.get("has_more"):
+            break
+        start_cursor = data.get("next_cursor")
+    return pages
+
+
+def notion_get_page_content(token: str, page_id: str) -> str:
+    """Recursively fetch all blocks from a Notion page and convert to markdown text."""
+    import httpx
+    import time
+
+    def fetch_blocks(block_id: str, depth: int = 0) -> str:
+        if depth > 5:
+            return ""
+
+        texts = []
+        start_cursor = None
+        while True:
+            url = f"{NOTION_API_BASE}/blocks/{block_id}/children?page_size=100"
+            if start_cursor:
+                url += f"&start_cursor={start_cursor}"
+
+            resp = httpx.get(url, headers=_notion_headers(token), timeout=15.0)
+            if resp.status_code == 429:
+                time.sleep(1)
+                continue
+            if resp.status_code != 200:
+                break
+
+            data = resp.json()
+            for block in data.get("results", []):
+                text = _notion_block_to_text(block, depth)
+                if text:
+                    texts.append(text)
+
+                if block.get("has_children") and block["type"] not in ("child_page", "child_database"):
+                    child_text = fetch_blocks(block["id"], depth + 1)
+                    if child_text:
+                        texts.append(child_text)
+
+            if not data.get("has_more"):
+                break
+            start_cursor = data.get("next_cursor")
+            time.sleep(0.35)
+
+        return "\n".join(texts)
+
+    return fetch_blocks(page_id)
+
+
+def _notion_block_to_text(block: dict, depth: int = 0) -> str:
+    """Convert a single Notion block to plain/markdown text."""
+    btype = block.get("type", "")
+    bdata = block.get(btype, {})
+
+    def rich_text_to_str(rich_texts: list) -> str:
+        return "".join(rt.get("plain_text", "") for rt in rich_texts)
+
+    indent = "  " * depth
+
+    if btype == "paragraph":
+        return indent + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype in ("heading_1", "heading_2", "heading_3"):
+        level = int(btype[-1])
+        return "\n" + "#" * level + " " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "bulleted_list_item":
+        return indent + "- " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "numbered_list_item":
+        return indent + "1. " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "to_do":
+        checked = "☑" if bdata.get("checked") else "☐"
+        return indent + f"{checked} " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "toggle":
+        return indent + "▸ " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "code":
+        lang = bdata.get("language", "")
+        code = rich_text_to_str(bdata.get("rich_text", []))
+        return f"\n```{lang}\n{code}\n```"
+    elif btype == "quote":
+        return indent + "> " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "callout":
+        icon = bdata.get("icon", {}).get("emoji", "💡") if bdata.get("icon") else "💡"
+        return indent + f"{icon} " + rich_text_to_str(bdata.get("rich_text", []))
+    elif btype == "divider":
+        return "\n---\n"
+    elif btype == "table_row":
+        cells = bdata.get("cells", [])
+        return indent + " | ".join(rich_text_to_str(cell) for cell in cells)
+    elif btype == "bookmark":
+        url = bdata.get("url", "")
+        caption = rich_text_to_str(bdata.get("caption", []))
+        return indent + f"[{caption or url}]({url})"
+    elif btype == "image":
+        caption = rich_text_to_str(bdata.get("caption", []))
+        return indent + f"[图片: {caption}]" if caption else ""
+    elif btype in ("child_page", "child_database"):
+        title = bdata.get("title", "")
+        return indent + f"[子页面: {title}]"
+    elif btype == "equation":
+        return indent + bdata.get("expression", "")
+    elif btype == "table_of_contents":
+        return ""
+    elif btype == "column_list":
+        return ""
+    elif btype == "column":
+        return ""
+    else:
+        rt = bdata.get("rich_text", [])
+        if rt:
+            return indent + rich_text_to_str(rt)
+        return ""
+
+
 # ==================== LLM Extraction ====================
 
 def _extract_from_chunk(chunk_text: str, source_context: str, llm_cfg: dict) -> list:
@@ -535,6 +697,106 @@ async def _process_import_background(import_id: str, namespace: str, file_path: 
             executor,
             _process_import_sync,
             import_id, namespace, file_path, source_type, source_name, llm_cfg, user_id,
+        )
+    finally:
+        executor.shutdown(wait=False)
+
+
+def _process_notion_import_sync(import_id: str, namespace: str, token: str, page_id: str, page_title: str, llm_cfg: dict, user_id: str):
+    """Synchronous background task to fetch Notion page, chunk, and extract knowledge."""
+    import time
+    conn = get_db()
+    try:
+        conn.execute("UPDATE knowledge_imports SET status = 'processing' WHERE id = ?", (import_id,))
+        conn.commit()
+
+        # Fetch page content from Notion API
+        content = notion_get_page_content(token, page_id)
+
+        if not content or not content.strip():
+            conn.execute(
+                "UPDATE knowledge_imports SET status = 'failed', error_message = '未能从 Notion 页面提取到内容' WHERE id = ?",
+                (import_id,)
+            )
+            conn.commit()
+            conn.close()
+            return
+
+        # Parse as markdown
+        chunks = parse_markdown(content)
+        if not chunks:
+            conn.execute(
+                "UPDATE knowledge_imports SET status = 'failed', error_message = '页面内容过短，无法提取' WHERE id = ?",
+                (import_id,)
+            )
+            conn.commit()
+            conn.close()
+            return
+
+        conn.execute(
+            "UPDATE knowledge_imports SET status = 'extracting', total_chunks = ? WHERE id = ?",
+            (len(chunks), import_id)
+        )
+        conn.commit()
+
+        total_suggestions = 0
+        source_context = f"导入自 Notion 页面「{page_title}」"
+
+        for i, chunk in enumerate(chunks):
+            try:
+                items = _extract_from_chunk(chunk, source_context, llm_cfg)
+                now = datetime.now().isoformat()
+                for item in items:
+                    sug_id = f"sug_{uuid.uuid4().hex[:12]}"
+                    conn.execute("""
+                        INSERT INTO knowledge_suggestions (id, namespace, user_id, session_id, summary, content_type, reason, status, created_at, import_id)
+                        VALUES (?, ?, ?, '', ?, ?, ?, 'pending', ?, ?)
+                    """, (sug_id, namespace, user_id, item["summary"], item.get("content_type", "事实"), item.get("reason", ""), now, import_id))
+                    total_suggestions += 1
+
+                conn.execute(
+                    "UPDATE knowledge_imports SET processed_chunks = ?, total_suggestions = ? WHERE id = ?",
+                    (i + 1, total_suggestions, import_id)
+                )
+                conn.commit()
+            except Exception as e:
+                print(f"[Notion Import] chunk {i} error: {e}", file=sys.stderr, flush=True)
+                conn.execute(
+                    "UPDATE knowledge_imports SET processed_chunks = ? WHERE id = ?",
+                    (i + 1, import_id)
+                )
+                conn.commit()
+
+        conn.execute(
+            "UPDATE knowledge_imports SET status = 'completed', completed_at = ?, total_suggestions = ? WHERE id = ?",
+            (datetime.now().isoformat(), total_suggestions, import_id)
+        )
+        conn.commit()
+        print(f"[Notion Import] completed: {import_id}, {total_suggestions} suggestions from {len(chunks)} chunks", file=sys.stderr, flush=True)
+
+    except Exception as e:
+        print(f"[Notion Import] fatal error: {e}", file=sys.stderr, flush=True)
+        try:
+            conn.execute(
+                "UPDATE knowledge_imports SET status = 'failed', error_message = ? WHERE id = ?",
+                (str(e)[:500], import_id)
+            )
+            conn.commit()
+        except Exception:
+            pass
+    finally:
+        conn.close()
+
+
+async def _process_notion_import_background(import_id: str, namespace: str, token: str, page_id: str, page_title: str, llm_cfg: dict, user_id: str):
+    """Async wrapper that runs sync Notion processing in executor."""
+    loop = asyncio.get_event_loop()
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+    try:
+        await loop.run_in_executor(
+            executor,
+            _process_notion_import_sync,
+            import_id, namespace, token, page_id, page_title, llm_cfg, user_id,
         )
     finally:
         executor.shutdown(wait=False)
@@ -778,3 +1040,155 @@ async def delete_import(
         shutil.rmtree(upload_dir, ignore_errors=True)
 
     return {"success": True, "deleted_suggestions": deleted_suggestions}
+
+
+# ==================== Notion Integration Endpoints ====================
+
+
+@router.post("/notion/connect")
+async def notion_connect(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+    body: dict = Body(...),
+):
+    """Connect a Notion integration token."""
+    _require_owner(user)
+    import httpx
+
+    token = body.get("token", "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="请提供 Notion Integration Token")
+
+    # Validate token by calling Notion /users/me
+    try:
+        resp = httpx.get(
+            f"{NOTION_API_BASE}/users/me",
+            headers=_notion_headers(token),
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            raise HTTPException(status_code=400, detail="Token 无效，请检查是否正确复制了 Internal Integration Token")
+        user_data = resp.json()
+    except httpx.RequestError:
+        raise HTTPException(status_code=502, detail="无法连接 Notion API，请稍后重试")
+
+    # Extract workspace name from bot info
+    workspace_name = ""
+    if user_data.get("type") == "bot":
+        workspace_name = user_data.get("bot", {}).get("workspace_name", "")
+    if not workspace_name:
+        workspace_name = user_data.get("name", "Notion Workspace")
+
+    user_id = user.get("user_id", "")
+    conn = get_db()
+
+    # Upsert: delete old connection for this namespace, insert new
+    conn.execute("DELETE FROM notion_connections WHERE namespace = ?", (namespace,))
+    conn_id = f"nc_{uuid.uuid4().hex[:12]}"
+    now = datetime.now().isoformat()
+    conn.execute("""
+        INSERT INTO notion_connections (id, namespace, user_id, notion_token, workspace_name, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (conn_id, namespace, user_id, token, workspace_name, now))
+    conn.commit()
+    conn.close()
+
+    return {"success": True, "workspace_name": workspace_name}
+
+
+@router.get("/notion/pages")
+async def notion_pages(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+):
+    """List pages accessible to the connected Notion integration."""
+    _require_owner(user)
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT notion_token, workspace_name FROM notion_connections WHERE namespace = ?", (namespace,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="未连接 Notion，请先连接")
+
+    token = row["notion_token"]
+    pages = notion_search_pages(token)
+
+    return {"pages": pages, "workspace_name": row["workspace_name"]}
+
+
+@router.post("/notion/import")
+async def notion_import(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+    body: dict = Body(...),
+):
+    """Import selected Notion pages."""
+    _require_owner(user)
+
+    page_ids = body.get("page_ids", [])
+    if not page_ids:
+        raise HTTPException(status_code=400, detail="请选择要导入的页面")
+
+    # Get saved token
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT notion_token FROM notion_connections WHERE namespace = ?", (namespace,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="未连接 Notion，请先连接")
+    token = row["notion_token"]
+
+    # Get LLM config
+    llm_cfg = _get_agent_llm_config(namespace)
+    if not llm_cfg.get("api_key"):
+        conn.close()
+        raise HTTPException(status_code=400, detail="请先在 Config 中配置 LLM API Key")
+
+    user_id = user.get("user_id", "")
+
+    # Get page titles for each page_id
+    all_pages = notion_search_pages(token)
+    page_map = {p["id"]: p for p in all_pages}
+
+    imports = []
+    now = datetime.now().isoformat()
+
+    for pid in page_ids:
+        page_info = page_map.get(pid, {})
+        page_title = page_info.get("title", "Untitled")
+
+        import_id = f"imp_{uuid.uuid4().hex[:12]}"
+        conn.execute("""
+            INSERT INTO knowledge_imports (id, namespace, user_id, source_type, source_name, status, created_at)
+            VALUES (?, ?, ?, 'notion_api', ?, 'pending', ?)
+        """, (import_id, namespace, user_id, page_title, now))
+        imports.append({"import_id": import_id, "page_title": page_title})
+
+    conn.commit()
+    conn.close()
+
+    # Start background processing for each page
+    for i, imp in enumerate(imports):
+        pid = page_ids[i]
+        asyncio.create_task(_process_notion_import_background(
+            imp["import_id"], namespace, token, pid, imp["page_title"], llm_cfg, user_id
+        ))
+
+    return {"imports": imports}
+
+
+@router.delete("/notion/disconnect")
+async def notion_disconnect(
+    namespace: str,
+    user: dict = Depends(verify_namespace),
+):
+    """Disconnect Notion integration."""
+    _require_owner(user)
+    conn = get_db()
+    conn.execute("DELETE FROM notion_connections WHERE namespace = ?", (namespace,))
+    conn.commit()
+    conn.close()
+    return {"success": True}

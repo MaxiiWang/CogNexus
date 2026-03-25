@@ -235,6 +235,18 @@ def migrate_knowledge_schema():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_agent_user ON chat_sessions(agent_id, user_id, updated_at DESC)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_suggestions_ns_status ON knowledge_suggestions(namespace, status)")
 
+    # Notion connections table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS notion_connections (
+            id TEXT PRIMARY KEY,
+            namespace TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            notion_token TEXT NOT NULL,
+            workspace_name TEXT,
+            created_at TEXT NOT NULL
+        )
+    """)
+
     conn.commit()
     conn.close()
 

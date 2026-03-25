@@ -2103,10 +2103,10 @@ const AgentDetail = (function() {
                         <div style="font-size:0.82em;color:#a8a299;font-weight:600;">文件</div>
                         <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">.md .txt .csv .pdf</div>
                     </div>
-                    <div class="import-src-card" onclick="document.getElementById('importZipInput').click()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
+                    <div class="import-src-card" onclick="AgentDetail._openNotionPanel()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
                         <div style="font-size:1.8em;margin-bottom:6px;">📓</div>
                         <div style="font-size:0.82em;color:#a8a299;font-weight:600;">Notion</div>
-                        <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">.zip 导出包</div>
+                        <div style="font-size:0.7em;color:#6b665e;margin-top:4px;">API 连接</div>
                     </div>
                     <div class="import-src-card" onclick="document.getElementById('importZipInput').click()" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='#e2b96a';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.transform='none'">
                         <div style="font-size:1.8em;margin-bottom:6px;">💎</div>
@@ -2389,5 +2389,201 @@ const AgentDetail = (function() {
         } catch(e) {}
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport };
+    // ==================== Notion Integration ====================
+
+    async function _openNotionPanel() {
+        const mainContent = document.querySelector('#importModalOverlay > div > div:nth-child(2)');
+        if (!mainContent) return;
+
+        // Save original content for back button
+        if (!mainContent.dataset.originalHtml) {
+            mainContent.dataset.originalHtml = mainContent.innerHTML;
+        }
+
+        // Show loading state
+        mainContent.innerHTML = '<div style="text-align:center;padding:40px;color:#6b665e;font-size:0.85em;"><div class="loading-spinner" style="width:20px;height:20px;border-width:2px;margin:0 auto 12px;"></div>检查 Notion 连接状态...</div>';
+
+        // Check if already connected
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/imports/notion/pages', { headers: hdrs() });
+            if (resp.ok) {
+                const data = await resp.json();
+                _showNotionPageList(mainContent, data.pages, data.workspace_name);
+                return;
+            }
+        } catch(e) {}
+
+        // Not connected — show connection form
+        _showNotionConnectForm(mainContent);
+    }
+
+    function _showNotionConnectForm(container) {
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+                <button onclick="AgentDetail._notionGoBack()" style="background:none;border:none;color:#6b665e;cursor:pointer;font-size:1.1em;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">←</button>
+                <span style="font-family:var(--font-display);font-weight:700;color:#e2b96a;font-size:1em;">📓 连接 Notion</span>
+            </div>
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:20px;margin-bottom:20px;">
+                <div style="font-size:0.82em;color:#a8a299;line-height:1.8;">
+                    <div style="margin-bottom:8px;"><span style="color:#e2b96a;font-weight:600;">步骤 1</span>　前往 <a href="https://www.notion.so/profile/integrations" target="_blank" style="color:#6da89b;text-decoration:underline;">Notion → Settings → Integrations</a></div>
+                    <div style="margin-bottom:8px;padding-left:52px;">→ 点击 <b>New integration</b>，创建 Internal Integration</div>
+                    <div style="margin-bottom:8px;"><span style="color:#e2b96a;font-weight:600;">步骤 2</span>　复制 Integration Token（以 <code style="background:rgba(255,255,255,0.06);padding:1px 5px;border-radius:3px;font-size:0.9em;">secret_</code> 开头）</div>
+                    <div><span style="color:#e2b96a;font-weight:600;">步骤 3</span>　在 Notion 中打开要导入的页面 → <b>Share</b> → 将该 Integration 添加为连接</div>
+                </div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <input id="notionTokenInput" type="password" placeholder="secret_xxxxxxxxxxxxxxxxx" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 14px;color:#e8e4df;font-size:0.88em;font-family:monospace;outline:none;" onfocus="this.style.borderColor='#e2b96a'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                <button id="notionConnectBtn" onclick="AgentDetail._notionConnect()" style="background:linear-gradient(135deg,#e2b96a,#d4a85a);color:#1a1b1e;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:0.85em;cursor:pointer;white-space:nowrap;">连接</button>
+            </div>
+            <div id="notionConnectStatus" style="margin-top:12px;"></div>
+        `;
+    }
+
+    async function _notionConnect() {
+        const tokenInput = document.getElementById('notionTokenInput');
+        const statusEl = document.getElementById('notionConnectStatus');
+        const btn = document.getElementById('notionConnectBtn');
+        if (!tokenInput || !statusEl || !btn) return;
+
+        const token = tokenInput.value.trim();
+        if (!token) {
+            statusEl.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">请输入 Token</div>';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = '连接中...';
+        statusEl.innerHTML = '';
+
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/imports/notion/connect', {
+                method: 'POST',
+                headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: token }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                statusEl.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">❌ ' + esc(data.detail || '连接失败') + '</div>';
+                btn.disabled = false;
+                btn.textContent = '连接';
+                return;
+            }
+
+            // Success — load pages
+            statusEl.innerHTML = '<div style="color:#6da89b;font-size:0.82em;">✅ 已连接: ' + esc(data.workspace_name) + '</div>';
+            setTimeout(function() { _openNotionPanel(); }, 800);
+        } catch(e) {
+            statusEl.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">❌ 网络错误</div>';
+            btn.disabled = false;
+            btn.textContent = '连接';
+        }
+    }
+
+    function _showNotionPageList(container, pages, workspaceName) {
+        let pagesHtml = '';
+        if (!pages || pages.length === 0) {
+            pagesHtml = '<div style="text-align:center;color:#4a4640;font-size:0.82em;padding:30px;">未找到可访问的页面。请确保已在 Notion 中将页面 Share 给该 Integration。</div>';
+        } else {
+            pagesHtml = pages.map(function(p, i) {
+                const edited = (p.last_edited || '').slice(0, 10);
+                return '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.03);cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background=\'rgba(255,255,255,0.02)\'" onmouseout="this.style.background=\'none\'">' +
+                    '<input type="checkbox" class="notion-page-cb" value="' + esc(p.id) + '" style="accent-color:#e2b96a;width:16px;height:16px;cursor:pointer;" onchange="AgentDetail._notionUpdateCount()">' +
+                    '<span style="font-size:1.1em;">' + esc(p.icon || '📄') + '</span>' +
+                    '<span style="flex:1;font-size:0.85em;color:#e8e4df;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(p.title) + '</span>' +
+                    '<span style="font-size:0.72em;color:#4a4640;white-space:nowrap;">' + esc(edited) + '</span>' +
+                '</label>';
+            }).join('');
+        }
+
+        container.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <button onclick="AgentDetail._notionGoBack()" style="background:none;border:none;color:#6b665e;cursor:pointer;font-size:1.1em;padding:4px 8px;border-radius:4px;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='none'">←</button>
+                <span style="font-family:var(--font-display);font-weight:700;color:#e2b96a;font-size:1em;">📓 Notion</span>
+                <span style="font-size:0.78em;color:#6da89b;margin-left:auto;">✅ ${esc(workspaceName || 'Connected')}</span>
+            </div>
+            <div style="font-size:0.78em;color:#6b665e;margin-bottom:10px;">选择要导入的页面：</div>
+            <div style="border:1px solid rgba(255,255,255,0.06);border-radius:10px;max-height:320px;overflow-y:auto;margin-bottom:16px;">
+                ${pagesHtml}
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <button id="notionImportBtn" onclick="AgentDetail._notionImportSelected()" style="background:linear-gradient(135deg,#e2b96a,#d4a85a);color:#1a1b1e;border:none;border-radius:8px;padding:10px 20px;font-weight:700;font-size:0.85em;cursor:pointer;opacity:0.4;pointer-events:none;" disabled>导入选中 (0)</button>
+                <button onclick="AgentDetail._notionDisconnect()" style="background:none;border:none;color:#b8868a;font-size:0.78em;cursor:pointer;text-decoration:underline;opacity:0.6;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'">断开连接</button>
+            </div>
+            <div id="notionImportStatus" style="margin-top:12px;"></div>
+        `;
+    }
+
+    function _notionUpdateCount() {
+        const checked = document.querySelectorAll('.notion-page-cb:checked');
+        const btn = document.getElementById('notionImportBtn');
+        if (btn) {
+            const count = checked.length;
+            btn.textContent = '导入选中 (' + count + ')';
+            btn.disabled = count === 0;
+            btn.style.opacity = count === 0 ? '0.4' : '1';
+            btn.style.pointerEvents = count === 0 ? 'none' : 'auto';
+        }
+    }
+
+    async function _notionImportSelected() {
+        const checked = document.querySelectorAll('.notion-page-cb:checked');
+        if (!checked.length) return;
+
+        const pageIds = Array.from(checked).map(function(cb) { return cb.value; });
+        const btn = document.getElementById('notionImportBtn');
+        const statusEl = document.getElementById('notionImportStatus');
+        if (btn) { btn.disabled = true; btn.textContent = '导入中...'; btn.style.opacity = '0.5'; }
+
+        try {
+            const resp = await fetch('/api/knowledge/' + getNs() + '/imports/notion/import', {
+                method: 'POST',
+                headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ page_ids: pageIds }),
+            });
+            const data = await resp.json();
+            if (!resp.ok) {
+                if (statusEl) statusEl.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">❌ ' + esc(data.detail || '导入失败') + '</div>';
+                if (btn) { btn.disabled = false; btn.textContent = '导入选中 (' + pageIds.length + ')'; btn.style.opacity = '1'; }
+                return;
+            }
+
+            const names = (data.imports || []).map(function(i) { return i.page_title; }).join(', ');
+            if (statusEl) statusEl.innerHTML = '<div style="color:#6da89b;font-size:0.82em;">✅ 已开始导入: ' + esc(names) + '</div>';
+
+            // Start polling for the first import
+            if (data.imports && data.imports.length > 0) {
+                // Go back to main view to show progress
+                setTimeout(function() {
+                    _notionGoBack();
+                    _startImportPoll(data.imports[0].import_id);
+                    _loadImportHistory();
+                }, 1200);
+            }
+        } catch(e) {
+            if (statusEl) statusEl.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">❌ 网络错误</div>';
+            if (btn) { btn.disabled = false; btn.textContent = '导入选中 (' + pageIds.length + ')'; btn.style.opacity = '1'; }
+        }
+    }
+
+    async function _notionDisconnect() {
+        if (!confirm('确定断开 Notion 连接？')) return;
+        try {
+            await fetch('/api/knowledge/' + getNs() + '/imports/notion/disconnect', {
+                method: 'DELETE',
+                headers: hdrs(),
+            });
+        } catch(e) {}
+        _notionGoBack();
+    }
+
+    function _notionGoBack() {
+        const mainContent = document.querySelector('#importModalOverlay > div > div:nth-child(2)');
+        if (mainContent && mainContent.dataset.originalHtml) {
+            mainContent.innerHTML = mainContent.dataset.originalHtml;
+            delete mainContent.dataset.originalHtml;
+            _loadImportHistory();
+        }
+    }
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect };
 })();
