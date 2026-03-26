@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from database import get_db
 from auth import verify_token
 
-router = APIRouter(prefix="/api/agents", tags=["tasks"])
+router = APIRouter(prefix="/api", tags=["tasks"])
 
 
 # ==================== Auth Helper ====================
@@ -63,7 +63,7 @@ class TaskUpdate(BaseModel):
     config: Optional[dict] = None
 
 
-@router.get("/{agent_id}/tasks")
+@router.get("/agents/{agent_id}/tasks")
 async def list_tasks(agent_id: str, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -77,7 +77,7 @@ async def list_tasks(agent_id: str, authorization: str = None):
     return {"tasks": [dict(t) for t in tasks]}
 
 
-@router.post("/{agent_id}/tasks")
+@router.post("/agents/{agent_id}/tasks")
 async def create_task(agent_id: str, data: TaskCreate, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -120,7 +120,7 @@ async def create_task(agent_id: str, data: TaskCreate, authorization: str = None
     return {"task_id": task_id, "status": "created"}
 
 
-@router.put("/{agent_id}/tasks/{task_id}")
+@router.put("/agents/{agent_id}/tasks/{task_id}")
 async def update_task(agent_id: str, task_id: str, data: TaskUpdate, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -176,7 +176,7 @@ async def update_task(agent_id: str, task_id: str, data: TaskUpdate, authorizati
     return {"status": "updated"}
 
 
-@router.delete("/{agent_id}/tasks/{task_id}")
+@router.delete("/agents/{agent_id}/tasks/{task_id}")
 async def delete_task(agent_id: str, task_id: str, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -192,7 +192,7 @@ async def delete_task(agent_id: str, task_id: str, authorization: str = None):
     return {"status": "deleted"}
 
 
-@router.post("/{agent_id}/tasks/{task_id}/run")
+@router.post("/agents/{agent_id}/tasks/{task_id}/run")
 async def run_task_now(agent_id: str, task_id: str, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -215,7 +215,7 @@ async def run_task_now(agent_id: str, task_id: str, authorization: str = None):
 
 # ==================== Insights ====================
 
-@router.get("/{agent_id}/insights")
+@router.get("/agents/{agent_id}/insights")
 async def list_insights(
     agent_id: str,
     task_type: Optional[str] = None,
@@ -279,7 +279,7 @@ async def list_insights(
     }
 
 
-@router.get("/{agent_id}/insights/unread-count")
+@router.get("/agents/{agent_id}/insights/unread-count")
 async def unread_count(agent_id: str, authorization: str = None):
     conn = get_db()
     row = conn.execute(
@@ -290,7 +290,7 @@ async def unread_count(agent_id: str, authorization: str = None):
     return {"count": row['c'] if row else 0}
 
 
-@router.put("/{agent_id}/insights/{insight_id}/read")
+@router.put("/agents/{agent_id}/insights/{insight_id}/read")
 async def mark_read(agent_id: str, insight_id: str, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
@@ -305,7 +305,7 @@ async def mark_read(agent_id: str, insight_id: str, authorization: str = None):
     return {"status": "read"}
 
 
-@router.put("/{agent_id}/insights/{insight_id}/archive")
+@router.put("/agents/{agent_id}/insights/{insight_id}/archive")
 async def archive_insight(agent_id: str, insight_id: str, authorization: str = None):
     user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
