@@ -97,7 +97,9 @@ async def call_llm_async(llm_config: dict, prompt: str, max_tokens: int = 2000, 
                              "messages": [{"role": "user", "content": prompt}]})
 
                 if resp.status_code == 429:
-                    wait = min(5 * (attempt + 1), 20)
+                    # Respect Retry-After header if present
+                    retry_after = resp.headers.get('Retry-After')
+                    wait = int(retry_after) if retry_after and retry_after.isdigit() else min(10 * (attempt + 1), 60)
                     print(f"[LLM] 429 rate limited, waiting {wait}s (attempt {attempt+1}/{retries})")
                     await asyncio.sleep(wait)
                     continue
@@ -112,7 +114,8 @@ async def call_llm_async(llm_config: dict, prompt: str, max_tokens: int = 2000, 
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429 and attempt < retries - 1:
-                wait = min(5 * (attempt + 1), 20)
+                retry_after = e.response.headers.get('Retry-After')
+                wait = int(retry_after) if retry_after and retry_after.isdigit() else min(10 * (attempt + 1), 60)
                 print(f"[LLM] 429 rate limited, waiting {wait}s (attempt {attempt+1}/{retries})")
                 await asyncio.sleep(wait)
                 continue
@@ -370,27 +373,30 @@ N. [领域标签] 一句话标题（要具体、有信息量）
         content = await call_llm_async(llm_config, prompt, max_tokens=2000)
 
         if not content:
-            # Fallback without LLM
+            # Fallback without LLM — still try to produce readable output
             lines = [f"# 🌅 资讯简报 · {today}\n"]
+            lines.append("> ⚠️ LLM 服务暂时不可用（限流），以下为原始搜索结果，待下次执行时将由 LLM 筛选撰写\n")
             lines.append("## 📍 关注领域\n")
             for domain, items in focus_results.items():
                 lines.append(f"### {domain}")
-                for item in items[:2]:
+                for item in items[:3]:
                     lines.append(f"- **{item['title']}**")
-                    lines.append(f"  {item['description'][:100]}")
-                    lines.append(f"  [来源]({item['url']})")
-                lines.append("")
+                    lines.append(f"  {item['description'][:120]}")
+                    lines.append(f"  [来源]({item['url']})\n")
             if related_results:
                 lines.append("## 🔭 拓展领域\n")
                 for domain, items in related_results.items():
                     lines.append(f"### {domain}")
                     for item in items[:2]:
-                        lines.append(f"- **{item['title']}** — {item['description'][:80]}")
-                    lines.append("")
+                        lines.append(f"- **{item['title']}**")
+                        lines.append(f"  {item['description'][:100]}")
+                        lines.append(f"  [来源]({item['url']})\n")
             if wildcard_results:
-                lines.append("## 💡 跨界\n")
-                for item in wildcard_results[:1]:
-                    lines.append(f"- **{item['title']}** — {item['description'][:100]}")
+                lines.append("## 💡 跨界启发\n")
+                best = wildcard_results[0]
+                lines.append(f"**{best['title']}**\n")
+                lines.append(f"{best['description'][:200]}\n")
+                lines.append(f"[来源]({best['url']})")
             content = "\n".join(lines)
 
         return content
