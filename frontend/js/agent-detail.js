@@ -2896,7 +2896,7 @@ const AgentDetail = (function() {
         const btn = event.target;
         const origText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = '⏳ 已触发...';
+        btn.textContent = '⏳ 触发中...';
         try {
             const meta = _taskTypes[taskType] || {};
             const res = await fetch(`/api/agents/${agentId}/tasks/test-run`, {
@@ -2907,36 +2907,37 @@ const AgentDetail = (function() {
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
                 alert('触发失败: ' + (err.detail || res.status));
+                btn.disabled = false;
+                btn.textContent = origText;
                 return;
             }
-            btn.textContent = '✅ 后台执行中';
-            // Poll for new insight
-            let found = false;
-            for (let i = 0; i < 30; i++) {
-                await new Promise(r => setTimeout(r, 3000));
-                try {
-                    const countRes = await fetch(`/api/agents/${agentId}/insights/unread-count`, { headers: hdrs() });
-                    const countData = await countRes.json();
-                    if (countData.count > 0) {
-                        found = true;
-                        break;
-                    }
-                } catch(e) {}
-                btn.textContent = `⏳ 执行中 ${i*3}s...`;
-            }
-            if (found) {
-                btn.textContent = '✅ 完成';
-                _updateInsightBadge();
-                // Switch to insights tab
-                const insTab = document.querySelector('[data-tab="insights"]');
-                if (insTab) insTab.click();
-            } else {
-                btn.textContent = '⏳ 仍在执行...';
-            }
+
+            // Show toast
+            const toast = document.createElement('div');
+            toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--bg-card,#1e1e3a);border:1px solid rgba(109,168,155,0.4);color:var(--text-primary,#e0e0e0);padding:14px 24px;border-radius:10px;z-index:9999;font-size:0.88em;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+            toast.innerHTML = `✅ 任务已在后台执行，完成后可在「<a href="#" onclick="document.querySelector(\'[data-tab=insights]\').click();this.closest(\'div\').remove();return false;" style="color:#6da89b;text-decoration:underline;">💭 思考</a>」Tab 查看结果`;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 8000);
+
+            btn.textContent = '⏳ 后台执行中';
+            setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 10000);
+
+            // Background poll to update badge when done
+            (async () => {
+                for (let i = 0; i < 40; i++) {
+                    await new Promise(r => setTimeout(r, 3000));
+                    try {
+                        const cr = await fetch(`/api/agents/${agentId}/insights/unread-count`, { headers: hdrs() });
+                        const cd = await cr.json();
+                        if (cd.count > 0) { _updateInsightBadge(); break; }
+                    } catch(e) {}
+                }
+            })();
+
         } catch (e) {
             alert('网络错误: ' + e.message);
-        } finally {
-            setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3000);
+            btn.disabled = false;
+            btn.textContent = origText;
         }
     }
 
