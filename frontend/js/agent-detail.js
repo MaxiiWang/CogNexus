@@ -143,17 +143,6 @@ const AgentDetail = (function() {
                     }
                     loadTaskConfig();
                 }
-                if (tab.dataset.tab === 'insights') { loadInsights(true); _updateInsightBadge(); }
-                if (tab.dataset.tab === 'config') {
-                    const configTab = document.getElementById('tab-config');
-                    if (configTab && !document.getElementById('taskConfigContainer')) {
-                        const section = document.createElement('div');
-                        section.className = 'config-section task-config-section';
-                        section.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
-                        configTab.appendChild(section);
-                    }
-                    loadTaskConfig();
-                }
             });
         });
     }
