@@ -176,6 +176,16 @@ async def _call_chat(namespace: str, question: str, session_id: str, user_id: st
             graph_extra = _graph_reasoning(namespace, fact_ids)
             vector_results.extend(graph_extra)
 
+        # Web search enhancement (same as web chat)
+        if chat_config.get("enable_web_search"):
+            try:
+                from routes.knowledge import _web_search_fallback
+                web_results = _web_search_fallback(question)
+                if web_results:
+                    vector_results.extend(web_results)
+            except Exception as e:
+                print(f"[TG Chat] Web search error: {e}")
+
         # Build system prompt (same as web chat)
         system_prompt = _build_dynamic_system_prompt(namespace, vector_results, chat_config, context_messages)
 
