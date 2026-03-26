@@ -6,7 +6,7 @@ import uuid
 import asyncio
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Header
 from pydantic import BaseModel
 
 from database import get_db
@@ -17,11 +17,11 @@ router = APIRouter(prefix="/api/agents", tags=["tasks"])
 
 # ==================== Auth Helper ====================
 
-async def get_current_user(authorization: str = None):
-    """Simplified auth - extract from header"""
-    if not authorization:
+async def get_current_user(authorization: str = Header(None)):
+    """Extract user from Authorization header"""
+    if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Not authenticated")
-    token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+    token = authorization.split(" ", 1)[1]
     user = verify_token(token)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
@@ -64,8 +64,7 @@ class TaskUpdate(BaseModel):
 
 
 @router.get("/{agent_id}/tasks")
-async def list_tasks(agent_id: str, authorization: str = None):
-    user = await get_current_user(authorization)
+async def list_tasks(agent_id: str, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     conn = get_db()
@@ -78,8 +77,7 @@ async def list_tasks(agent_id: str, authorization: str = None):
 
 
 @router.post("/{agent_id}/tasks")
-async def create_task(agent_id: str, data: TaskCreate, authorization: str = None):
-    user = await get_current_user(authorization)
+async def create_task(agent_id: str, data: TaskCreate, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     from task_runners import TASK_TYPES
@@ -121,8 +119,7 @@ async def create_task(agent_id: str, data: TaskCreate, authorization: str = None
 
 
 @router.put("/{agent_id}/tasks/{task_id}")
-async def update_task(agent_id: str, task_id: str, data: TaskUpdate, authorization: str = None):
-    user = await get_current_user(authorization)
+async def update_task(agent_id: str, task_id: str, data: TaskUpdate, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     from scheduler import register_task, unregister_task, parse_cron
@@ -177,8 +174,7 @@ async def update_task(agent_id: str, task_id: str, data: TaskUpdate, authorizati
 
 
 @router.delete("/{agent_id}/tasks/{task_id}")
-async def delete_task(agent_id: str, task_id: str, authorization: str = None):
-    user = await get_current_user(authorization)
+async def delete_task(agent_id: str, task_id: str, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     from scheduler import unregister_task
@@ -193,8 +189,7 @@ async def delete_task(agent_id: str, task_id: str, authorization: str = None):
 
 
 @router.post("/{agent_id}/tasks/{task_id}/run")
-async def run_task_now(agent_id: str, task_id: str, authorization: str = None):
-    user = await get_current_user(authorization)
+async def run_task_now(agent_id: str, task_id: str, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     conn = get_db()
@@ -219,9 +214,8 @@ class TaskTestRun(BaseModel):
 
 
 @router.post("/{agent_id}/tasks/test-run")
-async def test_run_task(agent_id: str, data: TaskTestRun, authorization: str = None):
+async def test_run_task(agent_id: str, data: TaskTestRun, user: dict = Depends(get_current_user)):
     """Run a task type once without creating a persistent task. Returns result directly."""
-    user = await get_current_user(authorization)
     _check_agent_owner(agent_id, user['user_id'])
 
     from task_runners import TASK_TYPES, get_runner
@@ -277,7 +271,7 @@ async def list_insights(
     status: Optional[str] = None,
     limit: int = Query(20, le=100),
     offset: int = 0,
-    authorization: str = None
+    authorization: str = Header(None),
 ):
     """List insights for an agent. Owner sees all, visitors see only if agent is public."""
     conn = get_db()
@@ -288,10 +282,11 @@ async def list_insights(
 
     # Auth: owner or public agent
     is_owner = False
-    if authorization:
+    if authorization and authorization.startswith("Bearer "):
         try:
-            user = await get_current_user(authorization)
-            is_owner = (user['user_id'] == agent['owner_id'])
+            user = verify_token(authorization.split(" ", 1)[1])
+            if user:
+                is_owner = (user['user_id'] == agent['owner_id'])
         except Exception:
             pass
 
@@ -335,7 +330,7 @@ async def list_insights(
 
 
 @router.get("/{agent_id}/insights/unread-count")
-async def unread_count(agent_id: str, authorization: str = None):
+async def unread_count(agent_id: str, user: dict = Depends(get_current_user)):
     conn = get_db()
     row = conn.execute(
         "SELECT COUNT(*) as c FROM agent_insights WHERE agent_id = ? AND status = 'unread'",
@@ -346,8 +341,7 @@ async def unread_count(agent_id: str, authorization: str = None):
 
 
 @router.put("/{agent_id}/insights/{insight_id}/read")
-async def mark_read(agent_id: str, insight_id: str, authorization: str = None):
-    user = await get_current_user(authorization)
+async def mark_read(agent_id: str, insight_id: str, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     conn = get_db()
@@ -361,8 +355,7 @@ async def mark_read(agent_id: str, insight_id: str, authorization: str = None):
 
 
 @router.put("/{agent_id}/insights/{insight_id}/archive")
-async def archive_insight(agent_id: str, insight_id: str, authorization: str = None):
-    user = await get_current_user(authorization)
+async def archive_insight(agent_id: str, insight_id: str, user: dict = Depends(get_current_user)):
     _check_agent_owner(agent_id, user['user_id'])
 
     conn = get_db()
