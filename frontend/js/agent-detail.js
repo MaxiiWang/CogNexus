@@ -2941,8 +2941,73 @@ const AgentDetail = (function() {
         }
     }
 
+    // ==================== Telegram Helpers ====================
+
+    async function _detectTgChatId() {
+        const token = document.getElementById('configTgToken').value.trim();
+        if (!token) { alert('请先填写 Bot Token'); return; }
+
+        const btn = document.getElementById('detectChatIdBtn');
+        const hint = document.getElementById('tgChatIdHint');
+        btn.disabled = true; btn.textContent = '🔍 检测中...';
+
+        try {
+            const res = await fetch(`/api/agents/${agentId}/telegram/detect-chat-id`, {
+                method: 'POST',
+                headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bot_token: token })
+            });
+            const data = await res.json();
+
+            if (data.status === 'found') {
+                document.getElementById('configTgChatId').value = data.chat_id;
+                hint.innerHTML = `✅ 检测到用户: <b>${data.first_name || ''} ${data.username ? '@'+data.username : ''}</b> (${data.chat_id})`;
+                hint.style.color = '#6da89b';
+            } else {
+                hint.textContent = data.message || data.detail || '未找到';
+                hint.style.color = '#e2b96a';
+            }
+        } catch (e) {
+            hint.textContent = '网络错误: ' + e.message;
+            hint.style.color = '#b8868a';
+        } finally {
+            btn.disabled = false; btn.textContent = '🔍 自动获取';
+        }
+    }
+
+    async function _testTgPush() {
+        const token = document.getElementById('configTgToken').value.trim();
+        const chatId = document.getElementById('configTgChatId').value.trim();
+        if (!token || !chatId) { alert('请先填写 Bot Token 和 Chat ID'); return; }
+
+        const btn = document.getElementById('testTgBtn');
+        const result = document.getElementById('tgTestResult');
+        btn.disabled = true; btn.textContent = '📤 发送中...';
+
+        try {
+            const res = await fetch(`/api/agents/${agentId}/telegram/test-push`, {
+                method: 'POST',
+                headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bot_token: token, chat_id: chatId })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                result.textContent = '✅ 发送成功，请查看 Telegram';
+                result.style.color = '#6da89b';
+            } else {
+                result.textContent = '❌ ' + (data.detail || '发送失败');
+                result.style.color = '#b8868a';
+            }
+        } catch (e) {
+            result.textContent = '❌ 网络错误';
+            result.style.color = '#b8868a';
+        } finally {
+            btn.disabled = false; btn.textContent = '📤 发送测试消息';
+        }
+    }
+
     // Load insight badge on init
     setTimeout(() => _updateInsightBadge(), 500);
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect, loadInsights, filterInsights, loadMoreInsights, loadTaskConfig, _onTaskToggle, _onTaskFreqChange, _onTaskScheduleChange, _runTaskNow, _testRunTask };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect, loadInsights, filterInsights, loadMoreInsights, loadTaskConfig, _onTaskToggle, _onTaskFreqChange, _onTaskScheduleChange, _runTaskNow, _testRunTask, _detectTgChatId, _testTgPush };
 })();

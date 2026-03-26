@@ -264,6 +264,67 @@ async def _execute_test_run(agent_id: str, task_type: str, config: dict):
         print(f"[TestRun] {task_type} failed: {e}")
 
 
+# ==================== Telegram Helpers ====================
+
+class TgDetect(BaseModel):
+    bot_token: str
+
+class TgTestPush(BaseModel):
+    bot_token: str
+    chat_id: str
+
+
+@router.post("/{agent_id}/telegram/detect-chat-id")
+async def detect_telegram_chat_id(agent_id: str, data: TgDetect, user: dict = Depends(get_current_user)):
+    """Call bot's getUpdates to find the chat_id of whoever messaged it"""
+    _check_agent_owner(agent_id, user['user_id'])
+
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(f"https://api.telegram.org/bot{data.bot_token}/getUpdates")
+            resp.raise_for_status()
+            result = resp.json()
+
+        updates = result.get('result', [])
+        if not updates:
+            return {"status": "empty", "message": "未收到消息。请先在 Telegram 给你的 Bot 发一条消息，然后重试。"}
+
+        # Find the most recent private message
+        for upd in reversed(updates):
+            msg = upd.get('message', {})
+            chat = msg.get('chat', {})
+            if chat.get('type') == 'private':
+                return {
+                    "status": "found",
+                    "chat_id": str(chat['id']),
+                    "username": chat.get('username', ''),
+                    "first_name": chat.get('first_name', ''),
+                }
+
+        return {"status": "empty", "message": "未找到私聊消息，请确认是私聊而非群聊。"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Bot Token 无效或网络错误: {str(e)}")
+
+
+@router.post("/{agent_id}/telegram/test-push")
+async def test_telegram_push(agent_id: str, data: TgTestPush, user: dict = Depends(get_current_user)):
+    """Send a test message via Telegram bot"""
+    _check_agent_owner(agent_id, user['user_id'])
+
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{data.bot_token}/sendMessage",
+                json={"chat_id": data.chat_id, "text": "✅ CogNexus 推送测试成功！\n\n定时任务完成后，结果会自动推送到这里。"}
+            )
+            resp.raise_for_status()
+            return {"status": "ok", "message": "发送成功，请查看 Telegram"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"发送失败: {str(e)}")
+
+
 # ==================== Insights ====================
 
 @router.get("/{agent_id}/insights")

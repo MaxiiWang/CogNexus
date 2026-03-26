@@ -1495,15 +1495,23 @@
 
             <!-- IM Connection Config -->
             <div class="config-section">
-                <div class="config-section-title" data-i18n="agent.config_im">💬 IM Connection</div>
+                <div class="config-section-title">💬 Telegram 推送</div>
                 <div class="form-group">
-                    <label>Telegram Bot Token</label>
-                    <input type="password" id="configTgToken" placeholder="Enter bot token...">
-                    <small data-i18n="agent.tg_token_hint">Get from @BotFather on Telegram</small>
+                    <label>1. Bot Token</label>
+                    <input type="password" id="configTgToken" placeholder="从 @BotFather 获取">
+                    <small>在 Telegram 搜索 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent-primary,#6da89b);">@BotFather</a>，发送 /newbot 创建，获取 token</small>
                 </div>
                 <div class="form-group">
-                    <label>Telegram Chat ID</label>
-                    <input type="text" id="configTgChatId" placeholder="Chat ID">
+                    <label>2. Chat ID</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="text" id="configTgChatId" placeholder="点击右侧按钮自动获取" style="flex:1;">
+                        <button class="btn btn-secondary btn-small" onclick="AgentDetail._detectTgChatId()" id="detectChatIdBtn" style="white-space:nowrap;">🔍 自动获取</button>
+                    </div>
+                    <small id="tgChatIdHint">填写 Bot Token 后，给你的 Bot 发任意消息，然后点「自动获取」</small>
+                </div>
+                <div class="form-group">
+                    <button class="btn btn-secondary btn-small" onclick="AgentDetail._testTgPush()" id="testTgBtn" style="margin-top:4px;">📤 发送测试消息</button>
+                    <span id="tgTestResult" style="font-size:0.82em;margin-left:8px;"></span>
                 </div>
             </div>
 
