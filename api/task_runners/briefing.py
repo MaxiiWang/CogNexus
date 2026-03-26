@@ -163,12 +163,20 @@ class BriefingRunner(BaseTaskRunner):
             if results:
                 related_results[domain] = results
 
-        # 2c. 跨界
+        # 2c. 跨界（用更精准的中文搜索词）
         wildcard_results = []
         if config.get('wildcard', True):
-            for q in ["unexpected scientific breakthrough 2026", "跨学科 颠覆性 发现 2026"]:
+            wild_queries = [
+                "颠覆性科学发现 2026",
+                "跨学科突破 意想不到",
+                "冷门领域 重大进展 2026",
+            ]
+            for q in wild_queries:
                 wildcard_results.extend(await brave_search(q, count=3))
-            wildcard_results = wildcard_results[:5]
+            # Dedup
+            seen = set()
+            wildcard_results = [r for r in wildcard_results if r['url'] not in seen and not seen.add(r['url'])]
+            wildcard_results = wildcard_results[:6]
 
         # 3. 一次 LLM 调用：筛选 + 撰写完整简报
         content = await self._compose_briefing(

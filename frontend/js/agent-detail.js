@@ -2896,7 +2896,7 @@ const AgentDetail = (function() {
         const btn = event.target;
         const origText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = '⏳ 执行中...';
+        btn.textContent = '⏳ 已触发...';
         try {
             const meta = _taskTypes[taskType] || {};
             const res = await fetch(`/api/agents/${agentId}/tasks/test-run`, {
@@ -2906,40 +2906,37 @@ const AgentDetail = (function() {
             });
             if (!res.ok) {
                 const err = await res.json().catch(() => ({}));
-                alert('执行失败: ' + (err.detail || res.status));
+                alert('触发失败: ' + (err.detail || res.status));
                 return;
             }
-            const data = await res.json();
-            btn.textContent = '✅ 完成';
-
-            let contentHtml = data.content || '';
-            if (typeof marked !== 'undefined' && marked.parse) {
-                contentHtml = marked.parse(contentHtml);
-            } else {
-                contentHtml = '<pre style="white-space:pre-wrap;">' + _esc(contentHtml) + '</pre>';
+            btn.textContent = '✅ 后台执行中';
+            // Poll for new insight
+            let found = false;
+            for (let i = 0; i < 30; i++) {
+                await new Promise(r => setTimeout(r, 3000));
+                try {
+                    const countRes = await fetch(`/api/agents/${agentId}/insights/unread-count`, { headers: hdrs() });
+                    const countData = await countRes.json();
+                    if (countData.count > 0) {
+                        found = true;
+                        break;
+                    }
+                } catch(e) {}
+                btn.textContent = `⏳ 执行中 ${i*3}s...`;
             }
-
-            const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
-            overlay.innerHTML = `
-                <div style="background:var(--bg-card,#1a1a2e);border:1px solid var(--border-subtle,#333);border-radius:12px;max-width:700px;width:100%;max-height:80vh;overflow-y:auto;padding:24px;color:var(--text-primary,#e0e0e0);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-                        <h3 style="margin:0;font-size:1.1em;">${_esc(data.title || '试运行结果')}</h3>
-                        <button onclick="this.closest('div[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted,#888);font-size:1.5em;cursor:pointer;">✕</button>
-                    </div>
-                    <div style="font-size:0.82em;color:var(--text-muted,#888);margin-bottom:12px;">${_esc(data.summary || '')}</div>
-                    <div class="insight-content expanded" style="display:block;border-top:1px solid var(--border-subtle,#333);padding-top:12px;font-size:0.88em;line-height:1.8;">${contentHtml}</div>
-                    <div style="text-align:right;margin-top:16px;">
-                        <button onclick="this.closest('div[style*=fixed]').remove()" style="padding:8px 20px;border-radius:8px;background:rgba(109,168,155,0.15);color:#6da89b;border:1px solid rgba(109,168,155,0.2);cursor:pointer;font-weight:600;">关闭</button>
-                    </div>
-                </div>`;
-            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-            document.body.appendChild(overlay);
-            _updateInsightBadge();
+            if (found) {
+                btn.textContent = '✅ 完成';
+                _updateInsightBadge();
+                // Switch to insights tab
+                const insTab = document.querySelector('[data-tab="insights"]');
+                if (insTab) insTab.click();
+            } else {
+                btn.textContent = '⏳ 仍在执行...';
+            }
         } catch (e) {
             alert('网络错误: ' + e.message);
         } finally {
-            setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 2000);
+            setTimeout(() => { btn.disabled = false; btn.textContent = origText; }, 3000);
         }
     }
 
