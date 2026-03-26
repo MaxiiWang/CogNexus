@@ -54,8 +54,10 @@ async def brave_search(query: str, count: int = 5) -> List[Dict]:
     return []
 
 
-async def call_llm_async(llm_config: dict, prompt: str, max_tokens: int = 2000) -> str:
-    """调用 agent 配置的 LLM"""
+async def call_llm_async(llm_config: dict, prompt: str, max_tokens: int = 2000, retries: int = 3) -> str:
+    """调用 agent 配置的 LLM（带重试 + 429 退避）"""
+    import asyncio
+
     provider = (llm_config.get('provider') or '').lower()
     api_key = llm_config.get('api_key', '')
     model = llm_config.get('model', '')
@@ -79,82 +81,98 @@ async def call_llm_async(llm_config: dict, prompt: str, max_tokens: int = 2000) 
     if '/chat/completions' not in url and '/messages' not in url:
         url += '/messages' if provider == 'anthropic' else '/chat/completions'
 
-    try:
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            if provider == 'anthropic':
-                resp = await client.post(url, headers={
-                    "x-api-key": api_key, "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                }, json={"model": model or "claude-3-haiku-20240307", "max_tokens": max_tokens,
-                         "messages": [{"role": "user", "content": prompt}]})
+    for attempt in range(retries):
+        try:
+            async with httpx.AsyncClient(timeout=90.0) as client:
+                if provider == 'anthropic':
+                    resp = await client.post(url, headers={
+                        "x-api-key": api_key, "anthropic-version": "2023-06-01",
+                        "content-type": "application/json"
+                    }, json={"model": model or "claude-3-haiku-20240307", "max_tokens": max_tokens,
+                             "messages": [{"role": "user", "content": prompt}]})
+                else:
+                    resp = await client.post(url, headers={
+                        "Authorization": f"Bearer {api_key}", "Content-Type": "application/json"
+                    }, json={"model": model, "max_tokens": max_tokens,
+                             "messages": [{"role": "user", "content": prompt}]})
+
+                if resp.status_code == 429:
+                    wait = min(5 * (attempt + 1), 20)
+                    print(f"[LLM] 429 rate limited, waiting {wait}s (attempt {attempt+1}/{retries})")
+                    await asyncio.sleep(wait)
+                    continue
+
                 resp.raise_for_status()
-                return resp.json().get('content', [{}])[0].get('text', '')
-            else:
-                resp = await client.post(url, headers={
-                    "Authorization": f"Bearer {api_key}", "Content-Type": "application/json"
-                }, json={"model": model, "max_tokens": max_tokens,
-                         "messages": [{"role": "user", "content": prompt}]})
-                resp.raise_for_status()
-                choices = resp.json().get('choices', [])
-                return choices[0].get('message', {}).get('content', '') if choices else ''
-    except Exception as e:
-        print(f"[Briefing] LLM error: {e}")
-        return ""
+
+                if provider == 'anthropic':
+                    return resp.json().get('content', [{}])[0].get('text', '')
+                else:
+                    choices = resp.json().get('choices', [])
+                    return choices[0].get('message', {}).get('content', '') if choices else ''
+
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 and attempt < retries - 1:
+                wait = min(5 * (attempt + 1), 20)
+                print(f"[LLM] 429 rate limited, waiting {wait}s (attempt {attempt+1}/{retries})")
+                await asyncio.sleep(wait)
+                continue
+            print(f"[LLM] HTTP error: {e}")
+            return ""
+        except Exception as e:
+            print(f"[LLM] error: {e}")
+            return ""
+
+    print(f"[LLM] exhausted {retries} retries")
+    return ""
 
 
 class BriefingRunner(BaseTaskRunner):
 
     async def run(self, agent_id: str, config: dict) -> dict:
+        import asyncio
         llm_config = self.get_llm_config(agent_id)
         today = datetime.now().strftime("%Y-%m-%d")
 
-        # 1. 确定关注领域（优先用配置，否则用 LLM 从知识库提取）
+        # 1. 确定关注领域 + 拓展领域（一次 LLM 调用搞定两件事）
         focus = config.get('focus_domains', [])
+        related_domains = []
         if not focus:
-            focus = await self._extract_interests_via_llm(agent_id, llm_config)
+            focus, related_domains = await self._extract_interests_and_related(agent_id, llm_config)
         if not focus:
-            focus = ['AI与大模型', '金融市场', '地缘政治']
+            focus = ['AI Agent生态', '金融市场与宏观经济', '地缘政治与军事冲突']
 
-        # 2. 第一层：关注领域深挖（每个领域多条搜索，取质量高的）
+        # 2. 搜索阶段（并行，不调 LLM）
+        # 2a. 关注领域深挖
         focus_results = {}
         for domain in focus[:4]:
             results = []
             for q in [f"{domain} 最新重大进展 {today[:7]}", f"{domain} 深度分析 本周"]:
                 results.extend(await brave_search(q, count=4))
-            # Deduplicate by URL
             seen = set()
-            unique = []
-            for r in results:
-                if r['url'] not in seen:
-                    seen.add(r['url'])
-                    unique.append(r)
+            unique = [r for r in results if r['url'] not in seen and not seen.add(r['url'])]
             focus_results[domain] = unique[:6]
 
-        # 3. 第二层：相关但不直接接触的领域
+        # 2b. 拓展领域
         related_results = {}
         extra_count = config.get('extra_domains', 2)
-        if extra_count > 0:
-            related_domains = await self._find_related_domains(focus, llm_config)
-            for domain in related_domains[:extra_count]:
-                results = await brave_search(f"{domain} 最新进展 重要动态", count=4)
-                if results:
-                    related_results[domain] = results
+        if not related_domains and extra_count > 0:
+            # Fallback: hardcoded related if LLM didn't provide
+            related_domains = self._fallback_related(focus)
+        for domain in related_domains[:extra_count]:
+            results = await brave_search(f"{domain} 最新进展 重要动态", count=4)
+            if results:
+                related_results[domain] = results
 
-        # 4. 第三层：跨界启发
+        # 2c. 跨界
         wildcard_results = []
         if config.get('wildcard', True):
-            wild_queries = [
-                "unexpected scientific breakthrough 2026",
-                "跨学科 颠覆性 发现 2026",
-            ]
-            for q in wild_queries:
+            for q in ["unexpected scientific breakthrough 2026", "跨学科 颠覆性 发现 2026"]:
                 wildcard_results.extend(await brave_search(q, count=3))
             wildcard_results = wildcard_results[:5]
 
-        # 5. 用 LLM 筛选 + 撰写三段式简报
+        # 3. 一次 LLM 调用：筛选 + 撰写完整简报
         content = await self._compose_briefing(
-            llm_config, today, focus,
-            focus_results, related_results, wildcard_results
+            llm_config, today, focus, focus_results, related_results, wildcard_results
         )
 
         total = sum(len(v) for v in focus_results.values()) + sum(len(v) for v in related_results.values()) + len(wildcard_results)
@@ -169,8 +187,8 @@ class BriefingRunner(BaseTaskRunner):
             }
         }
 
-    async def _extract_interests_via_llm(self, agent_id: str, llm_config: dict) -> list:
-        """用 LLM 从知识库最近内容中提炼用户关注领域"""
+    async def _extract_interests_and_related(self, agent_id: str, llm_config: dict) -> tuple:
+        """一次 LLM 调用：从知识库提取关注领域 + 推荐拓展领域"""
         try:
             cogmate = self.get_cogmate(agent_id)
             from cogmate_core.config import get_sqlite
@@ -184,50 +202,69 @@ class BriefingRunner(BaseTaskRunner):
             rows = cursor.fetchall()
             conn.close()
             if not rows:
-                return []
+                return [], []
 
             recent = "\n".join([f"[{r[1]}] {r[0][:80]}" for r in rows])
 
-            prompt = f"""基于以下用户最近的知识库记录，提取 3-5 个用户持续关注的领域/话题。
+            prompt = f"""基于以下用户最近的知识库记录，完成两个任务。
 
-要求：
-- 输出具体的领域名称，适合作为新闻搜索关键词
-- 不要输出太宽泛的词（如"科技"），要具体（如"AI Agent生态"、"伊朗战争与地缘格局"）
-- 不要输出太窄的词（如某个具体产品名）
-- 只输出领域名称，每行一个，不要编号不要解释
+任务1：提取 3-4 个用户持续关注的领域（适合作为新闻搜索关键词，要具体，如"AI Agent生态"而不是"科技"）
+任务2：推荐 2-3 个与用户兴趣相关但用户可能没直接接触的领域（打破信息茧房，要有意外感）
 
 用户最近记录：
 {recent}
 
-领域列表："""
+严格按以下格式输出，不要加编号和解释：
+FOCUS:
+领域1
+领域2
+领域3
+RELATED:
+领域1
+领域2"""
 
-            result = await call_llm_async(llm_config, prompt, max_tokens=200)
-            if result:
-                domains = [line.strip().strip('-').strip('·').strip() for line in result.strip().split('\n') if line.strip()]
-                return [d for d in domains if 2 <= len(d) <= 20][:5]
+            result = await call_llm_async(llm_config, prompt, max_tokens=300)
+            if not result:
+                return [], []
+
+            focus, related = [], []
+            section = None
+            for line in result.strip().split('\n'):
+                line = line.strip().strip('-').strip('·').strip()
+                if 'FOCUS' in line.upper():
+                    section = 'focus'
+                    continue
+                elif 'RELATED' in line.upper():
+                    section = 'related'
+                    continue
+                if not line or len(line) < 2 or len(line) > 25:
+                    continue
+                if section == 'focus':
+                    focus.append(line)
+                elif section == 'related':
+                    related.append(line)
+
+            print(f"[Briefing] Extracted focus={focus}, related={related}")
+            return focus[:5], related[:3]
         except Exception as e:
             print(f"[Briefing] Extract interests error: {e}")
-        return []
+            return [], []
 
-    async def _find_related_domains(self, focus: list, llm_config: dict) -> list:
-        """用 LLM 推荐与关注领域相关但用户可能没直接接触的领域"""
-        prompt = f"""用户关注以下领域：{', '.join(focus)}
-
-请推荐 3 个与这些领域有关联，但用户可能没有直接接触的领域。目的是打破信息茧房。
-
-要求：
-- 要有意外感，不能太显然（如关注AI就推荐"芯片"太平庸）
-- 要跟用户已有兴趣有可解释的关联
-- 适合作为新闻搜索关键词
-- 每行一个，不要编号不要解释
-
-推荐领域："""
-
-        result = await call_llm_async(llm_config, prompt, max_tokens=150)
-        if result:
-            domains = [line.strip().strip('-').strip('·').strip() for line in result.strip().split('\n') if line.strip()]
-            return [d for d in domains if 2 <= len(d) <= 20][:3]
-        return []
+    def _fallback_related(self, focus: list) -> list:
+        """无 LLM 时的关联领域 fallback"""
+        domain_map = {
+            'AI': ['合成生物学', '脑机接口'],
+            '金融': ['央行数字货币', '气候金融'],
+            '地缘': ['稀土供应链', '太空竞赛'],
+            '制造': ['仿生材料', '微型核反应堆'],
+            '能源': ['核聚变进展', '深海采矿'],
+        }
+        related = []
+        for f in focus:
+            for key, vals in domain_map.items():
+                if key in f:
+                    related.extend(vals)
+        return related[:3] if related else ['合成生物学', '太空经济']
 
     async def _compose_briefing(self, llm_config, today, focus, focus_results, related_results, wildcard_results):
         """LLM 筛选 + 撰写三段式简报"""
