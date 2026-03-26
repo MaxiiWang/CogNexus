@@ -237,11 +237,28 @@ def load_all_tasks():
 
 
 def start_scheduler():
-    """Start the APScheduler"""
-    load_all_tasks()
-    if not scheduler.running:
-        scheduler.start()
-        print("[Scheduler] Started")
+    """Start the APScheduler (only in one worker to avoid duplicates)"""
+    import fcntl
+    import os
+
+    # Use file lock to ensure only one worker runs the scheduler
+    lock_path = os.path.join(os.path.dirname(__file__), '..', 'data', '.scheduler.lock')
+    try:
+        lock_file = open(lock_path, 'w')
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        # Got the lock — this worker runs the scheduler
+        lock_file.write(str(os.getpid()))
+        lock_file.flush()
+        # Keep lock_file open (holds the lock for process lifetime)
+        start_scheduler._lock_file = lock_file
+
+        load_all_tasks()
+        if not scheduler.running:
+            scheduler.start()
+            print(f"[Scheduler] Started (worker pid={os.getpid()})")
+    except (IOError, OSError):
+        # Another worker already holds the lock
+        print(f"[Scheduler] Skipped (another worker holds the lock, pid={os.getpid()})")
 
 
 def shutdown_scheduler():
