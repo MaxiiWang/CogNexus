@@ -2757,7 +2757,7 @@ const AgentDetail = (function() {
         try {
             // Load task types + current tasks in parallel
             const [typesRes, tasksRes] = await Promise.all([
-                fetch('/api/agents/task-types'),
+                fetch('/api/agents/meta/task-types'),
                 fetch(`/api/agents/${agentId}/tasks`, { headers: hdrs() }),
             ]);
             _taskTypes = (await typesRes.json()).task_types || {};

@@ -41,7 +41,7 @@ def _check_agent_owner(agent_id: str, user_id: str):
 
 # ==================== Task Types ====================
 
-@router.get("/task-types")
+@router.get("/meta/task-types")
 async def get_task_types():
     """Get all available task types with metadata"""
     from task_runners import TASK_TYPES
