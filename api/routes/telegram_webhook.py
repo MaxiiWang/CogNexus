@@ -36,6 +36,21 @@ async def telegram_webhook(agent_id: str, request: Request):
     if not text or not chat_id:
         return {"ok": True}
 
+    # Handle Telegram /start command (welcome message, not a knowledge query)
+    if text == "/start":
+        conn = get_db()
+        agent = conn.execute("SELECT name, description, im_config FROM agents WHERE agent_id = ?", (agent_id,)).fetchone()
+        conn.close()
+        if agent:
+            im_config = json.loads(agent["im_config"] or "{}")
+            bot_token = im_config.get("telegram", {}).get("bot_token", "")
+            if bot_token:
+                name = agent["name"] or "Agent"
+                desc = agent["description"] or ""
+                welcome = f"👋 你好！我是 {name}。\n\n{desc}\n\n直接发消息即可开始对话。"
+                asyncio.create_task(_send_message(bot_token, chat_id, welcome))
+        return {"ok": True}
+
     # Find agent + verify chat_id matches im_config
     conn = get_db()
     agent = conn.execute("SELECT * FROM agents WHERE agent_id = ?", (agent_id,)).fetchone()
