@@ -2903,13 +2903,6 @@ const AgentDetail = (function() {
         } catch (e) {}
     }
 
-    // ==================== Init hooks ====================
-
-    // Helper to get agent ID from URL
-    function agentId {
-        return new URLSearchParams(window.location.search).get('id') || '';
-    }
-
     // Load insight badge on init
     setTimeout(() => _updateInsightBadge(), 500);
 
