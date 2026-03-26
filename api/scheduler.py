@@ -141,18 +141,61 @@ async def try_push_im(agent_id: str, result: dict) -> str:
             bot_token = tg.get('bot_token', '')
             chat_id = tg.get('chat_id', '')
             if bot_token and chat_id:
-                text = f"**{result['title']}**\n\n{result.get('summary', '')}\n\n{result['content'][:3000]}"
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    await client.post(
-                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
-                    )
+                # Insert into IM session as assistant message (B1 strategy)
+                _insert_insight_to_session(agent_id, result)
+
+                # Send via Telegram (split if needed)
+                from routes.telegram_webhook import _send_reply
+                text = f"**{result['title']}**\n\n{result.get('summary', '')}\n\n{result['content']}"
+                await _send_reply(bot_token, chat_id, text)
                 return 'pushed'
         # TODO: other IM providers
         return 'no_im'
     except Exception as e:
         print(f"[IM Push] Failed for {agent_id}: {e}")
         return 'push_failed'
+
+
+def _insert_insight_to_session(agent_id: str, result: dict):
+    """Insert insight content as assistant message into the IM session"""
+    try:
+        conn = get_db()
+        agent = conn.execute("SELECT owner_id FROM agents WHERE agent_id = ?", (agent_id,)).fetchone()
+        if not agent:
+            conn.close()
+            return
+
+        owner_id = agent["owner_id"]
+        # Find or create telegram session
+        session = conn.execute(
+            "SELECT session_id FROM chat_sessions WHERE agent_id = ? AND user_id = ? AND title = '__im_telegram__' ORDER BY updated_at DESC LIMIT 1",
+            (agent_id, owner_id)
+        ).fetchone()
+
+        if not session:
+            session_id = f"ses_{uuid.uuid4().hex[:12]}"
+            now = datetime.now().isoformat()
+            conn.execute(
+                "INSERT INTO chat_sessions (session_id, agent_id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, '__im_telegram__', ?, ?)",
+                (session_id, agent_id, owner_id, now, now)
+            )
+        else:
+            session_id = session["session_id"]
+
+        now = datetime.now().isoformat()
+        content = f"**{result['title']}**\n\n{result.get('summary', '')}\n\n{result['content']}"
+        conn.execute(
+            "INSERT INTO chat_messages (message_id, session_id, role, content, created_at) VALUES (?, ?, 'assistant', ?, ?)",
+            (f"msg_{uuid.uuid4().hex[:12]}", session_id, content, now)
+        )
+        conn.execute(
+            "UPDATE chat_sessions SET updated_at = ?, message_count = message_count + 1 WHERE session_id = ?",
+            (now, session_id)
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[Scheduler] Insert insight to session error: {e}")
 
 
 def register_task(task_id: str, schedule: str):

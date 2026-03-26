@@ -638,7 +638,22 @@ async def update_agent(agent_id: str, data: AgentCreate, user: dict = Depends(ge
                       data.price_chat, data.price_read, data.price_react))
     
     conn.commit()
-    
+
+    # Auto-register Telegram webhook if im_config has telegram bot_token
+    try:
+        im = json.loads(data.im_config or '{}')
+        tg = im.get('telegram', {})
+        if tg.get('bot_token') and tg.get('chat_id'):
+            from routes.telegram_webhook import register_webhook
+            import asyncio
+            asyncio.create_task(register_webhook(
+                bot_token=tg['bot_token'],
+                agent_id=agent_id,
+                base_url="https://wielding.ai"
+            ))
+    except Exception as e:
+        print(f"[TG] Auto webhook registration failed: {e}")
+
     # 返回更新后的完整 agent 数据
     cursor.execute("SELECT * FROM agents WHERE agent_id = ?", (agent_id,))
     updated = cursor.fetchone()
@@ -1663,6 +1678,7 @@ from routes.settings import router as settings_router
 from routes.chat import router as chat_router, avatar_router
 from routes.imports import router as imports_router
 from routes.tasks import router as tasks_router
+from routes.telegram_webhook import router as telegram_webhook_router
 app.include_router(knowledge_router)
 app.include_router(knowledge_public_router)
 app.include_router(settings_router)
@@ -1670,6 +1686,7 @@ app.include_router(chat_router)
 app.include_router(avatar_router)
 app.include_router(imports_router)
 app.include_router(tasks_router)
+app.include_router(telegram_webhook_router)
 
 # Start task scheduler
 from scheduler import start_scheduler, shutdown_scheduler
