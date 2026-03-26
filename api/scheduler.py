@@ -148,6 +148,7 @@ async def try_push_im(agent_id: str, result: dict) -> str:
                 from routes.telegram_webhook import _send_reply
                 text = f"**{result['title']}**\n\n{result.get('summary', '')}\n\n{result['content']}"
                 await _send_reply(bot_token, chat_id, text)
+                print(f"[Scheduler] Pushed to Telegram chat_id={chat_id}")
                 return 'pushed'
         # TODO: other IM providers
         return 'no_im'

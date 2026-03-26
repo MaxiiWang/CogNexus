@@ -377,11 +377,27 @@ async def _send_typing(bot_token: str, chat_id: str):
         pass
 
 
-async def _send_message(bot_token: str, chat_id: str, text: str):
+async def _send_message(bot_token: str, chat_id: str, text: str, use_format: bool = True):
+    """Send a single message. Falls back to plain text if formatting fails."""
+    from im_formatter import format_for_telegram
+
+    if use_format:
+        formatted = format_for_telegram(text)
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                json={"chat_id": chat_id, "text": formatted, "parse_mode": "MarkdownV2"}
+            )
+            if resp.status_code == 200:
+                return
+            # MarkdownV2 failed, fallback to plain
+            print(f"[TG] MarkdownV2 failed ({resp.status_code}), falling back to plain")
+
+    # Plain text fallback
     async with httpx.AsyncClient(timeout=15.0) as client:
         await client.post(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"}
+            json={"chat_id": chat_id, "text": text}
         )
 
 
@@ -406,19 +422,15 @@ async def _send_reply(bot_token: str, chat_id: str, text: str):
 
     for i, chunk in enumerate(chunks):
         if i > 0:
-            await asyncio.sleep(0.5)  # Rate limit between messages
+            await asyncio.sleep(0.5)
         try:
             await _send_message(bot_token, chat_id, chunk)
         except Exception as e:
-            # Fallback: send without markdown if parsing fails
+            print(f"[TG] Failed to send chunk {i}: {e}")
             try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    await client.post(
-                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
-                        json={"chat_id": chat_id, "text": chunk}
-                    )
+                await _send_message(bot_token, chat_id, chunk, use_format=False)
             except Exception:
-                print(f"[TG] Failed to send chunk {i}: {e}")
+                pass
 
 
 # ==================== Webhook Registration ====================
