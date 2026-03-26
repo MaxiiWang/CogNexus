@@ -244,6 +244,7 @@ def start_scheduler():
     # Use file lock to ensure only one worker runs the scheduler
     lock_path = os.path.join(os.path.dirname(__file__), '..', 'data', '.scheduler.lock')
     try:
+        os.makedirs(os.path.dirname(lock_path), exist_ok=True)
         lock_file = open(lock_path, 'w')
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         # Got the lock — this worker runs the scheduler
@@ -255,10 +256,14 @@ def start_scheduler():
         load_all_tasks()
         if not scheduler.running:
             scheduler.start()
-            print(f"[Scheduler] Started (worker pid={os.getpid()})")
+            import sys
+            print(f"[Scheduler] Started (worker pid={os.getpid()})", flush=True, file=sys.stderr)
     except (IOError, OSError):
-        # Another worker already holds the lock
-        print(f"[Scheduler] Skipped (another worker holds the lock, pid={os.getpid()})")
+        import sys
+        print(f"[Scheduler] Skipped (another worker holds lock, pid={os.getpid()})", flush=True, file=sys.stderr)
+    except Exception as e:
+        import sys
+        print(f"[Scheduler] Start error: {e}", flush=True, file=sys.stderr)
 
 
 def shutdown_scheduler():
