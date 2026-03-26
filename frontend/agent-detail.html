@@ -662,9 +662,10 @@
         }
         .insight-card-summary {
             font-size: 0.85em;
-            color: var(--text-secondary);
+            color: var(--text-primary);
             line-height: 1.6;
             margin-bottom: var(--space-sm);
+            opacity: 0.85;
         }
         .insight-card-meta {
             display: flex;
@@ -686,14 +687,18 @@
             border-top: 1px solid var(--border-subtle);
             font-size: 0.88em;
             line-height: 1.8;
-            color: var(--text-secondary);
+            color: var(--text-primary);
+            opacity: 0.9;
             word-wrap: break-word;
             overflow-wrap: break-word;
             overflow-x: hidden;
         }
         .insight-content p, .insight-content li, .insight-content td {
             word-break: break-word;
+            color: var(--text-primary);
         }
+        .insight-content strong { color: var(--text-primary); opacity: 1; }
+        .insight-content h1, .insight-content h2, .insight-content h3 { opacity: 1; }
         .insight-content pre, .insight-content code {
             white-space: pre-wrap;
             word-break: break-all;
