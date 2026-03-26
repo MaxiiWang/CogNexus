@@ -131,22 +131,27 @@ def _get_or_create_session(agent_id: str, user_id: str, channel: str = "telegram
 
 
 async def _call_chat(namespace: str, question: str, session_id: str, user_id: str) -> str:
-    """Call chat logic — same pipeline as web chat but non-streaming"""
+    """Call chat logic — mirrors web chat/stream pipeline exactly"""
     try:
         from cogmate_core import CogmateAgent
-        from routes.knowledge import _build_dynamic_system_prompt, _graph_reasoning
+        from routes.knowledge import (
+            _build_dynamic_system_prompt, _graph_reasoning,
+            _web_search_fallback, _get_agent_llm_config, _get_chat_config, _get_agent_info
+        )
 
-        cogmate = CogmateAgent(namespace=namespace)
+        # Slash commands
+        if question.startswith('/'):
+            try:
+                from cogmate_core.intent_handler import IntentHandler
+                handler = IntentHandler(namespace=namespace)
+                return handler._handle_slash_command(question)
+            except Exception as e:
+                return f"命令执行失败: {e}"
 
-        # Load agent config
-        conn = get_db()
-        agent = conn.execute("SELECT llm_config, chat_config FROM agents WHERE namespace = ?", (namespace,)).fetchone()
-        conn.close()
-        if not agent:
-            return "Agent 未找到"
-
-        llm_cfg = json.loads(agent["llm_config"] or "{}")
-        chat_config = json.loads(agent["chat_config"] or "{}")
+        chat_config = _get_chat_config(namespace)
+        llm_cfg = _get_agent_llm_config(namespace)
+        agent_info = _get_agent_info(namespace)
+        is_character = agent_info.get("agent_type") == "character"
 
         if not llm_cfg.get("api_key"):
             return "⚠️ 请先在网页端 Config 中配置 LLM API Key"
@@ -167,26 +172,43 @@ async def _call_chat(namespace: str, question: str, session_id: str, user_id: st
         # Vector search
         top_k = chat_config.get("retrieval_top_k", 5)
         min_score = chat_config.get("retrieval_min_score", 0.5)
-        results = cogmate.query(question, top_k=top_k)
-        vector_results = [r for r in results.get("vector_results", []) if r.get("score", 0) >= min_score]
+        try:
+            cogmate = CogmateAgent(namespace=namespace)
+            results = cogmate.query(query_text=question, top_k=top_k, min_score=min_score)
+            vector_results = results.get("vector_results", [])
+        except Exception:
+            vector_results = []
 
-        # Graph reasoning expansion
-        if vector_results:
-            fact_ids = [r.get("fact_id") or r.get("id", "") for r in vector_results]
-            graph_extra = _graph_reasoning(namespace, fact_ids)
-            vector_results.extend(graph_extra)
+        # Graph reasoning expansion (respects config switch)
+        if chat_config.get("enable_graph_reasoning") and vector_results:
+            try:
+                fact_ids = [f.get("fact_id", "") for f in vector_results if f.get("fact_id")]
+                graph_extra = _graph_reasoning(namespace, fact_ids)
+                if graph_extra:
+                    vector_results = vector_results + graph_extra
+            except Exception:
+                pass
 
-        # Web search enhancement (same as web chat)
+        # Web search enhancement
+        web_suggestions = []
         if chat_config.get("enable_web_search"):
             try:
-                from routes.knowledge import _web_search_fallback
                 web_results = _web_search_fallback(question)
                 if web_results:
-                    vector_results.extend(web_results)
-            except Exception as e:
-                print(f"[TG Chat] Web search error: {e}")
+                    web_suggestions = [{"summary": w["summary"], "content_type": w["content_type"]} for w in web_results]
+                    vector_results = vector_results + web_results
+            except Exception:
+                pass
 
-        # Build system prompt (same as web chat)
+        # Human Agent strict mode: no knowledge = no answer
+        if not vector_results and not is_character:
+            answer = "📭 知识库中暂无相关内容。"
+            if chat_config.get("enable_web_search"):
+                answer += "\n（已开启网络搜索但未找到相关结果）"
+            _save_messages(session_id, question, answer, 0)
+            return answer
+
+        # Build system prompt
         system_prompt = _build_dynamic_system_prompt(namespace, vector_results, chat_config, context_messages)
 
         # Build LLM request
@@ -197,6 +219,7 @@ async def _call_chat(namespace: str, question: str, session_id: str, user_id: st
                 "openai": "https://api.openai.com/v1",
                 "doubao": "https://ark.cn-beijing.volces.com/api/v3",
                 "deepseek": "https://api.deepseek.com/v1",
+                "moonshot": "https://api.moonshot.cn/v1",
             }
             base_url = provider_urls.get(provider, "https://api.openai.com/v1")
 
@@ -206,7 +229,7 @@ async def _call_chat(namespace: str, question: str, session_id: str, user_id: st
             {"role": "user", "content": question},
         ]
 
-        # Call LLM (non-streaming for Telegram)
+        # Call LLM (non-streaming)
         answer = ""
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(
@@ -223,30 +246,30 @@ async def _call_chat(namespace: str, question: str, session_id: str, user_id: st
                 choices = data.get("choices", [])
                 if choices:
                     answer = choices[0].get("message", {}).get("content", "")
-                    # Strip reasoning_content for doubao
                     rc = choices[0].get("message", {}).get("reasoning_content")
                     if rc and not answer:
                         answer = rc
             else:
-                error_text = resp.text[:200]
-                print(f"[TG Chat] LLM {resp.status_code}: {error_text}")
+                print(f"[TG Chat] LLM {resp.status_code}: {resp.text[:200]}")
                 answer = f"⚠️ LLM 返回错误 ({resp.status_code})"
 
         if not answer:
-            # Fallback: structured answer from vector results
             if vector_results:
-                parts = [f"关于「{question}」，知识库中有 {len(vector_results)} 条相关记录：\n"]
-                for i, r in enumerate(vector_results[:5], 1):
-                    parts.append(f"{i}. [{r.get('content_type', '信息')}] {r.get('summary', '')}")
-                answer = "\n".join(parts)
+                from cogmate_core.llm_answer import _structured_answer
+                answer = _structured_answer(question, vector_results,
+                    "\n".join([f.get("summary", "") for f in vector_results]), namespace)
             else:
                 answer = "知识库中没有找到直接相关的信息。"
 
         # Save messages
         _save_messages(session_id, question, answer, len(vector_results))
 
-        # Background knowledge extraction
-        asyncio.create_task(_extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_cfg))
+        # Background knowledge extraction (full params, matching web chat)
+        if llm_cfg.get("api_key") and len(question) + len(answer) > 50:
+            asyncio.create_task(_extract_knowledge_bg(
+                namespace, user_id, session_id, question, answer,
+                llm_cfg, web_suggestions, context_messages
+            ))
 
         return answer
 
@@ -281,19 +304,16 @@ def _save_messages(session_id: str, user_msg: str, assistant_msg: str, sources_c
         print(f"[TG Webhook] Save messages error: {e}")
 
 
-async def _extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_cfg):
+async def _extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_cfg, web_suggestions=None, context_messages=None):
     """Background knowledge extraction (same as web chat)"""
     try:
-        if len(question) + len(answer) < 50:
-            return
-
         from routes.knowledge import _extract_knowledge_suggestions_sync
         import asyncio
 
         suggestions = await asyncio.get_event_loop().run_in_executor(
             None,
             _extract_knowledge_suggestions_sync,
-            question, answer, [], namespace, llm_cfg, [], ""
+            question, answer, web_suggestions or [], namespace, llm_cfg, context_messages or [], ""
         )
 
         if suggestions:
