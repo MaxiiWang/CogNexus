@@ -622,6 +622,8 @@
             display: flex;
             flex-direction: column;
             gap: var(--space-md);
+            max-width: 100%;
+            overflow: hidden;
         }
         .insight-card {
             background: var(--bg-card);
@@ -631,6 +633,8 @@
             transition: all var(--transition-normal);
             box-shadow: var(--shadow-sm);
             cursor: pointer;
+            overflow: hidden;
+            min-width: 0;
         }
         .insight-card:hover {
             border-color: var(--border-accent);
@@ -685,8 +689,17 @@
             color: var(--text-secondary);
             word-wrap: break-word;
             overflow-wrap: break-word;
-            word-break: break-all;
             overflow-x: hidden;
+        }
+        .insight-content p, .insight-content li, .insight-content td {
+            word-break: break-word;
+        }
+        .insight-content pre, .insight-content code {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .insight-card-summary {
+            word-break: break-word;
         }
         .insight-content.expanded { display: block; }
         .insight-content h1, .insight-content h2, .insight-content h3 {
