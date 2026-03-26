@@ -114,15 +114,20 @@ async def try_push_im(agent_id: str, result: dict) -> str:
         return 'no_im'
 
     im_config = json.loads(row['im_config'] or '{}')
-    if not im_config or not im_config.get('enabled'):
+    if not im_config:
         return 'no_im'
 
-    provider = im_config.get('provider', '')
+    # Support nested format: {"telegram": {"bot_token": ..., "chat_id": ...}}
+    tg = im_config.get('telegram', {})
+    # Also support flat format: {"provider": "telegram", "bot_token": ..., "chat_id": ...}
+    if not tg:
+        tg = im_config if im_config.get('provider') == 'telegram' else {}
+
     try:
-        if provider == 'telegram':
+        if tg:
             import httpx
-            bot_token = im_config.get('bot_token', '')
-            chat_id = im_config.get('chat_id', '')
+            bot_token = tg.get('bot_token', '')
+            chat_id = tg.get('chat_id', '')
             if bot_token and chat_id:
                 text = f"**{result['title']}**\n\n{result.get('summary', '')}\n\n{result['content'][:3000]}"
                 async with httpx.AsyncClient(timeout=15.0) as client:
