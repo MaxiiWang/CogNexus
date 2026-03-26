@@ -213,6 +213,61 @@ async def run_task_now(agent_id: str, task_id: str, authorization: str = None):
     return {"status": "triggered", "task_id": task_id}
 
 
+class TaskTestRun(BaseModel):
+    task_type: str
+    config: dict = {}
+
+
+@router.post("/{agent_id}/tasks/test-run")
+async def test_run_task(agent_id: str, data: TaskTestRun, authorization: str = None):
+    """Run a task type once without creating a persistent task. Returns result directly."""
+    user = await get_current_user(authorization)
+    _check_agent_owner(agent_id, user['user_id'])
+
+    from task_runners import TASK_TYPES, get_runner
+    if data.task_type not in TASK_TYPES:
+        raise HTTPException(status_code=400, detail=f"Invalid task_type: {data.task_type}")
+
+    try:
+        runner = get_runner(data.task_type)
+    except ValueError as e:
+        raise HTTPException(status_code=501, detail=str(e))
+
+    default_cfg = TASK_TYPES[data.task_type].get('default_config', {})
+    config = {**default_cfg, **data.config}
+
+    try:
+        result = await runner.run(agent_id=agent_id, config=config)
+
+        # Save as insight
+        insight_id = str(uuid.uuid4())[:16]
+        now = datetime.now().isoformat()
+        conn = get_db()
+        conn.execute("""
+            INSERT INTO agent_insights (insight_id, agent_id, task_id, task_type, title, content, summary, metadata, status, push_status, created_at)
+            VALUES (?, ?, NULL, ?, ?, ?, ?, ?, 'unread', 'no_im', ?)
+        """, (
+            insight_id, agent_id, data.task_type,
+            result['title'], result['content'], result.get('summary', ''),
+            json.dumps(result.get('metadata', {}), ensure_ascii=False), now
+        ))
+        conn.commit()
+        conn.close()
+
+        return {
+            "status": "success",
+            "insight_id": insight_id,
+            "title": result['title'],
+            "summary": result.get('summary', ''),
+            "content": result['content'],
+            "metadata": result.get('metadata', {}),
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== Insights ====================
 
 @router.get("/agents/{agent_id}/insights")
