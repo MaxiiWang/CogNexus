@@ -131,69 +131,117 @@ def _get_or_create_session(agent_id: str, user_id: str, channel: str = "telegram
 
 
 async def _call_chat(namespace: str, question: str, session_id: str, user_id: str) -> str:
-    """Call the chat/stream endpoint internally and collect full response"""
+    """Call chat logic — same pipeline as web chat but non-streaming"""
     try:
-        # Import the chat logic directly instead of HTTP call
         from cogmate_core import CogmateAgent
-        from cogmate_core.config import get_sqlite, get_neo4j
+        from routes.knowledge import _build_dynamic_system_prompt, _graph_reasoning
 
         cogmate = CogmateAgent(namespace=namespace)
 
-        # Load context from session
+        # Load agent config
+        conn = get_db()
+        agent = conn.execute("SELECT llm_config, chat_config FROM agents WHERE namespace = ?", (namespace,)).fetchone()
+        conn.close()
+        if not agent:
+            return "Agent 未找到"
+
+        llm_cfg = json.loads(agent["llm_config"] or "{}")
+        chat_config = json.loads(agent["chat_config"] or "{}")
+
+        if not llm_cfg.get("api_key"):
+            return "⚠️ 请先在网页端 Config 中配置 LLM API Key"
+
+        # Load session context
         context_messages = []
         try:
             conn = get_db()
             rows = conn.execute("""
                 SELECT role, content FROM chat_messages
-                WHERE session_id = ?
-                ORDER BY created_at DESC LIMIT 10
-            """, (session_id,)).fetchall()
+                WHERE session_id = ? ORDER BY created_at DESC LIMIT ?
+            """, (session_id, chat_config.get("context_rounds", 10))).fetchall()
             context_messages = [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
             conn.close()
         except Exception:
             pass
 
         # Vector search
-        results = cogmate.query(question, top_k=5)
-        vector_results = results.get("vector_results", [])
+        top_k = chat_config.get("retrieval_top_k", 5)
+        min_score = chat_config.get("retrieval_min_score", 0.5)
+        results = cogmate.query(question, top_k=top_k)
+        vector_results = [r for r in results.get("vector_results", []) if r.get("score", 0) >= min_score]
 
-        # Get LLM config
-        conn = get_db()
-        agent = conn.execute(
-            "SELECT llm_config FROM agents WHERE namespace = ?", (namespace,)
-        ).fetchone()
-        conn.close()
+        # Graph reasoning expansion
+        if vector_results:
+            fact_ids = [r.get("fact_id") or r.get("id", "") for r in vector_results]
+            graph_extra = _graph_reasoning(namespace, fact_ids)
+            vector_results.extend(graph_extra)
 
-        llm_config = json.loads(agent["llm_config"]) if agent else {}
+        # Build system prompt (same as web chat)
+        system_prompt = _build_dynamic_system_prompt(namespace, vector_results, chat_config, context_messages)
 
-        # Build context
-        facts = [{"summary": r.get("summary", ""), "content_type": r.get("content_type", "")}
-                 for r in vector_results if r.get("score", 0) > 0.5]
+        # Build LLM request
+        provider = llm_cfg.get("provider", "")
+        base_url = llm_cfg.get("base_url") or llm_cfg.get("endpoint", "")
+        if not base_url:
+            provider_urls = {
+                "openai": "https://api.openai.com/v1",
+                "doubao": "https://ark.cn-beijing.volces.com/api/v3",
+                "deepseek": "https://api.deepseek.com/v1",
+            }
+            base_url = provider_urls.get(provider, "https://api.openai.com/v1")
 
-        # Call LLM
-        from llm_answer import generate_answer
-        answer = generate_answer(
-            question=question,
-            facts=facts,
-            max_tokens=2000,
-            stream=False,
-            namespace=namespace,
-            override_api_key=llm_config.get("api_key"),
-            override_model=llm_config.get("model"),
-            override_provider=llm_config.get("provider"),
-            override_endpoint=llm_config.get("base_url") or llm_config.get("endpoint"),
-        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            *context_messages,
+            {"role": "user", "content": question},
+        ]
 
-        # Save messages to session
+        # Call LLM (non-streaming for Telegram)
+        answer = ""
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f"{base_url.rstrip('/')}/chat/completions",
+                headers={"Authorization": f"Bearer {llm_cfg['api_key']}", "Content-Type": "application/json"},
+                json={
+                    "model": llm_cfg.get("model", "gpt-4o-mini"),
+                    "messages": messages,
+                    "max_tokens": chat_config.get("max_tokens", 2000),
+                },
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices:
+                    answer = choices[0].get("message", {}).get("content", "")
+                    # Strip reasoning_content for doubao
+                    rc = choices[0].get("message", {}).get("reasoning_content")
+                    if rc and not answer:
+                        answer = rc
+            else:
+                error_text = resp.text[:200]
+                print(f"[TG Chat] LLM {resp.status_code}: {error_text}")
+                answer = f"⚠️ LLM 返回错误 ({resp.status_code})"
+
+        if not answer:
+            # Fallback: structured answer from vector results
+            if vector_results:
+                parts = [f"关于「{question}」，知识库中有 {len(vector_results)} 条相关记录：\n"]
+                for i, r in enumerate(vector_results[:5], 1):
+                    parts.append(f"{i}. [{r.get('content_type', '信息')}] {r.get('summary', '')}")
+                answer = "\n".join(parts)
+            else:
+                answer = "知识库中没有找到直接相关的信息。"
+
+        # Save messages
         _save_messages(session_id, question, answer, len(vector_results))
 
-        # Background: extract knowledge suggestions
-        asyncio.create_task(_extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_config))
+        # Background knowledge extraction
+        asyncio.create_task(_extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_cfg))
 
         return answer
 
     except Exception as e:
-        print(f"[TG Webhook] Chat error: {e}")
+        print(f"[TG Chat] Error: {e}")
         import traceback
         traceback.print_exc()
         return ""
@@ -223,7 +271,7 @@ def _save_messages(session_id: str, user_msg: str, assistant_msg: str, sources_c
         print(f"[TG Webhook] Save messages error: {e}")
 
 
-async def _extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_config):
+async def _extract_knowledge_bg(namespace, user_id, session_id, question, answer, llm_cfg):
     """Background knowledge extraction (same as web chat)"""
     try:
         if len(question) + len(answer) < 50:
@@ -235,7 +283,7 @@ async def _extract_knowledge_bg(namespace, user_id, session_id, question, answer
         suggestions = await asyncio.get_event_loop().run_in_executor(
             None,
             _extract_knowledge_suggestions_sync,
-            question, answer, llm_config
+            question, answer, [], namespace, llm_cfg, [], ""
         )
 
         if suggestions:
