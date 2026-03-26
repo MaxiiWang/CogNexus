@@ -1,14 +1,18 @@
 from .base import BaseTaskRunner
 from .briefing import BriefingRunner
 from .knowledge_digest import KnowledgeDigestRunner
+from .stress_test import StressTestRunner
+from .expiry_scan import ExpiryScanRunner
+from .graph_health import GraphHealthRunner
+from .cleanup_scan import CleanupScanRunner
 
 RUNNERS = {
     'briefing': BriefingRunner,
     'knowledge_digest': KnowledgeDigestRunner,
-    'stress_test': None,       # TODO
-    'expiry_scan': None,       # TODO
-    'graph_health': None,      # TODO
-    'cleanup_scan': None,      # TODO
+    'stress_test': StressTestRunner,
+    'expiry_scan': ExpiryScanRunner,
+    'graph_health': GraphHealthRunner,
+    'cleanup_scan': CleanupScanRunner,
 }
 
 # Task type metadata for frontend

@@ -245,6 +245,10 @@ async def _execute_test_run(agent_id: str, task_type: str, config: dict):
         runner = get_runner(task_type)
         result = await runner.run(agent_id=agent_id, config=config)
 
+        if result is None:
+            print(f"[TestRun] {task_type}: nothing to report")
+            return  # Background task, no response needed
+
         insight_id = str(uuid.uuid4())[:16]
         now = datetime.now().isoformat()
         conn = get_db()

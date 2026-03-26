@@ -59,6 +59,18 @@ async def execute_task(task_id: str):
         runner = get_runner(task_type)
         result = await runner.run(agent_id=agent_id, config=config)
 
+        # Some tasks return None when there's nothing to report
+        if result is None:
+            conn = get_db()
+            conn.execute(
+                "UPDATE agent_tasks SET last_status = 'success', last_error = NULL, updated_at = ? WHERE task_id = ?",
+                (datetime.now().isoformat(), task_id)
+            )
+            conn.commit()
+            conn.close()
+            print(f"[Scheduler] Task {task_id} ({task_type}) completed: nothing to report")
+            return
+
         # Save insight
         insight_id = str(uuid.uuid4())[:16]
         now = datetime.now().isoformat()
