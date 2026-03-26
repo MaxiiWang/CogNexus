@@ -132,6 +132,28 @@ const AgentDetail = (function() {
                 }
                 if (tab.dataset.tab !== 'chat') stopKEPolling();
                 if (tab.dataset.tab === 'usage') loadUsage();
+                if (tab.dataset.tab === 'insights') { loadInsights(true); _updateInsightBadge(); }
+                if (tab.dataset.tab === 'config') {
+                    const ct = document.getElementById('tab-config');
+                    if (ct && !document.getElementById('taskConfigContainer')) {
+                        const sec = document.createElement('div');
+                        sec.className = 'config-section task-config-section';
+                        sec.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
+                        ct.appendChild(sec);
+                    }
+                    loadTaskConfig();
+                }
+                if (tab.dataset.tab === 'insights') { loadInsights(true); _updateInsightBadge(); }
+                if (tab.dataset.tab === 'config') {
+                    const configTab = document.getElementById('tab-config');
+                    if (configTab && !document.getElementById('taskConfigContainer')) {
+                        const section = document.createElement('div');
+                        section.className = 'config-section task-config-section';
+                        section.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
+                        configTab.appendChild(section);
+                    }
+                    loadTaskConfig();
+                }
             });
         });
     }
@@ -2587,5 +2609,309 @@ const AgentDetail = (function() {
         }
     }
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect };
+    // ==================== Insights (思考 Tab) ====================
+
+    let _insightsOffset = 0;
+    let _insightsFilter = 'all';
+    const _INSIGHTS_LIMIT = 20;
+
+    async function loadInsights(reset = true) {
+        if (reset) { _insightsOffset = 0; }
+        const list = document.getElementById('insightsList');
+        const loadMoreBtn = document.getElementById('insightsLoadMore');
+        if (reset) list.innerHTML = '<div class="empty" style="padding:60px 0;text-align:center;color:var(--text-muted);">加载中...</div>';
+
+        const params = new URLSearchParams({ limit: _INSIGHTS_LIMIT, offset: _insightsOffset });
+        if (_insightsFilter !== 'all') params.set('task_type', _insightsFilter);
+
+        try {
+            const res = await fetch(`/api/agents/${agentId}/insights?${params}`, { headers: hdrs() });
+            const data = await res.json();
+            const insights = data.insights || [];
+
+            if (reset) list.innerHTML = '';
+
+            if (insights.length === 0 && _insightsOffset === 0) {
+                list.innerHTML = '<div class="empty" style="padding:60px 0;text-align:center;color:var(--text-muted);">暂无思考记录<br><span style="font-size:0.85em;">配置定时任务后，Agent 会定期生成洞察</span></div>';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                return;
+            }
+
+            for (const ins of insights) {
+                const card = document.createElement('div');
+                card.className = `insight-card ${ins.status === 'unread' ? 'unread' : ''}`;
+                card.dataset.id = ins.insight_id;
+
+                const meta = JSON.parse(ins.metadata || '{}');
+                const metaTags = [];
+                if (meta.facts_count !== undefined) metaTags.push(`📥 ${meta.facts_count} 条`);
+                if (meta.sources_count !== undefined) metaTags.push(`🔗 ${meta.sources_count} 源`);
+                if (meta.tensions_found) metaTags.push(`⚡ ${meta.tensions_found} 张力`);
+                if (meta.health_overall) metaTags.push(`${meta.health_overall === 'good' ? '🟢' : '🟡'} ${meta.health_overall}`);
+
+                const timeAgo = _timeAgo(ins.created_at);
+
+                card.innerHTML = `
+                    <div class="insight-card-header">
+                        <div class="insight-card-title">${_esc(ins.title)}</div>
+                        <div class="insight-card-time">${timeAgo}</div>
+                    </div>
+                    <div class="insight-card-summary">${_esc(ins.summary || '')}</div>
+                    <div class="insight-card-meta">
+                        ${metaTags.map(t => `<span class="insight-meta-tag">${t}</span>`).join('')}
+                        ${ins.push_status === 'pushed' ? '<span class="insight-meta-tag">📤 已推送</span>' : ''}
+                    </div>
+                    <div class="insight-content" id="insight-content-${ins.insight_id}"></div>
+                `;
+
+                card.addEventListener('click', () => _toggleInsight(ins));
+                list.appendChild(card);
+            }
+
+            _insightsOffset += insights.length;
+            if (loadMoreBtn) loadMoreBtn.style.display = (insights.length >= _INSIGHTS_LIMIT) ? '' : 'none';
+        } catch (e) {
+            console.error('loadInsights error:', e);
+            if (reset) list.innerHTML = '<div class="empty" style="color:#b8868a;">加载失败</div>';
+        }
+    }
+
+    function _toggleInsight(ins) {
+        const el = document.getElementById(`insight-content-${ins.insight_id}`);
+        if (!el) return;
+
+        if (el.classList.contains('expanded')) {
+            el.classList.remove('expanded');
+            return;
+        }
+
+        // Render content
+        if (typeof marked !== 'undefined' && marked.parse) {
+            el.innerHTML = marked.parse(ins.content || '');
+        } else {
+            el.innerHTML = '<pre style="white-space:pre-wrap;">' + _esc(ins.content || '') + '</pre>';
+        }
+        el.classList.add('expanded');
+
+        // Mark as read
+        if (ins.status === 'unread') {
+            const card = el.closest('.insight-card');
+            if (card) card.classList.remove('unread');
+            ins.status = 'read';
+            fetch(`/api/agents/${agentId}/insights/${ins.insight_id}/read`, {
+                method: 'PUT', headers: hdrs()
+            }).then(() => _updateInsightBadge());
+        }
+    }
+
+    function filterInsights(type, btn) {
+        _insightsFilter = type;
+        document.querySelectorAll('.insight-filters .filter-btn').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        loadInsights(true);
+    }
+
+    function loadMoreInsights() {
+        loadInsights(false);
+    }
+
+    async function _updateInsightBadge() {
+        try {
+            const res = await fetch(`/api/agents/${agentId}/insights/unread-count`, { headers: hdrs() });
+            const data = await res.json();
+            const badge = document.getElementById('insightBadge');
+            if (badge) {
+                if (data.count > 0) {
+                    badge.textContent = data.count;
+                    badge.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (e) {}
+    }
+
+    function _timeAgo(dateStr) {
+        if (!dateStr) return '';
+        const now = new Date();
+        const d = new Date(dateStr);
+        const diff = Math.floor((now - d) / 1000);
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+        if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+        if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+        return dateStr.substring(0, 10);
+    }
+
+    function _esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ==================== Task Config ====================
+
+    let _taskTypes = {};
+    let _agentTasks = [];
+
+    async function loadTaskConfig() {
+        const container = document.getElementById('taskConfigContainer');
+        if (!container) return;
+
+        try {
+            // Load task types + current tasks in parallel
+            const [typesRes, tasksRes] = await Promise.all([
+                fetch('/api/agents/task-types'),
+                fetch(`/api/agents/${agentId}/tasks`, { headers: hdrs() }),
+            ]);
+            _taskTypes = (await typesRes.json()).task_types || {};
+            _agentTasks = (await tasksRes.json()).tasks || [];
+        } catch (e) {
+            container.innerHTML = '<div style="color:#b8868a;font-size:0.82em;">加载失败</div>';
+            return;
+        }
+
+        _renderTaskConfig(container);
+    }
+
+    function _renderTaskConfig(container) {
+        const existingMap = {};
+        for (const t of _agentTasks) existingMap[t.task_type] = t;
+
+        let html = '';
+        for (const [type, meta] of Object.entries(_taskTypes)) {
+            const task = existingMap[type];
+            const enabled = task ? !!task.enabled : false;
+            const schedule = task ? task.schedule : meta.default_schedule;
+            const config = task ? JSON.parse(task.config || '{}') : meta.default_config;
+            const lastRun = task ? task.last_run_at : null;
+            const lastStatus = task ? task.last_status : null;
+
+            const { freq, dow, hour, minute } = _parseCronForUI(schedule);
+
+            html += `
+                <div class="task-item" data-task-type="${type}" data-task-id="${task?.task_id || ''}">
+                    <input type="checkbox" class="task-item-toggle" ${enabled ? 'checked' : ''}
+                           onchange="AgentDetail._onTaskToggle('${type}', this.checked)">
+                    <div class="task-item-body">
+                        <div class="task-item-header">
+                            <span class="task-item-name">${meta.icon} ${meta.name}</span>
+                            ${task ? `<button class="task-run-btn" onclick="AgentDetail._runTaskNow('${task.task_id}')">▶ 执行</button>` : ''}
+                        </div>
+                        <div class="task-item-desc">${meta.description}</div>
+                        <div class="task-item-controls">
+                            <select onchange="AgentDetail._onTaskFreqChange('${type}', this.value)" data-field="freq">
+                                <option value="daily" ${freq==='daily'?'selected':''}>每天</option>
+                                <option value="weekly" ${freq==='weekly'?'selected':''}>每周</option>
+                                <option value="monthly" ${freq==='monthly'?'selected':''}>每月</option>
+                            </select>
+                            <select class="task-dow" onchange="AgentDetail._onTaskScheduleChange('${type}')" data-field="dow" style="${freq==='weekly'?'':'display:none;'}">
+                                ${['日','一','二','三','四','五','六'].map((d,i) => `<option value="${i}" ${dow==i?'selected':''}>${d}</option>`).join('')}
+                            </select>
+                            <input type="time" value="${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}"
+                                   onchange="AgentDetail._onTaskScheduleChange('${type}')" data-field="time">
+                            ${lastRun ? `<span class="task-item-status">${lastStatus==='success'?'✅':'❌'} ${_timeAgo(lastRun)}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    function _parseCronForUI(cron) {
+        const p = (cron || '0 8 * * *').split(/\s+/);
+        const minute = parseInt(p[0]) || 0;
+        const hour = parseInt(p[1]) || 8;
+        const dom = p[2];
+        const dow = p[4];
+
+        let freq = 'daily';
+        let dowVal = 0;
+        if (dow !== '*') { freq = 'weekly'; dowVal = parseInt(dow) || 0; }
+        else if (dom !== '*') { freq = 'monthly'; }
+
+        return { freq, dow: dowVal, hour, minute };
+    }
+
+    function _buildCron(type) {
+        const item = document.querySelector(`.task-item[data-task-type="${type}"]`);
+        if (!item) return '0 8 * * *';
+
+        const freq = item.querySelector('[data-field="freq"]').value;
+        const timeVal = item.querySelector('[data-field="time"]').value || '08:00';
+        const [h, m] = timeVal.split(':').map(Number);
+        const dow = item.querySelector('[data-field="dow"]')?.value || '0';
+
+        if (freq === 'weekly') return `${m} ${h} * * ${dow}`;
+        if (freq === 'monthly') return `${m} ${h} 1 * *`;
+        return `${m} ${h} * * *`;
+    }
+
+    async function _onTaskToggle(type, enabled) {
+        const item = document.querySelector(`.task-item[data-task-type="${type}"]`);
+        const taskId = item?.dataset.taskId;
+        const cron = _buildCron(type);
+        const meta = _taskTypes[type];
+
+        try {
+            if (taskId) {
+                await fetch(`/api/agents/${agentId}/tasks/${taskId}`, {
+                    method: 'PUT', headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled, schedule: cron })
+                });
+            } else if (enabled) {
+                const res = await fetch(`/api/agents/${agentId}/tasks`, {
+                    method: 'POST', headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        task_type: type, schedule: cron, enabled: true,
+                        config: meta?.default_config || {}
+                    })
+                });
+                const data = await res.json();
+                if (data.task_id) item.dataset.taskId = data.task_id;
+            }
+        } catch (e) {
+            console.error('task toggle error:', e);
+        }
+    }
+
+    function _onTaskFreqChange(type, freq) {
+        const item = document.querySelector(`.task-item[data-task-type="${type}"]`);
+        const dowSel = item?.querySelector('.task-dow');
+        if (dowSel) dowSel.style.display = freq === 'weekly' ? '' : 'none';
+        _onTaskScheduleChange(type);
+    }
+
+    async function _onTaskScheduleChange(type) {
+        const item = document.querySelector(`.task-item[data-task-type="${type}"]`);
+        const taskId = item?.dataset.taskId;
+        if (!taskId) return;
+
+        const cron = _buildCron(type);
+        try {
+            await fetch(`/api/agents/${agentId}/tasks/${taskId}`, {
+                method: 'PUT', headers: { ...hdrs(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ schedule: cron })
+            });
+        } catch (e) {}
+    }
+
+    async function _runTaskNow(taskId) {
+        try {
+            await fetch(`/api/agents/${agentId}/tasks/${taskId}/run`, {
+                method: 'POST', headers: hdrs()
+            });
+            alert('任务已触发，请稍后查看「思考」Tab');
+        } catch (e) {}
+    }
+
+    // ==================== Init hooks ====================
+
+    // Helper to get agent ID from URL
+    function agentId {
+        return new URLSearchParams(window.location.search).get('id') || '';
+    }
+
+    // Load insight badge on init
+    setTimeout(() => _updateInsightBadge(), 500);
+
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect, loadInsights, filterInsights, loadMoreInsights, loadTaskConfig, _onTaskToggle, _onTaskFreqChange, _onTaskScheduleChange, _runTaskNow };
 })();

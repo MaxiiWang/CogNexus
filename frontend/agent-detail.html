@@ -595,6 +595,175 @@
         .ov-delay-2 { animation-delay: 0.16s; }
         .ov-delay-3 { animation-delay: 0.24s; }
 
+        /* ===== Insight Badge ===== */
+        .insight-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #e74c3c;
+            color: #fff;
+            font-size: 0.68em;
+            font-weight: 700;
+            margin-left: 4px;
+            line-height: 1;
+        }
+
+        /* ===== Insights Tab ===== */
+        .insight-filters {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+        }
+        .insights-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+        }
+        .insight-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-sm);
+            cursor: pointer;
+        }
+        .insight-card:hover {
+            border-color: var(--border-accent);
+            box-shadow: var(--shadow-md);
+        }
+        .insight-card.unread {
+            border-left: 3px solid var(--accent-primary, #6da89b);
+        }
+        .insight-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: var(--space-sm);
+        }
+        .insight-card-title {
+            font-family: var(--font-display);
+            font-size: 1em;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .insight-card-time {
+            font-size: 0.75em;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .insight-card-summary {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: var(--space-sm);
+        }
+        .insight-card-meta {
+            display: flex;
+            gap: var(--space-sm);
+            flex-wrap: wrap;
+        }
+        .insight-meta-tag {
+            font-size: 0.72em;
+            padding: 2px 8px;
+            border-radius: var(--radius-pill);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+        }
+        .insight-content {
+            display: none;
+            margin-top: var(--space-md);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 0.88em;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+        .insight-content.expanded { display: block; }
+        .insight-content h1, .insight-content h2, .insight-content h3 {
+            color: var(--text-primary);
+            margin: var(--space-md) 0 var(--space-sm);
+        }
+        .insight-content h1 { font-size: 1.1em; }
+        .insight-content h2 { font-size: 1em; }
+        .insight-content ul, .insight-content ol { padding-left: 1.5em; }
+        .insight-content a { color: var(--accent-primary, #6da89b); }
+
+        /* ===== Task Config in Config Tab ===== */
+        .task-config-section {
+            margin-top: var(--space-lg);
+        }
+        .task-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-sm);
+            transition: all var(--transition-fast);
+        }
+        .task-item:hover { border-color: var(--border-accent); }
+        .task-item-toggle {
+            margin-top: 2px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-primary, #6da89b);
+        }
+        .task-item-body { flex: 1; }
+        .task-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--space-xs);
+        }
+        .task-item-name {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: var(--text-primary);
+        }
+        .task-item-desc {
+            font-size: 0.78em;
+            color: var(--text-muted);
+            margin-bottom: var(--space-sm);
+        }
+        .task-item-controls {
+            display: flex;
+            gap: var(--space-sm);
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .task-item-controls select, .task-item-controls input {
+            padding: 4px 8px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border-medium, var(--border-subtle));
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 0.82em;
+        }
+        .task-item-status {
+            font-size: 0.72em;
+            color: var(--text-muted);
+        }
+        .task-run-btn {
+            padding: 4px 10px;
+            border-radius: var(--radius-xs);
+            background: rgba(109,168,155,0.15);
+            color: var(--accent-primary, #6da89b);
+            border: 1px solid rgba(109,168,155,0.2);
+            cursor: pointer;
+            font-size: 0.78em;
+            font-weight: 600;
+            transition: all 0.15s;
+        }
+        .task-run-btn:hover { background: rgba(109,168,155,0.25); }
+
         /* ===== Config Tab ===== */
         .config-section {
             background: var(--bg-surface);
@@ -812,6 +981,10 @@
             </button>
             <button class="detail-tab" data-tab="chat">
                 <span>💬</span> <span data-i18n="agent.tab_chat">Chat</span>
+            </button>
+            <button class="detail-tab" data-tab="insights">
+                <span>💭 思考</span>
+                <span class="insight-badge" id="insightBadge" style="display:none;"></span>
             </button>
             <button class="detail-tab owner-only" data-tab="knowledge" style="display:none;">
                 <span data-i18n="agent.tab_knowledge">Knowledge</span>
@@ -1038,6 +1211,27 @@
                 <div id="chatArea" style="flex:1;display:flex;flex-direction:column;background:#1a1a22;min-width:0;"></div>
                 <!-- Mobile toggle: switch between avatar and chat -->
                 <button id="mobileChatToggle" onclick="AgentDetail.toggleMobileAvatar()" title="查看虚拟形象">🎭</button>
+            </div>
+        </div>
+
+        <!-- Insights Tab (思考) -->
+        <div class="tab-content" id="tab-insights">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-lg);">
+                <div class="insight-filters">
+                    <button class="filter-btn active" data-insight-type="all" onclick="AgentDetail.filterInsights('all', this)">全部</button>
+                    <button class="filter-btn" data-insight-type="briefing" onclick="AgentDetail.filterInsights('briefing', this)">📰 简报</button>
+                    <button class="filter-btn" data-insight-type="knowledge_digest" onclick="AgentDetail.filterInsights('knowledge_digest', this)">🧠 摘要</button>
+                    <button class="filter-btn" data-insight-type="stress_test" onclick="AgentDetail.filterInsights('stress_test', this)">⚔️ 挑战</button>
+                    <button class="filter-btn" data-insight-type="graph_health" onclick="AgentDetail.filterInsights('graph_health', this)">🕸️ 健康</button>
+                </div>
+            </div>
+            <div id="insightsList" class="insights-list">
+                <div class="empty" style="padding:60px 0;text-align:center;color:var(--text-muted);">
+                    加载中...
+                </div>
+            </div>
+            <div id="insightsLoadMore" style="text-align:center;padding:var(--space-lg);display:none;">
+                <button class="btn btn-secondary btn-small" onclick="AgentDetail.loadMoreInsights()">加载更多</button>
             </div>
         </div>
 
@@ -1325,6 +1519,9 @@
                 </button>
             </div>
         </div>
+
+        <!-- Task Config Section (inside Config Tab, appended at bottom) -->
+        <!-- Rendered dynamically by JS: AgentDetail.loadTaskConfig() -->
 
         <!-- Usage Tab -->
         <div class="tab-content" id="tab-usage">

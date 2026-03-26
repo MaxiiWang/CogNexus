@@ -247,6 +247,50 @@ def migrate_knowledge_schema():
         )
     """)
 
+    # Agent scheduled tasks
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS agent_tasks (
+            task_id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            task_type TEXT NOT NULL CHECK(task_type IN (
+                'briefing', 'knowledge_digest', 'stress_test',
+                'expiry_scan', 'graph_health', 'cleanup_scan', 'custom'
+            )),
+            enabled INTEGER DEFAULT 1,
+            schedule TEXT NOT NULL,
+            config TEXT DEFAULT '{}',
+            last_run_at TEXT,
+            last_status TEXT CHECK(last_status IN ('success', 'failed', 'running')),
+            last_error TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_tasks_agent ON agent_tasks(agent_id)")
+
+    # Agent insights (task outputs)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS agent_insights (
+            insight_id TEXT PRIMARY KEY,
+            agent_id TEXT NOT NULL,
+            task_id TEXT,
+            task_type TEXT NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT NOT NULL,
+            summary TEXT,
+            metadata TEXT DEFAULT '{}',
+            status TEXT DEFAULT 'unread' CHECK(status IN ('unread', 'read', 'archived')),
+            push_status TEXT DEFAULT 'pending' CHECK(push_status IN ('pending', 'pushed', 'no_im', 'push_failed')),
+            push_error TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (agent_id) REFERENCES agents(agent_id),
+            FOREIGN KEY (task_id) REFERENCES agent_tasks(task_id)
+        )
+    """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_insights_agent ON agent_insights(agent_id, created_at DESC)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_insights_status ON agent_insights(agent_id, status)")
+
     conn.commit()
     conn.close()
 

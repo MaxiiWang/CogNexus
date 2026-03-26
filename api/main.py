@@ -1662,12 +1662,26 @@ from routes.knowledge import router as knowledge_router, public_router as knowle
 from routes.settings import router as settings_router
 from routes.chat import router as chat_router, avatar_router
 from routes.imports import router as imports_router
+from routes.tasks import router as tasks_router
 app.include_router(knowledge_router)
 app.include_router(knowledge_public_router)
 app.include_router(settings_router)
 app.include_router(chat_router)
 app.include_router(avatar_router)
 app.include_router(imports_router)
+app.include_router(tasks_router)
+
+# Start task scheduler
+from scheduler import start_scheduler, shutdown_scheduler
+import atexit
+
+@app.on_event("startup")
+async def _start_scheduler():
+    start_scheduler()
+
+@app.on_event("shutdown")
+async def _stop_scheduler():
+    shutdown_scheduler()
 
 
 # 静态资源
