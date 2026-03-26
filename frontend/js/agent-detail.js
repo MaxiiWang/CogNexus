@@ -2379,7 +2379,8 @@ const AgentDetail = (function() {
     }
 
     async function _deleteImport(importId) {
-        if (!confirm('删除此导入记录及其待处理的建议？')) return;
+        const confirmed = await showModal({ title: '删除导入记录', message: '删除此导入记录及其待处理的建议？', confirmText: '删除', confirmStyle: 'danger' });
+        if (!confirmed) return;
         try {
             await fetch('/api/knowledge/' + getNs() + '/imports/' + importId, {
                 method: 'DELETE',
@@ -2566,7 +2567,8 @@ const AgentDetail = (function() {
     }
 
     async function _notionDisconnect() {
-        if (!confirm('确定断开 Notion 连接？')) return;
+        const confirmed = await showModal({ title: '断开 Notion', message: '确定断开 Notion 连接？', confirmText: '断开', confirmStyle: 'danger' });
+        if (!confirmed) return;
         try {
             await fetch('/api/knowledge/' + getNs() + '/imports/notion/disconnect', {
                 method: 'DELETE',
