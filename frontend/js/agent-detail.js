@@ -1143,7 +1143,7 @@ const AgentDetail = (function() {
             // Recalculate if navOriginalTop is 0 (layout shift)
             if (navOriginalTop === 0) measureNavTop();
 
-            const headerH = 72; // global header height + gap
+            const headerH = 170; // global header(56) + agent-header(~70) + tabs(~44)
             const scrollY = window.scrollY;
             const triggerPoint = navOriginalTop - headerH;
 
