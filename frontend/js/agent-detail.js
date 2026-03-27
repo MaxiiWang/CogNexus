@@ -1125,23 +1125,37 @@ const AgentDetail = (function() {
         nav.parentNode.insertBefore(placeholder, nav);
 
         let navOriginalTop = 0;
+        let navMeasured = false;
         function measureNavTop() {
             // Temporarily reset to get true document position
-            if (nav.classList.contains('is-fixed')) {
+            const wasFix = nav.classList.contains('is-fixed');
+            if (wasFix) {
                 nav.classList.remove('is-fixed');
                 placeholder.style.display = 'none';
-                nav.style.top = ''; nav.style.left = '';
+                nav.style.top = ''; nav.style.left = ''; nav.style.width = '';
             }
-            navOriginalTop = nav.getBoundingClientRect().top + window.scrollY;
+            const rect = nav.getBoundingClientRect();
+            navOriginalTop = rect.top + window.scrollY;
+            navMeasured = navOriginalTop > 100; // valid only if reasonable
+            if (wasFix) {
+                // restore if was fixed and still should be
+                nav.style.left = rect.left + 'px';
+                nav.style.top = headerH + 'px';
+                nav.style.width = '180px';
+                nav.classList.add('is-fixed');
+                placeholder.style.display = 'block';
+            }
         }
-        measureNavTop();
+        // Delay measurement to after layout settles
+        setTimeout(measureNavTop, 300);
+        setTimeout(measureNavTop, 800);
 
         function onScroll() {
             const configTab = document.getElementById('tab-config');
             if (!configTab || !configTab.classList.contains('active')) return;
 
-            // Recalculate if navOriginalTop is 0 (layout shift)
-            if (navOriginalTop === 0) measureNavTop();
+            // Don't go fixed until we have a valid measurement
+            if (!navMeasured) { measureNavTop(); return; }
 
             const headerH = 170; // global header(56) + agent-header(~70) + tabs(~44)
             const scrollY = window.scrollY;
