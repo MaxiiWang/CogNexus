@@ -141,6 +141,7 @@ const AgentDetail = (function() {
                         const advancedSection = deleteDiv ? deleteDiv.previousElementSibling : null;
                         const sec = document.createElement('div');
                         sec.className = 'config-section task-config-section';
+                        sec.id = 'cfg-tasks';
                         sec.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
                         if (advancedSection) {
                             ct.insertBefore(sec, advancedSection);
@@ -150,6 +151,7 @@ const AgentDetail = (function() {
                     }
                     loadTaskConfig();
                     _bindAutoSave();
+                    _initConfigNav();
                 }
             });
         });
@@ -1088,6 +1090,59 @@ const AgentDetail = (function() {
         document.getElementById('personaFields').style.display = isChar ? 'block' : 'none';
         document.getElementById('descLabel').textContent = isChar ? '背景故事' : '描述';
         document.getElementById('configDescription').placeholder = isChar ? '用第一人称描述角色背景...' : '描述这个 Agent...';
+        _syncPersonaNav();
+    }
+
+    // ===== Config Nav scroll-spy =====
+    let _configNavInitialized = false;
+    function _initConfigNav() {
+        if (_configNavInitialized) return;
+        _configNavInitialized = true;
+
+        const nav = document.getElementById('configNav');
+        if (!nav) return;
+
+        // Show/hide persona nav item based on type
+        _syncPersonaNav();
+
+        // Click handling — smooth scroll
+        nav.querySelectorAll('.config-nav-item').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = link.getAttribute('href').slice(1);
+                const target = document.getElementById(id);
+                if (!target) return;
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Update active immediately
+                nav.querySelectorAll('.config-nav-item').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        // Scroll spy — IntersectionObserver
+        const sections = document.querySelectorAll('#tab-config .config-section[id^="cfg-"]');
+        if (sections.length && 'IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const id = entry.target.id;
+                        nav.querySelectorAll('.config-nav-item').forEach(l => {
+                            l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+                        });
+                    }
+                });
+            }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+
+            sections.forEach(s => observer.observe(s));
+        }
+    }
+
+    function _syncPersonaNav() {
+        const navItem = document.getElementById('configNavPersona');
+        if (navItem) {
+            const isChar = document.getElementById('configType')?.value === 'character';
+            navItem.style.display = isChar ? '' : 'none';
+        }
     }
 
     function _bindAutoSave() {

@@ -786,6 +786,98 @@
         }
         .task-run-btn:hover { background: rgba(109,168,155,0.25); }
 
+        /* ===== Config Layout (nav + content) ===== */
+        .config-layout {
+            display: flex;
+            gap: var(--space-xl);
+            align-items: flex-start;
+        }
+        .config-nav {
+            position: sticky;
+            top: 20px;
+            width: 180px;
+            min-width: 180px;
+            flex-shrink: 0;
+        }
+        .config-nav-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .config-nav-group-label {
+            font-size: 0.68em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 12px 12px 4px;
+            margin-top: 4px;
+        }
+        .config-nav-group-label:first-child {
+            margin-top: 0;
+            padding-top: 4px;
+        }
+        .config-nav-item {
+            display: block;
+            padding: 7px 12px;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.82em;
+            font-weight: 500;
+            transition: all var(--transition-fast);
+            border-left: 2px solid transparent;
+        }
+        .config-nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.03);
+        }
+        .config-nav-item.active {
+            color: var(--accent-text);
+            background: var(--accent-muted);
+            border-left-color: var(--accent-primary);
+        }
+        .config-content {
+            flex: 1;
+            min-width: 0;
+        }
+        @media (max-width: 900px) {
+            .config-layout {
+                flex-direction: column;
+            }
+            .config-nav {
+                position: relative;
+                top: 0;
+                width: 100%;
+                min-width: 0;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .config-nav-inner {
+                flex-direction: row;
+                flex-wrap: nowrap;
+                gap: 0;
+                padding-bottom: 8px;
+                border-bottom: 1px solid var(--border-subtle);
+                margin-bottom: var(--space-md);
+            }
+            .config-nav-group-label {
+                display: none;
+            }
+            .config-nav-item {
+                white-space: nowrap;
+                flex-shrink: 0;
+                border-left: none;
+                border-bottom: 2px solid transparent;
+                border-radius: 0;
+                padding: 8px 12px;
+            }
+            .config-nav-item.active {
+                border-left-color: transparent;
+                border-bottom-color: var(--accent-primary);
+            }
+        }
+
         /* ===== Config Tab ===== */
         .config-section {
             background: var(--bg-surface);
@@ -970,7 +1062,7 @@
     </script>
     <script src="/static/js/i18n.js?v=20260324b" defer></script>
     <script src="/static/js/header.js?v=20260324b" defer></script>
-    <script src="/static/js/agent-detail.js?v=20260327a" defer></script>
+    <script src="/static/js/agent-detail.js?v=20260327b" defer></script>
 </head>
 <body>
     <header></header>
@@ -1258,11 +1350,30 @@
         </div>
 
         <!-- Config Tab -->
-        <div class="tab-content" id="tab-config">
-            <div id="configSaveStatus" style="position:sticky;top:0;z-index:10;text-align:right;padding:8px 0;transition:opacity 0.3s;opacity:0;"></div>
+        <div class="tab-content" id="tab-config" style="display:none;">
+            <div class="config-layout">
+                <!-- Left Nav -->
+                <nav class="config-nav" id="configNav">
+                    <div class="config-nav-inner">
+                        <div class="config-nav-group-label">基本</div>
+                        <a class="config-nav-item active" href="#cfg-basic">📋 基础信息</a>
+                        <a class="config-nav-item" href="#cfg-persona" id="configNavPersona" style="display:none;">🎭 角色设定</a>
+                        <a class="config-nav-item" href="#cfg-llm">🤖 AI 引擎</a>
+                        <div class="config-nav-group-label">行为</div>
+                        <a class="config-nav-item" href="#cfg-chat">🧠 对话设定</a>
+                        <a class="config-nav-item" href="#cfg-avatar">🎨 虚拟形象</a>
+                        <div class="config-nav-group-label">集成</div>
+                        <a class="config-nav-item" href="#cfg-notify">🔔 通知与集成</a>
+                        <a class="config-nav-item" href="#cfg-tasks">⏰ 定时任务</a>
+                        <a class="config-nav-item" href="#cfg-advanced">⚙️ 高级</a>
+                    </div>
+                </nav>
+                <!-- Right Content -->
+                <div class="config-content">
+                    <div id="configSaveStatus" style="position:sticky;top:0;z-index:10;text-align:right;padding:8px 0;transition:opacity 0.3s;opacity:0;"></div>
 
             <!-- ① 基础信息 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-basic">
                 <div class="config-section-title">📋 基础信息</div>
                 <div class="form-row" style="grid-template-columns: 2fr 1fr;">
                     <div class="form-group">
@@ -1300,7 +1411,7 @@
 
             <!-- ② 角色设定 (character only) -->
             <div id="personaFields" style="display:none;">
-                <div class="config-section">
+                <div class="config-section" id="cfg-persona">
                     <div class="config-section-title">🎭 角色设定</div>
                     <div class="form-row" style="grid-template-columns: 1fr 1fr;">
                         <div class="form-group">
@@ -1351,7 +1462,7 @@
             </div>
 
             <!-- ③ AI 引擎 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-llm">
                 <div class="config-section-title">🤖 AI 引擎</div>
                 <div class="form-group">
                     <label>Provider</label>
@@ -1381,7 +1492,7 @@
             </div>
 
             <!-- ④ 对话设定 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-chat">
                 <div class="config-section-title">🧠 对话设定</div>
                 
                 <div class="form-group">
@@ -1479,7 +1590,7 @@
             </div>
 
             <!-- ⑤ 虚拟形象 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-avatar">
                 <div class="config-section-title">🎨 虚拟形象</div>
                 <div style="margin-bottom:16px;">
                     <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">选择预置模型</label>
@@ -1503,7 +1614,7 @@
             </div>
 
             <!-- ⑥ 通知与集成 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-notify">
                 <div class="config-section-title">🔔 通知与集成</div>
                 <div class="form-group">
                     <label>Telegram Bot Token</label>
@@ -1527,7 +1638,7 @@
             <!-- ⑦ 定时任务 — dynamically inserted by JS -->
 
             <!-- ⚙️ 高级 -->
-            <div class="config-section">
+            <div class="config-section" id="cfg-advanced">
                 <details>
                     <summary class="config-section-title" style="cursor:pointer;user-select:none;border-bottom:none;padding-bottom:0;margin-bottom:0;">⚙️ 高级</summary>
                     <div style="padding-top:var(--space-lg);">
@@ -1560,6 +1671,8 @@
                     <span data-i18n="agent.delete_agent">Delete Agent</span>
                 </button>
             </div>
+                </div><!-- /.config-content -->
+            </div><!-- /.config-layout -->
         </div>
 
         <!-- Task Config Section (inside Config Tab, appended at bottom) -->
