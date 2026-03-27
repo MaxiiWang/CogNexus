@@ -1126,20 +1126,15 @@ const AgentDetail = (function() {
 
         const headerH = 170; // header(56) + agent-header(~70) + tabs(~44)
         let navLeft = 0;
-
-        function getNavOriginalTop() {
-            // Use placeholder position when nav is fixed, otherwise nav position
-            const el = placeholder.style.display === 'block' ? placeholder : nav;
-            return el.getBoundingClientRect().top + window.scrollY;
-        }
+        // Capture the nav's original document top once (before any scroll/fixed)
+        let navOriginalTop = nav.getBoundingClientRect().top + window.scrollY;
 
         function onScroll() {
             const configTab = document.getElementById('tab-config');
             if (!configTab || !configTab.classList.contains('active')) return;
 
             const scrollY = window.scrollY;
-            const navTop = getNavOriginalTop();
-            const triggerPoint = navTop - headerH;
+            const triggerPoint = navOriginalTop - headerH;
 
             // Get config content bounds to stop nav at bottom
             const content = configTab.querySelector('.config-content');
@@ -1179,7 +1174,16 @@ const AgentDetail = (function() {
 
         _configNavScrollHandler = onScroll;
         window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onScroll);
+        window.addEventListener('resize', () => {
+            // Recalc original top on resize
+            if (nav.classList.contains('is-fixed')) {
+                nav.classList.remove('is-fixed');
+                nav.style.top = ''; nav.style.left = ''; nav.style.width = '';
+                placeholder.style.display = 'none';
+            }
+            navOriginalTop = nav.getBoundingClientRect().top + window.scrollY;
+            onScroll();
+        });
     }
 
     function _syncPersonaNav() {
