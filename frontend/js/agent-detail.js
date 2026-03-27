@@ -137,13 +137,13 @@ const AgentDetail = (function() {
                     if (!document.getElementById('taskConfigContainer')) {
                         // Insert task config section before the advanced section inside .config-content
                         const content = document.querySelector('#tab-config .config-content') || document.getElementById('tab-config');
-                        const advancedSection = document.getElementById('cfg-advanced');
+                        const deleteDiv = content.querySelector('[style*="justify-content:flex-end"]');
                         const sec = document.createElement('div');
                         sec.className = 'config-section task-config-section';
                         sec.id = 'cfg-tasks';
                         sec.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
-                        if (advancedSection && advancedSection.parentNode === content) {
-                            content.insertBefore(sec, advancedSection);
+                        if (deleteDiv) {
+                            content.insertBefore(sec, deleteDiv);
                         } else {
                             content.appendChild(sec);
                         }
@@ -1234,15 +1234,18 @@ const AgentDetail = (function() {
     function fillConfig() {
         const a = agentData;
         document.getElementById('configName').value = a.name || '';
-        document.getElementById('configNamespace').value = a.namespace || 'default';
-        document.getElementById('configStatus').value = a.status || 'active';
+        const nsEl = document.getElementById('configNamespace');
+        if (nsEl) nsEl.value = a.namespace || 'default';
+        const stEl = document.getElementById('configStatus');
+        if (stEl) stEl.value = a.status || 'active';
         document.getElementById('configType').value = a.agent_type || 'human';
         // Trigger persona fields toggle
         const isChar = (a.agent_type === 'character');
         document.getElementById('personaFields').style.display = isChar ? 'block' : 'none';
         document.getElementById('descLabel').textContent = isChar ? '背景故事' : '描述';
         document.getElementById('configDescription').placeholder = isChar ? '用第一人称描述角色背景...' : '描述这个 Agent...';
-        document.getElementById('configEndpoint').value = a.endpoint_url || '';
+        const epEl = document.getElementById('configEndpoint');
+        if (epEl) epEl.value = a.endpoint_url || '';
         document.getElementById('configDescription').value = a.description || '';
         document.getElementById('configIsPublic').checked = a.is_public !== 0;
         // Avatar URL
@@ -1344,10 +1347,10 @@ const AgentDetail = (function() {
         // Build payload including avatar_url
         const payload = {
             name: document.getElementById('configName').value,
-            namespace: document.getElementById('configNamespace').value,
-            status: document.getElementById('configStatus').value,
+            namespace: (document.getElementById('configNamespace') || {}).value || agentData.namespace || 'default',
+            status: (document.getElementById('configStatus') || {}).value || agentData.status || 'active',
             agent_type: document.getElementById('configType').value,
-            endpoint_url: document.getElementById('configEndpoint').value,
+            endpoint_url: (document.getElementById('configEndpoint') || {}).value || agentData.endpoint_url || '',
             description: document.getElementById('configDescription').value,
             is_public: document.getElementById('configIsPublic').checked ? 1 : 0,
             llm_config: JSON.stringify(llmConfig),

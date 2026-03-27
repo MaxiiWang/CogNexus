@@ -1369,7 +1369,6 @@
                         <div class="config-nav-group-label">集成</div>
                         <a class="config-nav-item" href="#cfg-notify">🔔 通知与集成</a>
                         <a class="config-nav-item" href="#cfg-tasks">⏰ 定时任务</a>
-                        <a class="config-nav-item" href="#cfg-advanced">⚙️ 高级</a>
                     </div>
                 </div>
                 <!-- Right Content -->
@@ -1640,34 +1639,6 @@
             </div>
 
             <!-- ⑦ 定时任务 — dynamically inserted by JS -->
-
-            <!-- ⚙️ 高级 -->
-            <div class="config-section" id="cfg-advanced">
-                <details>
-                    <summary class="config-section-title" style="cursor:pointer;user-select:none;border-bottom:none;padding-bottom:0;margin-bottom:0;">⚙️ 高级</summary>
-                    <div style="padding-top:var(--space-lg);">
-                        <div class="form-row" style="grid-template-columns: 1fr 1fr;">
-                            <div class="form-group">
-                                <label>Namespace</label>
-                                <input type="text" id="configNamespace" placeholder="default">
-                            </div>
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select id="configStatus">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Endpoint URL</label>
-                            <input type="url" id="configEndpoint" placeholder="http://localhost:8081">
-                            <small>内部服务地址，通常不需要修改</small>
-                        </div>
-                    </div>
-                </details>
-            </div>
 
             <!-- Bottom: Delete only -->
             <div style="display:flex;justify-content:flex-end;padding:var(--space-lg) 0 60px;">
