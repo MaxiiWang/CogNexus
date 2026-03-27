@@ -1124,42 +1124,22 @@ const AgentDetail = (function() {
         placeholder.style.cssText = 'width:180px;min-width:180px;flex-shrink:0;display:none;';
         nav.parentNode.insertBefore(placeholder, nav);
 
-        let navOriginalTop = 0;
-        let navMeasured = false;
-        function measureNavTop() {
-            // Temporarily reset to get true document position
-            const wasFix = nav.classList.contains('is-fixed');
-            if (wasFix) {
-                nav.classList.remove('is-fixed');
-                placeholder.style.display = 'none';
-                nav.style.top = ''; nav.style.left = ''; nav.style.width = '';
-            }
-            const rect = nav.getBoundingClientRect();
-            navOriginalTop = rect.top + window.scrollY;
-            navMeasured = navOriginalTop > 100; // valid only if reasonable
-            if (wasFix) {
-                // restore if was fixed and still should be
-                nav.style.left = rect.left + 'px';
-                nav.style.top = headerH + 'px';
-                nav.style.width = '180px';
-                nav.classList.add('is-fixed');
-                placeholder.style.display = 'block';
-            }
+        const headerH = 170; // header(56) + agent-header(~70) + tabs(~44)
+        let navLeft = 0;
+
+        function getNavOriginalTop() {
+            // Use placeholder position when nav is fixed, otherwise nav position
+            const el = placeholder.style.display === 'block' ? placeholder : nav;
+            return el.getBoundingClientRect().top + window.scrollY;
         }
-        // Delay measurement to after layout settles
-        setTimeout(measureNavTop, 300);
-        setTimeout(measureNavTop, 800);
 
         function onScroll() {
             const configTab = document.getElementById('tab-config');
             if (!configTab || !configTab.classList.contains('active')) return;
 
-            // Don't go fixed until we have a valid measurement
-            if (!navMeasured) { measureNavTop(); return; }
-
-            const headerH = 170; // global header(56) + agent-header(~70) + tabs(~44)
             const scrollY = window.scrollY;
-            const triggerPoint = navOriginalTop - headerH;
+            const navTop = getNavOriginalTop();
+            const triggerPoint = navTop - headerH;
 
             // Get config content bounds to stop nav at bottom
             const content = configTab.querySelector('.config-content');
@@ -1168,8 +1148,8 @@ const AgentDetail = (function() {
 
             if (scrollY > triggerPoint && scrollY + headerH + navH < contentBottom) {
                 if (!nav.classList.contains('is-fixed')) {
-                    const rect = nav.getBoundingClientRect();
-                    nav.style.left = rect.left + 'px';
+                    navLeft = nav.getBoundingClientRect().left;
+                    nav.style.left = navLeft + 'px';
                     nav.style.top = headerH + 'px';
                     nav.style.width = '180px';
                     nav.classList.add('is-fixed');
@@ -1199,9 +1179,7 @@ const AgentDetail = (function() {
 
         _configNavScrollHandler = onScroll;
         window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', () => { measureNavTop(); onScroll(); });
-        // Initial run
-        requestAnimationFrame(onScroll);
+        window.addEventListener('resize', onScroll);
     }
 
     function _syncPersonaNav() {
