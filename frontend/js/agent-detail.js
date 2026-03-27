@@ -253,9 +253,6 @@ const AgentDetail = (function() {
             document.getElementById('statFacts').textContent = s.total_facts ?? s.graph_nodes ?? '—';
             document.getElementById('statEdges').textContent = s.graph_edges ?? '—';
             document.getElementById('statAbstracts').textContent = s.abstracts ?? '—';
-            // Data scope: show date range if available
-            const scope = s.date_range || s.data_scope || '—';
-            document.getElementById('statScope').textContent = scope;
         } catch {}
     }
 
