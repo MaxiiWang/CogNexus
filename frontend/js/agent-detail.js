@@ -134,19 +134,18 @@ const AgentDetail = (function() {
                 if (tab.dataset.tab === 'usage') loadUsage();
                 if (tab.dataset.tab === 'insights') { loadInsights(true); _updateInsightBadge(); }
                 if (tab.dataset.tab === 'config') {
-                    const ct = document.getElementById('tab-config');
-                    if (ct && !document.getElementById('taskConfigContainer')) {
-                        // Insert task config section before the advanced details section
-                        const deleteDiv = ct.querySelector('[style*="justify-content:flex-end"]');
-                        const advancedSection = deleteDiv ? deleteDiv.previousElementSibling : null;
+                    if (!document.getElementById('taskConfigContainer')) {
+                        // Insert task config section before the advanced section inside .config-content
+                        const content = document.querySelector('#tab-config .config-content') || document.getElementById('tab-config');
+                        const advancedSection = document.getElementById('cfg-advanced');
                         const sec = document.createElement('div');
                         sec.className = 'config-section task-config-section';
                         sec.id = 'cfg-tasks';
                         sec.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
-                        if (advancedSection) {
-                            ct.insertBefore(sec, advancedSection);
+                        if (advancedSection && advancedSection.parentNode === content) {
+                            content.insertBefore(sec, advancedSection);
                         } else {
-                            ct.appendChild(sec);
+                            content.appendChild(sec);
                         }
                     }
                     loadTaskConfig();
