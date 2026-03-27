@@ -970,7 +970,7 @@
     </script>
     <script src="/static/js/i18n.js?v=20260324b" defer></script>
     <script src="/static/js/header.js?v=20260324b" defer></script>
-    <script src="/static/js/agent-detail.js?v=20260324b" defer></script>
+    <script src="/static/js/agent-detail.js?v=20260327a" defer></script>
 </head>
 <body>
     <header></header>
@@ -1259,33 +1259,11 @@
 
         <!-- Config Tab -->
         <div class="tab-content" id="tab-config">
-            <!-- Avatar 模型 -->
-            <div class="config-section">
-                <div class="config-section-title">🎨 虚拟形象</div>
-                <div style="margin-bottom:16px;">
-                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">选择预置模型</label>
-                    <div id="presetAvatarGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:10px;">
-                        <!-- Filled by JS -->
-                    </div>
-                </div>
-                <div style="margin-bottom:16px;">
-                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">上传自定义模型</label>
-                    <div style="margin-top:10px;display:flex;gap:12px;align-items:center;">
-                        <label for="avatarUploadInput" style="padding:10px 20px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);color:var(--text-secondary);cursor:pointer;font-size:0.85em;transition:all 0.15s;">📁 选择 .zip 文件</label>
-                        <input type="file" id="avatarUploadInput" accept=".zip" style="display:none;" onchange="AgentDetail.uploadAvatar(this)">
-                        <span id="avatarUploadStatus" style="color:var(--text-muted);font-size:0.8em;"></span>
-                    </div>
-                    <div style="margin-top:8px;font-size:0.75em;color:var(--text-muted);">支持 Live2D Cubism 模型 (.zip)，包含 .model3.json + .moc3 + 纹理文件，最大 20MB</div>
-                </div>
-                <div style="margin-top:12px;">
-                    <button onclick="AgentDetail.clearAvatar()" style="padding:8px 16px;border-radius:6px;background:rgba(184,134,138,0.1);color:#b8868a;border:1px solid rgba(184,134,138,0.2);cursor:pointer;font-size:0.82em;">移除虚拟形象</button>
-                    <span id="currentAvatarLabel" style="margin-left:12px;color:var(--text-muted);font-size:0.8em;"></span>
-                </div>
-            </div>
+            <div id="configSaveStatus" style="position:sticky;top:0;z-index:10;text-align:right;padding:8px 0;transition:opacity 0.3s;opacity:0;"></div>
 
-            <!-- 身份与角色 -->
+            <!-- ① 基础信息 -->
             <div class="config-section">
-                <div class="config-section-title">🎭 身份与角色</div>
+                <div class="config-section-title">📋 基础信息</div>
                 <div class="form-row" style="grid-template-columns: 2fr 1fr;">
                     <div class="form-group">
                         <label>名称</label>
@@ -1293,7 +1271,7 @@
                     </div>
                     <div class="form-group">
                         <label>类型</label>
-                        <select id="configType" onchange="document.getElementById('personaFields').style.display = this.value === 'character' ? 'block' : 'none'; document.getElementById('descLabel').textContent = this.value === 'character' ? '背景故事' : '描述'; document.getElementById('configDescription').placeholder = this.value === 'character' ? '用第一人称描述角色背景...' : '描述这个 Agent...'">
+                        <select id="configType">
                             <option value="human">Human（知识库）</option>
                             <option value="character">Character（角色）</option>
                         </select>
@@ -1303,10 +1281,27 @@
                     <label id="descLabel">描述</label>
                     <textarea id="configDescription" rows="3" placeholder="描述这个 Agent..."></textarea>
                 </div>
+                <div class="form-group">
+                    <label>头像 URL</label>
+                    <input type="text" id="configAvatarUrl" placeholder="https://... (留空使用默认)">
+                    <small>输入图片地址作为头像，留空使用默认 emoji</small>
+                </div>
+                <div class="form-group">
+                    <label>公开可见</label>
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9em;color:var(--text-secondary);">
+                            <input type="checkbox" id="configIsPublic" checked style="width:16px;height:16px;accent-color:#6da89b;">
+                            在平台市场中对其他用户可见
+                        </label>
+                    </div>
+                    <small>关闭后，此 Agent 仅自己可见，其他用户无法在市场中发现</small>
+                </div>
+            </div>
 
-                <!-- Character 展开字段 -->
-                <div id="personaFields" style="display:none;">
-                    <div style="height:1px;background:var(--border-subtle);margin:20px 0;"></div>
+            <!-- ② 角色设定 (character only) -->
+            <div id="personaFields" style="display:none;">
+                <div class="config-section">
+                    <div class="config-section-title">🎭 角色设定</div>
                     <div class="form-row" style="grid-template-columns: 1fr 1fr;">
                         <div class="form-group">
                             <label>头衔</label>
@@ -1353,47 +1348,11 @@
                         <div id="researchStatus" style="margin-top:10px;font-size:0.85em;display:none;"></div>
                     </div>
                 </div>
-
-                <!-- 高级选项（折叠） -->
-                <details style="margin-top:16px;">
-                    <summary style="color:var(--text-muted);font-size:0.82em;cursor:pointer;user-select:none;">⚙️ 高级选项</summary>
-                    <div style="padding-top:12px;">
-                        <div class="form-group">
-                            <label>公开可见</label>
-                            <div style="display:flex;align-items:center;gap:12px;">
-                                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9em;color:var(--text-secondary);">
-                                    <input type="checkbox" id="configIsPublic" checked style="width:16px;height:16px;accent-color:#6da89b;">
-                                    在平台市场中对其他用户可见
-                                </label>
-                            </div>
-                            <small>关闭后，此 Agent 仅自己可见，其他用户无法在市场中发现</small>
-                        </div>
-                        <div class="form-row" style="grid-template-columns: 1fr 1fr;">
-                            <div class="form-group">
-                                <label>Namespace</label>
-                                <input type="text" id="configNamespace" placeholder="default">
-                            </div>
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select id="configStatus">
-                                    <option value="active">Active</option>
-                                    <option value="inactive">Inactive</option>
-                                    <option value="maintenance">Maintenance</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Endpoint URL</label>
-                            <input type="url" id="configEndpoint" placeholder="http://localhost:8081">
-                            <small>内部服务地址，通常不需要修改</small>
-                        </div>
-                    </div>
-                </details>
             </div>
 
-            <!-- LLM Configuration -->
+            <!-- ③ AI 引擎 -->
             <div class="config-section">
-                <div class="config-section-title">🤖 LLM Configuration</div>
+                <div class="config-section-title">🤖 AI 引擎</div>
                 <div class="form-group">
                     <label>Provider</label>
                     <select id="configLlmProvider">
@@ -1421,9 +1380,9 @@
                 </div>
             </div>
 
-            <!-- 🧠 对话行为 -->
+            <!-- ④ 对话设定 -->
             <div class="config-section">
-                <div class="config-section-title">🧠 对话行为</div>
+                <div class="config-section-title">🧠 对话设定</div>
                 
                 <div class="form-group">
                     <label>认知画像 / 回答风格</label>
@@ -1474,57 +1433,85 @@
                         </label>
                     </div>
                 </div>
-                
-                <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
-                    <div class="form-group">
-                        <label>检索数量</label>
-                        <select id="configRetrievalTopK">
-                            <option value="3">3 条</option>
-                            <option value="5" selected>5 条</option>
-                            <option value="10">10 条</option>
-                            <option value="20">20 条</option>
-                        </select>
+
+                <details style="margin-top:8px;">
+                    <summary style="color:var(--text-muted);font-size:0.82em;cursor:pointer;user-select:none;">🔧 检索参数</summary>
+                    <div style="padding-top:12px;">
+                        <div class="form-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                            <div class="form-group">
+                                <label>检索数量</label>
+                                <select id="configRetrievalTopK">
+                                    <option value="3">3 条</option>
+                                    <option value="5" selected>5 条</option>
+                                    <option value="10">10 条</option>
+                                    <option value="20">20 条</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>最小相关度</label>
+                                <select id="configRetrievalMinScore">
+                                    <option value="0.3">0.3 (宽松)</option>
+                                    <option value="0.5" selected>0.5 (标准)</option>
+                                    <option value="0.7">0.7 (严格)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>最大回答长度</label>
+                                <select id="configMaxTokens">
+                                    <option value="500">500</option>
+                                    <option value="1000">1000</option>
+                                    <option value="2000" selected>2000</option>
+                                    <option value="4000">4000</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>上下文轮数</label>
+                            <select id="configContextRounds">
+                                <option value="5">5 轮</option>
+                                <option value="10" selected>10 轮</option>
+                                <option value="20">20 轮</option>
+                                <option value="50">50 轮</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label>最小相关度</label>
-                        <select id="configRetrievalMinScore">
-                            <option value="0.3">0.3 (宽松)</option>
-                            <option value="0.5" selected>0.5 (标准)</option>
-                            <option value="0.7">0.7 (严格)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>最大回答长度</label>
-                        <select id="configMaxTokens">
-                            <option value="500">500</option>
-                            <option value="1000">1000</option>
-                            <option value="2000" selected>2000</option>
-                            <option value="4000">4000</option>
-                        </select>
+                </details>
+            </div>
+
+            <!-- ⑤ 虚拟形象 -->
+            <div class="config-section">
+                <div class="config-section-title">🎨 虚拟形象</div>
+                <div style="margin-bottom:16px;">
+                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">选择预置模型</label>
+                    <div id="presetAvatarGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;margin-top:10px;">
+                        <!-- Filled by JS -->
                     </div>
                 </div>
-                
-                <div class="form-group">
-                    <label>上下文轮数</label>
-                    <select id="configContextRounds">
-                        <option value="5">5 轮</option>
-                        <option value="10" selected>10 轮</option>
-                        <option value="20">20 轮</option>
-                        <option value="50">50 轮</option>
-                    </select>
+                <div style="margin-bottom:16px;">
+                    <label style="color:var(--text-muted);font-size:0.82em;text-transform:uppercase;letter-spacing:0.04em;">上传自定义模型</label>
+                    <div style="margin-top:10px;display:flex;gap:12px;align-items:center;">
+                        <label for="avatarUploadInput" style="padding:10px 20px;border-radius:8px;background:rgba(255,255,255,0.04);border:1px dashed rgba(255,255,255,0.15);color:var(--text-secondary);cursor:pointer;font-size:0.85em;transition:all 0.15s;">📁 选择 .zip 文件</label>
+                        <input type="file" id="avatarUploadInput" accept=".zip" style="display:none;" onchange="AgentDetail.uploadAvatar(this)">
+                        <span id="avatarUploadStatus" style="color:var(--text-muted);font-size:0.8em;"></span>
+                    </div>
+                    <div style="margin-top:8px;font-size:0.75em;color:var(--text-muted);">支持 Live2D Cubism 模型 (.zip)，包含 .model3.json + .moc3 + 纹理文件，最大 20MB</div>
+                </div>
+                <div style="margin-top:12px;">
+                    <button onclick="AgentDetail.clearAvatar()" style="padding:8px 16px;border-radius:6px;background:rgba(184,134,138,0.1);color:#b8868a;border:1px solid rgba(184,134,138,0.2);cursor:pointer;font-size:0.82em;">移除虚拟形象</button>
+                    <span id="currentAvatarLabel" style="margin-left:12px;color:var(--text-muted);font-size:0.8em;"></span>
                 </div>
             </div>
 
-            <!-- IM Connection Config -->
+            <!-- ⑥ 通知与集成 -->
             <div class="config-section">
-                <div class="config-section-title">💬 Telegram 推送</div>
+                <div class="config-section-title">🔔 通知与集成</div>
                 <div class="form-group">
-                    <label>1. Bot Token</label>
+                    <label>Telegram Bot Token</label>
                     <input type="password" id="configTgToken" placeholder="从 @BotFather 获取">
                     <small>在 Telegram 搜索 <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent-primary,#6da89b);">@BotFather</a>，发送 /newbot 创建，获取 token</small>
                 </div>
                 <div class="form-group">
-                    <label>2. Chat ID</label>
+                    <label>Telegram Chat ID</label>
                     <div style="display:flex;gap:8px;align-items:center;">
                         <input type="text" id="configTgChatId" placeholder="点击右侧按钮自动获取" style="flex:1;" readonly>
                         <button class="btn btn-secondary btn-small" onclick="AgentDetail._detectTgChatId()" id="detectChatIdBtn" style="white-space:nowrap;">🔍 自动获取</button>
@@ -1537,14 +1524,39 @@
                 </div>
             </div>
 
-            <div class="config-actions">
-                <button class="btn btn-primary" id="saveConfigBtn" onclick="AgentDetail.saveConfig()">
-                    <span data-i18n="common.save">Save</span>
-                </button>
-                <button class="btn btn-secondary" onclick="AgentDetail.resetConfig()">
-                    <span data-i18n="common.cancel">Cancel</span>
-                </button>
-                <button class="btn btn-danger" id="deleteAgentBtn" onclick="AgentDetail.deleteAgent()" style="margin-left:auto;">
+            <!-- ⑦ 定时任务 — dynamically inserted by JS -->
+
+            <!-- ⚙️ 高级 -->
+            <div class="config-section">
+                <details>
+                    <summary class="config-section-title" style="cursor:pointer;user-select:none;border-bottom:none;padding-bottom:0;margin-bottom:0;">⚙️ 高级</summary>
+                    <div style="padding-top:var(--space-lg);">
+                        <div class="form-row" style="grid-template-columns: 1fr 1fr;">
+                            <div class="form-group">
+                                <label>Namespace</label>
+                                <input type="text" id="configNamespace" placeholder="default">
+                            </div>
+                            <div class="form-group">
+                                <label>Status</label>
+                                <select id="configStatus">
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="maintenance">Maintenance</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Endpoint URL</label>
+                            <input type="url" id="configEndpoint" placeholder="http://localhost:8081">
+                            <small>内部服务地址，通常不需要修改</small>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Bottom: Delete only -->
+            <div style="display:flex;justify-content:flex-end;padding:var(--space-lg) 0 60px;">
+                <button class="btn btn-danger" id="deleteAgentBtn" onclick="AgentDetail.deleteAgent()">
                     <span data-i18n="agent.delete_agent">Delete Agent</span>
                 </button>
             </div>
@@ -1582,3 +1594,4 @@
     </main>
 </body>
 </html>
+<!-- NEWVERSION_CHECK_20260327 -->

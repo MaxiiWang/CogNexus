@@ -112,7 +112,7 @@ const AgentDetail = (function() {
         // LLM provider toggle
         const llmSel = document.getElementById('configLlmProvider');
         if (llmSel) llmSel.addEventListener('change', toggleLlmEndpoint);
-        // configType already has inline onchange in HTML
+        // configType change handled in _bindAutoSave()
     }
 
     let chatInitialized = false;
@@ -136,12 +136,20 @@ const AgentDetail = (function() {
                 if (tab.dataset.tab === 'config') {
                     const ct = document.getElementById('tab-config');
                     if (ct && !document.getElementById('taskConfigContainer')) {
+                        // Insert task config section before the advanced details section
+                        const deleteDiv = ct.querySelector('[style*="justify-content:flex-end"]');
+                        const advancedSection = deleteDiv ? deleteDiv.previousElementSibling : null;
                         const sec = document.createElement('div');
                         sec.className = 'config-section task-config-section';
                         sec.innerHTML = '<div class="config-section-title">⏰ 定时任务</div><div id="taskConfigContainer"><div class="empty" style="font-size:0.82em;color:var(--text-muted);">加载中...</div></div>';
-                        ct.appendChild(sec);
+                        if (advancedSection) {
+                            ct.insertBefore(sec, advancedSection);
+                        } else {
+                            ct.appendChild(sec);
+                        }
                     }
                     loadTaskConfig();
+                    _bindAutoSave();
                 }
             });
         });
@@ -1038,6 +1046,87 @@ const AgentDetail = (function() {
     // ===== Config =====
     let personaData = null; // cached profile data
 
+    // ===== Auto-save infrastructure =====
+    let _saveTimer = null;
+    let _saving = false;
+    let _autoSaveBound = false;
+
+    function _markDirty() {
+        _updateSaveStatus('dirty');
+        clearTimeout(_saveTimer);
+        _saveTimer = setTimeout(_autoSave, 1500);
+    }
+
+    async function _autoSave() {
+        if (_saving) return;
+        _saving = true;
+        _updateSaveStatus('saving');
+        try {
+            await _doSave();
+            _updateSaveStatus('saved');
+        } catch(e) {
+            _updateSaveStatus('error');
+        } finally {
+            _saving = false;
+        }
+    }
+
+    function _updateSaveStatus(status) {
+        const el = document.getElementById('configSaveStatus');
+        if (!el) return;
+        switch(status) {
+            case 'dirty': el.innerHTML = '<span style="color:var(--text-muted);font-size:0.78em;">● 未保存</span>'; el.style.opacity = '1'; break;
+            case 'saving': el.innerHTML = '<span style="color:#e2b96a;font-size:0.78em;">⏳ 保存中...</span>'; el.style.opacity = '1'; break;
+            case 'saved': el.innerHTML = '<span style="color:#6da89b;font-size:0.78em;">✓ 已保存</span>'; el.style.opacity = '1'; setTimeout(() => { if(el.textContent.includes('已保存')) el.style.opacity = '0'; }, 2000); break;
+            case 'error': el.innerHTML = '<span style="color:#b8868a;font-size:0.78em;">✗ 保存失败</span>'; el.style.opacity = '1'; break;
+        }
+    }
+
+    function _togglePersonaFields() {
+        const typeVal = document.getElementById('configType').value;
+        const isChar = typeVal === 'character';
+        document.getElementById('personaFields').style.display = isChar ? 'block' : 'none';
+        document.getElementById('descLabel').textContent = isChar ? '背景故事' : '描述';
+        document.getElementById('configDescription').placeholder = isChar ? '用第一人称描述角色背景...' : '描述这个 Agent...';
+    }
+
+    function _bindAutoSave() {
+        if (_autoSaveBound) return;
+        _autoSaveBound = true;
+
+        const configTab = document.getElementById('tab-config');
+        if (!configTab) return;
+
+        // Text inputs & textareas
+        configTab.querySelectorAll('input[type="text"], input[type="url"], textarea').forEach(el => {
+            el.addEventListener('input', _markDirty);
+        });
+
+        // Password fields — blur instead of input
+        configTab.querySelectorAll('input[type="password"]').forEach(el => {
+            el.addEventListener('blur', _markDirty);
+        });
+
+        // Selects
+        configTab.querySelectorAll('select').forEach(el => {
+            el.addEventListener('change', _markDirty);
+        });
+
+        // Checkboxes
+        configTab.querySelectorAll('input[type="checkbox"]').forEach(el => {
+            el.addEventListener('change', _markDirty);
+        });
+
+        // configType change: toggle persona fields + mark dirty
+        const configTypeEl = document.getElementById('configType');
+        if (configTypeEl) {
+            configTypeEl.addEventListener('change', () => {
+                _togglePersonaFields();
+                _markDirty();
+            });
+        }
+    }
+
     function fillConfig() {
         const a = agentData;
         document.getElementById('configName').value = a.name || '';
@@ -1052,6 +1141,9 @@ const AgentDetail = (function() {
         document.getElementById('configEndpoint').value = a.endpoint_url || '';
         document.getElementById('configDescription').value = a.description || '';
         document.getElementById('configIsPublic').checked = a.is_public !== 0;
+        // Avatar URL
+        const avatarUrlEl = document.getElementById('configAvatarUrl');
+        if (avatarUrlEl) avatarUrlEl.value = a.avatar_url || '';
         // LLM config
         const llm = typeof a.llm_config === 'string' ? JSON.parse(a.llm_config || '{}') : (a.llm_config || {});
         document.getElementById('configLlmProvider').value = llm.provider || '';
@@ -1122,7 +1214,7 @@ const AgentDetail = (function() {
         document.getElementById('configLlmEndpointGroup').style.display = provider === 'custom' ? 'block' : 'none';
     }
 
-    async function saveConfig() {
+    async function _doSave() {
         if (!agentData) return;
         // Build LLM config
         const llmConfig = {
@@ -1145,29 +1237,37 @@ const AgentDetail = (function() {
             max_tokens: parseInt(document.getElementById('configMaxTokens').value) || 2000,
             context_rounds: parseInt(document.getElementById('configContextRounds').value) || 10,
         };
+        // Build payload including avatar_url
+        const payload = {
+            name: document.getElementById('configName').value,
+            namespace: document.getElementById('configNamespace').value,
+            status: document.getElementById('configStatus').value,
+            agent_type: document.getElementById('configType').value,
+            endpoint_url: document.getElementById('configEndpoint').value,
+            description: document.getElementById('configDescription').value,
+            is_public: document.getElementById('configIsPublic').checked ? 1 : 0,
+            llm_config: JSON.stringify(llmConfig),
+            im_config: JSON.stringify({ telegram: { bot_token: document.getElementById('configTgToken').value, chat_id: document.getElementById('configTgChatId').value } }),
+            chat_config: JSON.stringify(chatConfig)
+        };
+        const avatarUrlEl = document.getElementById('configAvatarUrl');
+        if (avatarUrlEl) payload.avatar_url = avatarUrlEl.value.trim();
+
+        const r = await fetch('/api/agents/' + agentId, {
+            method: 'PUT', headers: jsonHdrs(),
+            body: JSON.stringify(payload)
+        });
+        if (!r.ok) throw new Error();
+        agentData = await r.json();
+        renderHeader(); renderOverview();
+
+        // Save persona profile if character type
+        await savePersona();
+    }
+
+    async function saveConfig() {
         try {
-            const r = await fetch('/api/agents/' + agentId, {
-                method: 'PUT', headers: jsonHdrs(),
-                body: JSON.stringify({
-                    name: document.getElementById('configName').value,
-                    namespace: document.getElementById('configNamespace').value,
-                    status: document.getElementById('configStatus').value,
-                    agent_type: document.getElementById('configType').value,
-                    endpoint_url: document.getElementById('configEndpoint').value,
-                    description: document.getElementById('configDescription').value,
-                    is_public: document.getElementById('configIsPublic').checked ? 1 : 0,
-                    llm_config: JSON.stringify(llmConfig),
-                    im_config: JSON.stringify({ telegram: { bot_token: document.getElementById('configTgToken').value, chat_id: document.getElementById('configTgChatId').value } }),
-                    chat_config: JSON.stringify(chatConfig)
-                })
-            });
-            if (!r.ok) throw new Error();
-            agentData = await r.json();
-            renderHeader(); renderOverview();
-
-            // Save persona profile if character type
-            await savePersona();
-
+            await _doSave();
             toast('配置已保存');
         } catch { toast('保存失败', 'error'); }
     }
@@ -3009,5 +3109,5 @@ const AgentDetail = (function() {
     // Load insight badge on init
     setTimeout(() => _updateInsightBadge(), 500);
 
-    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect, loadInsights, filterInsights, loadMoreInsights, loadTaskConfig, _onTaskToggle, _onTaskFreqChange, _onTaskScheduleChange, _runTaskNow, _testRunTask, _detectTgChatId, _testTgPush };
+    return { saveConfig, resetConfig, deleteAgent, sendChat, goView, openEditModal, closeEditModal, saveProfile, addTokens, startResearch, showDetail, closeDetail, editFact, saveFactEdit, cancelEdit, deleteFact, togglePrivacy, createNewSession, deleteCurrentSession, switchSession, selectPreset, uploadAvatar, clearAvatar, togglePublish, closeModal, confirmModal, toggleMobileAvatar, openImportModal, closeImportModal, _handleImportFile, _handleImportZip, _deleteImport, _openNotionPanel, _notionConnect, _notionGoBack, _notionUpdateCount, _notionImportSelected, _notionDisconnect, loadInsights, filterInsights, loadMoreInsights, loadTaskConfig, _onTaskToggle, _onTaskFreqChange, _onTaskScheduleChange, _runTaskNow, _testRunTask, _detectTgChatId, _testTgPush, _markDirty };
 })();
