@@ -798,9 +798,10 @@
             min-width: 180px;
             flex-shrink: 0;
             align-self: flex-start;
-            position: sticky;
-            top: 160px; /* below sticky header(56) + agent-header(~60) + tabs(~44) */
-            z-index: 1; /* below header z-index:100 */
+        }
+        .config-nav.is-fixed {
+            position: fixed;
+            z-index: 50;
         }
         .config-nav-inner {
             display: flex;

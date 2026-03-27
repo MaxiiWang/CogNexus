@@ -1094,6 +1094,8 @@ const AgentDetail = (function() {
 
     // ===== Config Nav scroll-spy =====
     let _configNavInitialized = false;
+    let _configNavScrollHandler = null;
+
     function _initConfigNav() {
         if (_configNavInitialized) return;
         _configNavInitialized = true;
@@ -1112,28 +1114,80 @@ const AgentDetail = (function() {
                 const target = document.getElementById(id);
                 if (!target) return;
                 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                // Update active immediately
                 nav.querySelectorAll('.config-nav-item').forEach(l => l.classList.remove('active'));
                 link.classList.add('active');
             });
         });
 
-        // Scroll spy — IntersectionObserver
-        const sections = document.querySelectorAll('#tab-config .config-section[id^="cfg-"]');
-        if (sections.length && 'IntersectionObserver' in window) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const id = entry.target.id;
-                        nav.querySelectorAll('.config-nav-item').forEach(l => {
-                            l.classList.toggle('active', l.getAttribute('href') === '#' + id);
-                        });
-                    }
-                });
-            }, { rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+        // Fixed positioning on scroll (sticky won't work due to ancestor overflow:hidden)
+        const placeholder = document.createElement('div');
+        placeholder.style.cssText = 'width:180px;min-width:180px;flex-shrink:0;display:none;';
+        nav.parentNode.insertBefore(placeholder, nav);
 
-            sections.forEach(s => observer.observe(s));
+        let navOriginalTop = 0;
+        function measureNavTop() {
+            // Temporarily reset to get true document position
+            if (nav.classList.contains('is-fixed')) {
+                nav.classList.remove('is-fixed');
+                placeholder.style.display = 'none';
+                nav.style.top = ''; nav.style.left = '';
+            }
+            navOriginalTop = nav.getBoundingClientRect().top + window.scrollY;
         }
+        measureNavTop();
+
+        function onScroll() {
+            const configTab = document.getElementById('tab-config');
+            if (!configTab || !configTab.classList.contains('active')) return;
+
+            // Recalculate if navOriginalTop is 0 (layout shift)
+            if (navOriginalTop === 0) measureNavTop();
+
+            const headerH = 72; // global header height + gap
+            const scrollY = window.scrollY;
+            const triggerPoint = navOriginalTop - headerH;
+
+            // Get config content bounds to stop nav at bottom
+            const content = configTab.querySelector('.config-content');
+            const contentBottom = content ? content.getBoundingClientRect().bottom + scrollY : Infinity;
+            const navH = nav.offsetHeight;
+
+            if (scrollY > triggerPoint && scrollY + headerH + navH < contentBottom) {
+                if (!nav.classList.contains('is-fixed')) {
+                    const rect = nav.getBoundingClientRect();
+                    nav.style.left = rect.left + 'px';
+                    nav.style.top = headerH + 'px';
+                    nav.style.width = '180px';
+                    nav.classList.add('is-fixed');
+                    placeholder.style.display = 'block';
+                }
+            } else {
+                if (nav.classList.contains('is-fixed')) {
+                    nav.classList.remove('is-fixed');
+                    nav.style.top = ''; nav.style.left = ''; nav.style.width = '';
+                    placeholder.style.display = 'none';
+                }
+            }
+
+            // Scroll spy — highlight active section
+            const sections = configTab.querySelectorAll('.config-section[id^="cfg-"]');
+            let activeId = null;
+            sections.forEach(s => {
+                const rect = s.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.4) activeId = s.id;
+            });
+            if (activeId) {
+                nav.querySelectorAll('.config-nav-item').forEach(l => {
+                    l.classList.toggle('active', l.getAttribute('href') === '#' + activeId);
+                });
+            }
+        }
+
+        _configNavScrollHandler = onScroll;
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', () => { measureNavTop(); onScroll(); });
+        // Initial run
+        requestAnimationFrame(onScroll);
     }
 
     function _syncPersonaNav() {
