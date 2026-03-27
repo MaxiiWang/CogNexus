@@ -794,10 +794,12 @@
         }
         .config-nav {
             position: sticky;
-            top: 20px;
+            top: 120px;
             width: 180px;
             min-width: 180px;
             flex-shrink: 0;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
         }
         .config-nav-inner {
             display: flex;
