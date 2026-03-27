@@ -206,9 +206,11 @@ const AgentDetail = (function() {
         document.getElementById('agentNamespace').textContent = a.namespace || 'default';
     }
 
+    let _statsByType = null; // cached by_type data for About section
+
     function renderOverview() {
         const a = agentData;
-        // Profile
+        // Avatar (120px)
         const avatarEl = document.getElementById('ovAvatar');
         if (a.avatar_url) {
             avatarEl.innerHTML = '<img src="' + esc(a.avatar_url) + '" alt="">';
@@ -216,10 +218,21 @@ const AgentDetail = (function() {
             avatarEl.textContent = a.agent_type === 'character' ? '🎭' : '🧠';
         }
         document.getElementById('ovName').textContent = a.name || a.agent_id;
-        document.getElementById('ovDesc').textContent = a.description || '';
+        const descEl = document.getElementById('ovDesc');
+        if (a.description) {
+            descEl.innerHTML = renderMarkdown(a.description);
+            descEl.classList.add('md-content');
+        } else {
+            descEl.textContent = '';
+        }
 
         // Show edit button if owner
         checkOwnership();
+
+        // Load dynamic sections
+        _loadOverviewAbout();
+        _loadOverviewKnowledge();
+        _loadOverviewActivity();
     }
 
     function checkOwnership() {
@@ -232,12 +245,9 @@ const AgentDetail = (function() {
             if (agentData.owner_id && agentData.owner_id === userId) {
                 isOwner = true;
                 document.getElementById('ovEditBtn').style.display = '';
-                document.getElementById('ovTokenMgmt').style.display = '';
-                loadTokens();
             }
         } catch {}
 
-        // 所有者：显示所有 owner-only 元素
         if (isOwner) {
             document.querySelectorAll('.owner-only').forEach(el => {
                 el.style.display = '';
@@ -250,10 +260,121 @@ const AgentDetail = (function() {
             const r = await fetch('/api/knowledge/' + getNs() + '/stats', { headers: hdrs() });
             if (!r.ok) return;
             const s = await r.json();
-            document.getElementById('statFacts').textContent = s.total_facts ?? s.graph_nodes ?? '—';
-            document.getElementById('statEdges').textContent = s.graph_edges ?? '—';
-            document.getElementById('statAbstracts').textContent = s.abstracts ?? '—';
+            const bf = document.getElementById('ovBadgeFacts');
+            const be = document.getElementById('ovBadgeEdges');
+            const ba = document.getElementById('ovBadgeAbstracts');
+            if (bf) bf.textContent = s.total_facts ?? s.graph_nodes ?? '—';
+            if (be) be.textContent = s.graph_edges ?? '—';
+            if (ba) ba.textContent = s.abstracts ?? '—';
+            _statsByType = s.by_type || {};
+            // Render type distribution if About section is ready
+            _renderTypeDistribution();
         } catch {}
+    }
+
+    // ===== Overview Dynamic Sections =====
+
+    function _renderTypeDistribution() {
+        const container = document.getElementById('ovTypeBar');
+        if (!container || !_statsByType || !Object.keys(_statsByType).length) return;
+        const typeColors = {'观点':'#6da89b','事件':'#d4a574','资讯':'#7eb8d4','决策':'#b8868a','情绪':'#c4956a'};
+        const total = Object.values(_statsByType).reduce((a,b) => a+b, 0);
+        if (!total) return;
+        let barHtml = '<div style="display:flex;border-radius:6px;overflow:hidden;height:24px;margin-bottom:10px;">';
+        let legendHtml = '<div style="display:flex;gap:14px;flex-wrap:wrap;">';
+        for (const [type, count] of Object.entries(_statsByType)) {
+            const pct = (count / total * 100).toFixed(1);
+            const color = typeColors[type] || '#6da89b';
+            barHtml += '<div style="width:' + pct + '%;background:' + color + ';min-width:2px;" title="' + esc(type) + ' ' + count + '条 (' + pct + '%)"></div>';
+            legendHtml += '<div style="display:flex;align-items:center;gap:4px;"><div style="width:8px;height:8px;border-radius:50%;background:' + color + ';"></div><span style="font-size:0.78em;color:var(--text-muted);">' + esc(type) + ' ' + count + '</span></div>';
+        }
+        barHtml += '</div>';
+        legendHtml += '</div>';
+        container.innerHTML = barHtml + legendHtml;
+    }
+
+    async function _loadOverviewAbout() {
+        const el = document.getElementById('ovAbout');
+        if (!el || !agentData) return;
+
+        if (agentData.agent_type === 'character') {
+            try {
+                const r = await fetch('/api/knowledge/' + getNs() + '/profile', { headers: hdrs() });
+                if (!r.ok) return;
+                const d = await r.json();
+                const p = d.persona || {};
+                const id = d.identity || {};
+                let html = '';
+                if (id.title) html += '<div style="font-size:0.88em;color:var(--text-secondary);margin-bottom:8px;">🏷️ ' + esc(id.title) + (p.era ? ' · ' + esc(p.era) : '') + '</div>';
+                if (p.traits && p.traits.length) {
+                    html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">';
+                    p.traits.forEach(function(t) { html += '<span style="padding:3px 10px;border-radius:12px;background:rgba(109,168,155,0.1);color:#6da89b;font-size:0.78em;">' + esc(t) + '</span>'; });
+                    html += '</div>';
+                }
+                if (p.speaking_style) html += '<div style="border-left:3px solid rgba(212,160,84,0.3);padding:8px 14px;color:var(--text-muted);font-size:0.85em;font-style:italic;line-height:1.6;background:rgba(212,160,84,0.03);border-radius:0 6px 6px 0;">「' + esc(p.speaking_style.slice(0, 150)) + '」</div>';
+                if (html) el.innerHTML = '<div class="ov-section-label">关于</div>' + html;
+            } catch(e) {}
+        } else {
+            // Human type — show type distribution
+            el.innerHTML = '<div class="ov-section-label">知识领域</div><div id="ovTypeBar"></div>';
+            _renderTypeDistribution();
+        }
+    }
+
+    async function _loadOverviewKnowledge() {
+        const el = document.getElementById('ovKnowledge');
+        if (!el) return;
+        try {
+            const r = await fetch('/api/knowledge/' + getNs() + '/tree', { headers: hdrs() });
+            if (!r.ok) return;
+            const d = await r.json();
+            const abstracts = (d.abstracts || []).slice(0, 5);
+            if (!abstracts.length) {
+                el.innerHTML = '<div class="ov-section-label">知识概览</div><div style="color:var(--text-muted);font-size:0.85em;padding:12px 0;">暂无抽象规律</div>';
+                return;
+            }
+            let html = '<div class="ov-section-label">知识概览</div><div style="display:flex;flex-direction:column;gap:10px;">';
+            abstracts.forEach(function(a) {
+                const desc = (a.description || '').slice(0, 100);
+                html += '<div style="padding:14px 18px;background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;">' +
+                    '<div style="font-weight:600;font-size:0.9em;color:var(--accent-text);margin-bottom:4px;">📐 ' + esc(a.name) + '</div>' +
+                    (desc ? '<div style="font-size:0.82em;color:var(--text-muted);line-height:1.5;">' + esc(desc) + (a.description && a.description.length > 100 ? '...' : '') + '</div>' : '') +
+                    '<div style="font-size:0.72em;color:var(--text-muted);margin-top:4px;">' + (a.source_count || 0) + ' 条知识来源</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+            html += '<div style="margin-top:12px;"><a href="javascript:void(0)" onclick="document.querySelector(\'.detail-tab[data-tab=knowledge]\').click()" style="color:var(--accent-primary);font-size:0.82em;text-decoration:none;">探索完整知识库 →</a></div>';
+            el.innerHTML = html;
+        } catch(e) {}
+    }
+
+    async function _loadOverviewActivity() {
+        const el = document.getElementById('ovActivity');
+        if (!el) return;
+        try {
+            const r = await fetch('/api/agents/' + agentId + '/insights?limit=3', { headers: hdrs() });
+            if (!r.ok) return;
+            const d = await r.json();
+            const insights = d.insights || [];
+            if (!insights.length) {
+                el.innerHTML = '<div class="ov-section-label">最近动态</div><div style="color:var(--text-muted);font-size:0.85em;padding:12px 0;">暂无动态</div>';
+                return;
+            }
+            let html = '<div class="ov-section-label">最近动态</div><div style="display:flex;flex-direction:column;gap:10px;">';
+            insights.forEach(function(ins) {
+                const ago = _timeAgo(ins.created_at);
+                html += '<div style="padding:12px 16px;background:var(--bg-secondary);border:1px solid var(--border-subtle);border-radius:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">' +
+                    '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-weight:600;font-size:0.88em;color:var(--text-primary);margin-bottom:3px;">' + esc(ins.title || '') + '</div>' +
+                    '<div style="font-size:0.78em;color:var(--text-muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc((ins.summary || '').slice(0, 80)) + '</div>' +
+                    '</div>' +
+                    '<div style="font-size:0.72em;color:var(--text-muted);white-space:nowrap;">' + ago + '</div>' +
+                    '</div>';
+            });
+            html += '</div>';
+            html += '<div style="margin-top:12px;"><a href="javascript:void(0)" onclick="document.querySelector(\'.detail-tab[data-tab=insights]\').click()" style="color:var(--accent-primary);font-size:0.82em;text-decoration:none;">查看全部 →</a></div>';
+            el.innerHTML = html;
+        } catch(e) {}
     }
 
     // ===== View Card Navigation =====

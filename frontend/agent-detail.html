@@ -98,25 +98,25 @@
             padding-bottom: 60px;
         }
 
-        /* ===== Overview Tab — brain-visual style ===== */
+        /* ===== Overview Tab — Redesigned ===== */
 
-        /* Profile Section */
-        .ov-profile {
+        /* Hero Section */
+        .ov-hero {
             display: flex;
             align-items: flex-start;
-            gap: 24px;
-            margin-bottom: 32px;
+            gap: 28px;
+            margin-bottom: 16px;
         }
         .ov-profile-avatar {
-            width: 80px;
-            height: 80px;
+            width: 120px;
+            height: 120px;
             border-radius: 50%;
-            background: var(--accent-muted);
-            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            border: 2px solid rgba(255,255,255,0.08);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.2em;
+            font-size: 3.2em;
             flex-shrink: 0;
             overflow: hidden;
         }
@@ -125,59 +125,232 @@
             height: 100%;
             object-fit: cover;
         }
-        .ov-profile-info { flex: 1; }
+        .ov-hero-body { flex: 1; }
         .ov-profile-name {
             font-family: 'Playfair Display', Georgia, serif;
-            font-size: 1.8em;
+            font-size: 2em;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 6px;
+            margin-bottom: 8px;
         }
         .ov-profile-desc {
-            font-size: 0.9em;
+            font-size: 0.92em;
             color: var(--text-secondary);
-            line-height: 1.6;
-            margin-bottom: 12px;
+            line-height: 1.7;
+            margin-bottom: 14px;
         }
-        .ov-features-list {
-            display: flex;
-            gap: 12px;
+        .ov-stat-badges {
+            display: inline-flex;
+            gap: 10px;
             flex-wrap: wrap;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
-        .ov-feature-item {
+        .ov-stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            font-size: 0.78em;
+            color: var(--text-muted);
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .ov-stat-pill .ov-pill-val {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+        .ov-hero-actions {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: var(--accent-muted);
-            border: 1px solid rgba(212,160,84,0.1);
-            border-radius: 6px;
-            transition: all 0.25s;
+            gap: 12px;
         }
-        .ov-feature-item:hover {
-            border-color: rgba(212,160,84,0.25);
+        .ov-cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 22px;
+            background: rgba(109,168,155,0.15);
+            border: 1px solid rgba(109,168,155,0.3);
+            border-radius: 10px;
+            color: #6da89b;
+            font-size: 0.88em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+        }
+        .ov-cta-btn:hover {
+            background: rgba(109,168,155,0.25);
             transform: translateY(-1px);
-        }
-        .ov-feature-icon { font-size: 1em; }
-        .ov-feature-text {
-            color: var(--text-secondary);
-            font-size: 0.85em;
-            font-weight: 500;
+            box-shadow: 0 4px 16px rgba(109,168,155,0.15);
         }
         .ov-edit-btn {
             background: transparent;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.08);
             color: var(--text-muted);
             padding: 6px 12px;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 0.78em;
             cursor: pointer;
             transition: all 0.2s;
         }
         .ov-edit-btn:hover {
-            border-color: var(--accent-primary);
-            color: var(--accent-text);
+            border-color: rgba(255,255,255,0.15);
+            color: var(--text-secondary);
+        }
+
+        /* About Section */
+        .ov-about {
+            margin-bottom: 8px;
+        }
+        .ov-about-persona-title {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .ov-about-era {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        .ov-trait-tags {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .ov-trait-tag {
+            padding: 3px 10px;
+            background: rgba(226,185,106,0.08);
+            border: 1px solid rgba(226,185,106,0.15);
+            border-radius: 14px;
+            font-size: 0.78em;
+            color: rgba(226,185,106,0.8);
+        }
+        .ov-speaking-style {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            font-style: italic;
+            border-left: 2px solid rgba(226,185,106,0.3);
+            padding-left: 12px;
+            margin-top: 10px;
+            line-height: 1.6;
+        }
+        .ov-type-dist {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .ov-type-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.82em;
+            color: var(--text-secondary);
+        }
+        .ov-type-bar-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .ov-type-bar-pct {
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        /* Knowledge Overview Section */
+        .ov-abstracts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .ov-abstract-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 14px 18px;
+            transition: all 0.2s;
+        }
+        .ov-abstract-card:hover {
+            border-color: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+        }
+        .ov-abstract-name {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-size: 0.92em;
+            font-weight: 700;
+            color: rgba(226,185,106,0.9);
+            margin-bottom: 4px;
+        }
+        .ov-abstract-desc {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Recent Activity Section */
+        .ov-activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .ov-activity-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 14px 18px;
+            transition: all 0.2s;
+        }
+        .ov-activity-card:hover {
+            border-color: rgba(255,255,255,0.1);
+        }
+        .ov-activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+        .ov-activity-title {
+            font-size: 0.88em;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .ov-activity-time {
+            font-size: 0.72em;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+        .ov-activity-summary {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Shared */
+        .ov-section-link {
+            font-size: 0.82em;
+            color: rgba(109,168,155,0.8);
+            cursor: pointer;
+            transition: color 0.15s;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+        }
+        .ov-section-link:hover {
+            color: #6da89b;
+        }
+        .ov-empty-hint {
+            font-size: 0.82em;
+            color: var(--text-muted);
+            opacity: 0.6;
+            padding: 16px 0;
         }
 
         /* Divider */
@@ -197,128 +370,9 @@
             margin-bottom: 16px;
         }
 
-        /* Stats Grid */
-        .ov-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 14px;
-            margin-bottom: 40px;
-        }
-        .ov-stat-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-        .ov-stat-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, var(--accent-primary), transparent);
-            opacity: 0.3;
-        }
-        .ov-stat-card h4 {
-            color: var(--text-muted);
-            font-size: 0.72em;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            margin-bottom: 8px;
-            font-weight: 600;
-        }
-        .ov-stat-value {
-            font-family: 'Playfair Display', Georgia, serif;
-            font-size: 2em;
-            font-weight: 700;
-            color: var(--accent-text);
-        }
+        /* (removed: stats grid, view cards, chat card — replaced by new overview design) */
 
-        /* View Cards — asymmetric grid */
-        .ov-view-cards {
-            display: grid;
-            grid-template-columns: 1.2fr 1fr 1fr;
-            gap: 14px;
-            margin-bottom: 40px;
-        }
-        .ov-view-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 24px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            overflow: hidden;
-        }
-        .ov-view-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(135deg, rgba(212,160,84,0.04) 0%, transparent 50%);
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .ov-view-card:hover::before { opacity: 1; }
-        .ov-view-card:hover {
-            border-color: rgba(255,255,255,0.1);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-        }
-        .ov-card-icon {
-            font-size: 1.6em;
-            margin-bottom: 14px;
-        }
-        .ov-view-card h3 {
-            font-family: 'Playfair Display', Georgia, serif;
-            color: var(--text-primary);
-            font-size: 1.05em;
-            font-weight: 700;
-            margin-bottom: 6px;
-        }
-        .ov-view-card p {
-            color: var(--text-muted);
-            font-size: 0.82em;
-            line-height: 1.5;
-            flex: 1;
-        }
-
-        /* Chat card — full width */
-        .ov-chat-card {
-            grid-column: span 3;
-            flex-direction: row;
-            align-items: center;
-            gap: 20px;
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(124,153,184,0.04) 100%);
-            border-color: rgba(124,153,184,0.12);
-        }
-        .ov-chat-card:hover {
-            border-color: rgba(124,153,184,0.3);
-        }
-        .ov-chat-card .ov-card-icon { margin-bottom: 0; }
-        .ov-chat-card .ov-card-text { flex: 1; }
-        .ov-chat-card h3 { color: #7c99b8; }
-
-        /* Token Management */
-        .ov-token-create-form {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 16px;
-        }
-        .ov-form-row {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 14px;
-            flex-wrap: wrap;
-        }
+        /* Form group styles (used by edit modal + config) */
         .ov-form-group {
             flex: 1;
             min-width: 140px;
@@ -363,74 +417,6 @@
         .ov-form-group textarea:focus {
             outline: none;
             border-color: var(--accent-primary);
-        }
-        .ov-create-btn {
-            background: var(--accent-primary);
-            color: var(--bg-primary);
-            border: none;
-            padding: 8px 22px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 0.85em;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .ov-create-btn:hover {
-            background: var(--accent-secondary);
-            transform: translateY(-1px);
-        }
-        .ov-token-list {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .ov-token-item {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-        }
-        .ov-token-item.full { border-left: 2px solid #6da89b; }
-        .ov-token-item.qa_public { border-left: 2px solid #7c99b8; }
-        .ov-token-item.browse_public { border-left: 2px solid #9d8bb8; }
-        .ov-token-info { flex: 1; }
-        .ov-token-info .ov-token-id {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-text);
-            font-size: 0.85em;
-        }
-        .ov-token-info .ov-token-meta {
-            font-size: 0.78em;
-            color: var(--text-muted);
-            margin-top: 3px;
-        }
-        .ov-token-info .ov-token-note {
-            font-size: 0.82em;
-            color: var(--text-secondary);
-            margin-top: 3px;
-        }
-        .ov-token-actions { display: flex; gap: 6px; }
-        .ov-token-actions button {
-            padding: 5px 10px;
-            border-radius: 4px;
-            border: 1px solid var(--border-subtle);
-            background: transparent;
-            color: var(--text-secondary);
-            cursor: pointer;
-            font-size: 0.78em;
-            transition: all 0.2s;
-        }
-        .ov-token-actions button:hover {
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-        }
-        .ov-token-actions .ov-revoke-btn:hover {
-            background: rgba(184,134,138,0.12);
-            border-color: rgba(184,134,138,0.3);
-            color: #b8868a;
         }
 
         /* Edit Profile Modal */
@@ -936,32 +922,20 @@
                 flex-shrink: 0;
             }
 
-            .ov-profile {
+            .ov-hero {
                 flex-direction: column;
                 align-items: center;
                 text-align: center;
             }
-
-            .ov-view-cards {
-                grid-template-columns: 1fr 1fr !important;
+            .ov-hero-actions {
+                justify-content: center;
             }
-
-            .ov-stat-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
+            .ov-stat-badges {
+                justify-content: center;
             }
-
-            .ov-stats-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .ov-type-dist {
+                justify-content: center;
             }
-
-            .ov-chat-card {
-                grid-column: span 1;
-                flex-direction: column;
-            }
-
-            .ov-chat-card .ov-card-text { width: 100%; }
-
-            .ov-features-list { justify-content: center; }
 
             .ov-form-row { flex-direction: column; }
 
@@ -994,9 +968,6 @@
         }
 
         @media (max-width: 480px) {
-            .ov-view-cards {
-                grid-template-columns: 1fr !important;
-            }
             #presetAvatarGrid {
                 grid-template-columns: repeat(2, 1fr) !important;
             }
@@ -1117,107 +1088,48 @@
 
         <!-- Overview Tab -->
         <div class="tab-content active" id="tab-overview">
-            <!-- a) Profile Section -->
-            <div class="ov-profile animate-in">
+            <!-- ① Hero Section -->
+            <div class="ov-hero animate-in">
                 <div class="ov-profile-avatar" id="ovAvatar">🧠</div>
-                <div class="ov-profile-info">
+                <div class="ov-hero-body">
                     <div class="ov-profile-name" id="ovName">Loading...</div>
                     <div class="ov-profile-desc" id="ovDesc"></div>
-                    <div class="ov-features-list">
-                        <div class="ov-feature-item"><span class="ov-feature-icon">📝</span><span class="ov-feature-text">事实层</span></div>
-                        <div class="ov-feature-item"><span class="ov-feature-icon">🕸️</span><span class="ov-feature-text">关联层</span></div>
-                        <div class="ov-feature-item"><span class="ov-feature-icon">📐</span><span class="ov-feature-text">抽象层</span></div>
+                    <div class="ov-stat-badges">
+                        <span class="ov-stat-pill">🧠 <span class="ov-pill-val" id="ovBadgeFacts">—</span> 知识</span>
+                        <span class="ov-stat-pill">🕸️ <span class="ov-pill-val" id="ovBadgeEdges">—</span> 关联</span>
+                        <span class="ov-stat-pill">📐 <span class="ov-pill-val" id="ovBadgeAbstracts">—</span> 规律</span>
                     </div>
-                    <button class="ov-edit-btn" id="ovEditBtn" style="display:none" onclick="AgentDetail.openEditModal()">✏️ 编辑资料</button>
+                    <div class="ov-hero-actions">
+                        <button class="ov-cta-btn" id="ovCtaChat" onclick="document.querySelector('.detail-tab[data-tab=&quot;chat&quot;]').click()">💬 开始对话</button>
+                        <button class="ov-edit-btn" id="ovEditBtn" style="display:none" onclick="AgentDetail.openEditModal()">✏️ 编辑资料</button>
+                    </div>
                 </div>
             </div>
 
             <div class="ov-divider"></div>
 
-            <!-- b) Stats Grid -->
-            <div class="ov-section-label animate-in ov-delay-1">知识库概览</div>
-            <div class="ov-stats-grid animate-in ov-delay-1">
-                <div class="ov-stat-card">
-                    <h4>知识节点</h4>
-                    <div class="ov-stat-value" id="statFacts">—</div>
-                </div>
-                <div class="ov-stat-card">
-                    <h4>关联边</h4>
-                    <div class="ov-stat-value" id="statEdges">—</div>
-                </div>
-                <div class="ov-stat-card">
-                    <h4>抽象规律</h4>
-                    <div class="ov-stat-value" id="statAbstracts">—</div>
-                </div>
-
+            <!-- ② About Section -->
+            <div class="ov-about animate-in ov-delay-1" id="ovAbout">
+                <div class="ov-section-label">关于</div>
+                <div id="ovAboutContent"><span class="ov-empty-hint">加载中...</span></div>
             </div>
 
-            <!-- c) View Cards (owner only) -->
-            <div class="ov-section-label animate-in ov-delay-2 owner-only" style="display:none;">功能入口</div>
-            <div class="ov-view-cards animate-in ov-delay-2 owner-only" style="display:none;">
-                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('graph')">
-                    <div class="ov-card-icon">🕸️</div>
-                    <h3>Graph View</h3>
-                    <p>力导向图，探索知识关联</p>
-                </a>
-                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('tree')">
-                    <div class="ov-card-icon">🌳</div>
-                    <h3>Tree View</h3>
-                    <p>抽象层树形，理解规律结构</p>
-                </a>
-                <a class="ov-view-card" href="javascript:void(0)" onclick="AgentDetail.goView('timeline')">
-                    <div class="ov-card-icon">📅</div>
-                    <h3>Timeline</h3>
-                    <p>时间轴，回顾知识演变</p>
-                </a>
-                <a class="ov-view-card ov-chat-card" href="javascript:void(0)" onclick="AgentDetail.goView('chat')">
-                    <div class="ov-card-icon">💬</div>
-                    <div class="ov-card-text">
-                        <h3>Chat</h3>
-                        <p>向知识库提问，获取基于存储知识的回答</p>
-                    </div>
-                </a>
+            <div class="ov-divider"></div>
+
+            <!-- ③ Knowledge Overview Section -->
+            <div class="ov-knowledge-section animate-in ov-delay-2" id="ovKnowledge">
+                <div class="ov-section-label">知识概览</div>
+                <div id="ovKnowledgeContent"><span class="ov-empty-hint">加载中...</span></div>
+                <button class="ov-section-link" style="margin-top:12px;" onclick="document.querySelector('.detail-tab[data-tab=&quot;knowledge&quot;]').click()">探索完整知识库 →</button>
             </div>
 
-            <!-- d) Token Management (owner only) -->
-            <div class="ov-token-management" id="ovTokenMgmt" style="display:none">
-                <div class="ov-section-label animate-in ov-delay-3">API Token（开发者）</div>
-                <div class="ov-token-create-form animate-in ov-delay-3">
-                    <div class="ov-form-row">
-                        <div class="ov-form-group">
-                            <label>权限类型</label>
-                            <select id="ovTokenScope">
-                                <option value="qa_public">💬 问答服务</option>
-                                <option value="browse_public">👁️ 公开浏览</option>
-                                <option value="full">🔓 全量访问</option>
-                            </select>
-                        </div>
-                        <div class="ov-form-group">
-                            <label>有效期</label>
-                            <select id="ovTokenDuration">
-                                <option value="1d">1 天</option>
-                                <option value="7d" selected>7 天</option>
-                                <option value="30d">30 天</option>
-                                <option value="90d">90 天</option>
-                            </select>
-                        </div>
-                        <div class="ov-form-group">
-                            <label>问答次数</label>
-                            <input type="number" id="ovTokenQaLimit" placeholder="默认20" min="0">
-                        </div>
-                        <div class="ov-form-group">
-                            <label>备注</label>
-                            <input type="text" id="ovTokenNote" placeholder="如：给朋友A">
-                        </div>
-                    </div>
-                    <button class="ov-create-btn" onclick="AgentDetail.addTokens()">添加 Token</button>
-                </div>
-                <div class="ov-token-list" id="ovTokenList">
-                    <div class="knowledge-loading" id="ovTokenLoading">
-                        <div class="loading-spinner"></div>
-                        <div class="loading-text">加载中...</div>
-                    </div>
-                </div>
+            <div class="ov-divider"></div>
+
+            <!-- ④ Recent Activity Section -->
+            <div class="ov-activity-section animate-in ov-delay-3" id="ovActivity">
+                <div class="ov-section-label">最近动态</div>
+                <div id="ovActivityContent"><span class="ov-empty-hint">加载中...</span></div>
+                <button class="ov-section-link" style="margin-top:12px;" onclick="document.querySelector('.detail-tab[data-tab=&quot;insights&quot;]').click()">查看全部 →</button>
             </div>
         </div>
 
