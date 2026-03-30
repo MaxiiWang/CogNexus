@@ -112,6 +112,52 @@
             object-fit: cover;
         }
 
+        /* Live2D Avatar Showcase */
+        .agent-live2d-showcase {
+            display: none;
+            width: 280px;
+            height: 260px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(22,22,30,0.6) 0%, rgba(26,26,36,0.4) 50%, rgba(18,18,26,0.6) 100%);
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden;
+            position: relative;
+            margin: 0 auto 20px;
+        }
+        .agent-live2d-showcase.active {
+            display: block;
+        }
+        .agent-live2d-showcase canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .agent-live2d-showcase .live2d-status {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 16px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.5));
+            text-align: center;
+        }
+        .agent-live2d-showcase .live2d-status .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(109,168,155,0.7);
+            margin-right: 6px;
+            animation: pulseDot 2s ease-in-out infinite;
+        }
+        @keyframes pulseDot {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .agent-live2d-showcase .live2d-status span {
+            font-size: 0.72em;
+            color: rgba(255,255,255,0.35);
+        }
+
         .agent-name {
             font-family: 'Playfair Display', Georgia, serif;
             font-size: 2em;
@@ -206,6 +252,10 @@
 
     <div class="agent-card">
         <div class="agent-avatar" id="agentAvatar">🧠</div>
+        <div class="agent-live2d-showcase" id="publicLive2dShowcase">
+            <canvas id="publicAvatarCanvas"></canvas>
+            <div class="live2d-status"><span class="dot"></span><span>在线</span></div>
+        </div>
         <h1 class="agent-name" id="agentName">加载中...</h1>
         <div class="agent-type" id="agentType" style="display:none;"></div>
         <p class="agent-desc" id="agentDesc"></p>
@@ -239,8 +289,11 @@
                 document.getElementById('agentPrice').textContent =
                     agent.price_per_chat ? '每次对话 ' + agent.price_per_chat + ' ATP' : '🆓 免费对话';
 
-                // Avatar
-                if (agent.avatar_url) {
+                // Avatar — Live2D or static
+                if (agent.avatar_model_url) {
+                    document.getElementById('agentAvatar').style.display = 'none';
+                    initPublicLive2D(agent.avatar_model_url);
+                } else if (agent.avatar_url) {
                     document.getElementById('agentAvatar').innerHTML =
                         '<img src="' + agent.avatar_url + '" alt="' + (agent.name || 'Agent') + '">';
                 }
@@ -256,6 +309,44 @@
                 document.getElementById('agentName').textContent = 'Agent 不存在';
                 document.getElementById('agentNotFound').textContent = '该 Agent 可能已被删除或链接无效';
                 document.getElementById('agentNotFound').style.display = 'block';
+            }
+        }
+
+        async function initPublicLive2D(modelUrl) {
+            const showcase = document.getElementById('publicLive2dShowcase');
+            const canvas = document.getElementById('publicAvatarCanvas');
+            if (!showcase || !canvas) return;
+
+            function loadScript(src) {
+                return new Promise(function(resolve, reject) {
+                    var s = document.createElement('script');
+                    s.src = src; s.onload = resolve; s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+            }
+
+            try {
+                if (!window.Live2DCubismCore) await loadScript('https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js');
+                if (!window.PIXI) await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js');
+                if (!window.PIXI.live2d) await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js');
+
+                var w = 280, h = 260;
+                var app = new PIXI.Application({ view: canvas, autoStart: true, backgroundAlpha: 0, width: w, height: h, antialias: true });
+                var model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                var scale = Math.min(h / model.height, w / model.width) * 0.85;
+                model.scale.set(scale);
+                model.anchor.set(0.5, 0.5);
+                model.x = w / 2;
+                model.y = h / 2;
+                app.stage.addChild(model);
+                try { model.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
+
+                showcase.classList.add('active');
+            } catch(e) {
+                console.error('Public Live2D error:', e);
+                // Fallback: show static avatar again
+                document.getElementById('agentAvatar').style.display = '';
+                showcase.style.display = 'none';
             }
         }
 
