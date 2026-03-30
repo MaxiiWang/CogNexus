@@ -125,6 +125,74 @@
             height: 100%;
             object-fit: cover;
         }
+
+        /* Live2D Avatar Showcase in Overview */
+        .ov-hero.has-live2d {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0;
+        }
+        .ov-hero.has-live2d .ov-profile-avatar {
+            display: none;
+        }
+        .ov-live2d-showcase {
+            display: none;
+            width: 100%;
+            max-width: 320px;
+            height: 280px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(22,22,30,0.6) 0%, rgba(26,26,36,0.4) 50%, rgba(18,18,26,0.6) 100%);
+            border: 1px solid rgba(255,255,255,0.06);
+            overflow: hidden;
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .ov-hero.has-live2d .ov-live2d-showcase {
+            display: block;
+        }
+        .ov-live2d-showcase canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .ov-live2d-showcase .ov-live2d-status {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 16px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.5));
+            text-align: center;
+        }
+        .ov-live2d-showcase .ov-live2d-status .status-dot-live {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(109,168,155,0.7);
+            margin-right: 6px;
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        .ov-live2d-showcase .ov-live2d-status span {
+            font-size: 0.72em;
+            color: rgba(255,255,255,0.35);
+        }
+        .ov-hero.has-live2d .ov-hero-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .ov-hero.has-live2d .ov-stat-badges {
+            justify-content: center;
+        }
+        .ov-hero.has-live2d .ov-hero-actions {
+            justify-content: center;
+        }
+
         .ov-hero-body { flex: 1; }
         .ov-profile-name {
             font-family: 'Playfair Display', Georgia, serif;
@@ -1089,8 +1157,14 @@
         <!-- Overview Tab -->
         <div class="tab-content active" id="tab-overview">
             <!-- ① Hero Section -->
-            <div class="ov-hero animate-in">
+            <div class="ov-hero animate-in" id="ovHero">
                 <div class="ov-profile-avatar" id="ovAvatar">🧠</div>
+                <div class="ov-live2d-showcase" id="ovLive2dShowcase">
+                    <canvas id="ovAvatarCanvas"></canvas>
+                    <div class="ov-live2d-status">
+                        <span class="status-dot-live"></span><span>在线</span>
+                    </div>
+                </div>
                 <div class="ov-hero-body">
                     <div class="ov-profile-name" id="ovName">Loading...</div>
                     <div class="ov-profile-desc" id="ovDesc"></div>

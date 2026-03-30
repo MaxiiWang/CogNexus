@@ -210,11 +210,17 @@ const AgentDetail = (function() {
 
     function renderOverview() {
         const a = agentData;
-        // Avatar (120px)
+        // Avatar — Live2D showcase or static
+        const heroEl = document.getElementById('ovHero');
         const avatarEl = document.getElementById('ovAvatar');
-        if (a.avatar_url) {
+        if (a.avatar_model_url) {
+            heroEl.classList.add('has-live2d');
+            initOverviewLive2D();
+        } else if (a.avatar_url) {
+            heroEl.classList.remove('has-live2d');
             avatarEl.innerHTML = '<img src="' + esc(a.avatar_url) + '" alt="">';
         } else {
+            heroEl.classList.remove('has-live2d');
             avatarEl.textContent = a.agent_type === 'character' ? '🎭' : '🧠';
         }
         document.getElementById('ovName').textContent = a.name || a.agent_id;
@@ -1801,7 +1807,68 @@ const AgentDetail = (function() {
         } catch { toast('设置失败', 'error'); }
     }
 
-    // ===== Live2D Avatar =====
+    // ===== Live2D Avatar (Overview Showcase) =====
+    let _ovLive2dApp = null;
+    async function initOverviewLive2D() {
+        if (!agentData || !agentData.avatar_model_url) return;
+        const showcase = document.getElementById('ovLive2dShowcase');
+        const canvas = document.getElementById('ovAvatarCanvas');
+        if (!showcase || !canvas) return;
+
+        // Don't re-init if already loaded
+        if (_ovLive2dApp) return;
+
+        // Load libs (shared with chat panel)
+        if (!window.Live2DCubismCore) {
+            await loadScript('https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js');
+        }
+        if (!window.PIXI) {
+            await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js');
+        }
+        if (!window.PIXI.live2d) {
+            await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js');
+        }
+
+        try {
+            const w = showcase.clientWidth || 320;
+            const h = showcase.clientHeight || 280;
+
+            const app = new PIXI.Application({
+                view: canvas,
+                autoStart: true,
+                backgroundAlpha: 0,
+                width: w,
+                height: h,
+                antialias: true,
+            });
+
+            const model = await PIXI.live2d.Live2DModel.from(agentData.avatar_model_url);
+            const scale = Math.min(h / model.height, w / model.width) * 0.85;
+            model.scale.set(scale);
+            model.anchor.set(0.5, 0.5);
+            model.x = w / 2;
+            model.y = h / 2;
+            app.stage.addChild(model);
+
+            // Idle motion
+            try { model.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
+
+            _ovLive2dApp = app;
+        } catch(e) {
+            console.error('Overview Live2D init error:', e);
+            // Fallback to static
+            const heroEl = document.getElementById('ovHero');
+            if (heroEl) heroEl.classList.remove('has-live2d');
+            const avatarEl = document.getElementById('ovAvatar');
+            if (agentData.avatar_url) {
+                avatarEl.innerHTML = '<img src="' + esc(agentData.avatar_url) + '" alt="">';
+            } else {
+                avatarEl.textContent = agentData.agent_type === 'character' ? '🎭' : '🧠';
+            }
+        }
+    }
+
+    // ===== Live2D Avatar (Chat Panel) =====
     async function initLive2D() {
         if (!agentData || !agentData.avatar_model_url) return;
 
