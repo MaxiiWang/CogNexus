@@ -350,6 +350,43 @@
             }
         }
 
+        async function loadScript(src) {
+            return new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = src; s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+            });
+        }
+
+        async function initPublicLive2D(modelUrl) {
+            var showcase = document.getElementById('publicLive2dShowcase');
+            var canvas = document.getElementById('publicAvatarCanvas');
+            if (!showcase || !canvas) return;
+
+            try {
+                if (!window.Live2DCubismCore) await loadScript('https://cubism.live2d.com/sdk-web/cubismcore/live2dcubismcore.min.js');
+                if (!window.PIXI) await loadScript('https://cdn.jsdelivr.net/npm/pixi.js@7.3.3/dist/pixi.min.js');
+                if (!window.PIXI.live2d) await loadScript('https://cdn.jsdelivr.net/npm/pixi-live2d-display@0.4.0/dist/cubism4.min.js');
+
+                var w = 280, h = 260;
+                var app = new PIXI.Application({ view: canvas, autoStart: true, backgroundAlpha: 0, width: w, height: h, antialias: true });
+                var model = await PIXI.live2d.Live2DModel.from(modelUrl);
+                var scale = Math.min(h / model.height, w / model.width) * 0.85;
+                model.scale.set(scale);
+                model.anchor.set(0.5, 0.5);
+                model.x = w / 2;
+                model.y = h / 2;
+                app.stage.addChild(model);
+                try { model.motion('Idle', 0, PIXI.live2d.MotionPriority.IDLE); } catch(e) {}
+
+                showcase.classList.add('active');
+            } catch(e) {
+                console.error('Public Live2D error:', e);
+                // Fallback: show static avatar again
+                document.getElementById('agentAvatar').style.display = '';
+            }
+        }
+
         window.startChat = function() {
             const token = localStorage.getItem('cog_token');
             if (token) {
